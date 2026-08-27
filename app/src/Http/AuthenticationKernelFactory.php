@@ -17,6 +17,7 @@ use Architex\Http\Controller\BriefController;
 use Architex\Http\Controller\TeamController;
 use Architex\Http\Controller\ToolboxController;
 use Architex\Http\Controller\ProposalController;
+use Architex\Http\Controller\AppointmentController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -45,6 +46,7 @@ use Architex\Platform\Fees\FeeCalculatorService;
 use Architex\Platform\Toolbox\ProductionToolRegistry;
 use Architex\Platform\Toolbox\ToolboxEngine;
 use Architex\Platform\Proposal\ProposalService;
+use Architex\Platform\Appointment\AppointmentService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -129,6 +131,11 @@ final readonly class AuthenticationKernelFactory
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
         (new ProposalRoutes(
             new ProposalController(new ProposalService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new AppointmentRoutes(
+            new AppointmentController(new AppointmentService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

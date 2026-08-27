@@ -27,5 +27,6 @@ final class ProposalWorkspaceTest extends TestCase
         self::assertStringContainsString('if (proposalToken) { enforceProductionControls(null);', $shell);
         self::assertStringContainsString('body.public-proposal .app{--nav:0px}', $styles);
         self::assertStringContainsString('.public-proposal-card .notice{overflow-wrap:anywhere}', $styles);
+        self::assertStringContainsString('.proposal-row small{overflow-wrap:anywhere;word-break:break-word}', $styles);
     }
 }

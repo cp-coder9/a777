@@ -215,7 +215,7 @@ final readonly class ProposalService
     public function list(string $organisationId, string $userId): array
     {
         $this->assertMember($organisationId, $userId);
-        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,title,client_name clientName,version,status,audit_hash auditHash,issued_at issuedAt,expires_at expiresAt,accepted_at acceptedAt,created_at createdAt FROM professional_proposals WHERE organisation_id=UNHEX(:organisation_id) ORDER BY created_at DESC,id");
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) projectId,title,client_name clientName,version,status,audit_hash auditHash,issued_at issuedAt,expires_at expiresAt,accepted_at acceptedAt,created_at createdAt FROM professional_proposals WHERE organisation_id=UNHEX(:organisation_id) ORDER BY created_at DESC,id");
         $statement->execute(['organisation_id' => $organisationId]);
         $rows = $statement->fetchAll();
         foreach ($rows as &$row) $row['version'] = (int)$row['version'];
