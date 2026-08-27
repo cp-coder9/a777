@@ -96,6 +96,19 @@ final class PackLedgerBuilderTest extends TestCase
         }
     }
 
+    public function testConfiguredMaximumSourcesRejectsEmptyFilesBeforeAccumulation(): void
+    {
+        $packs = $this->temporaryPacks(['one.md' => '', 'two.md' => '']);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum source count exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumSources: 1)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
     public function testConfiguredZipEntryAndCompressionLimitsRejectArchiveMetadata(): void
     {
         $packs = $this->temporaryPacks([]);
@@ -109,6 +122,40 @@ final class PackLedgerBuilderTest extends TestCase
             $this->expectException(\RuntimeException::class);
             $this->expectExceptionMessage('Maximum ZIP entry count exceeded');
             (new PackLedgerBuilder(new PackLedgerLimits(maximumZipEntries: 1)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testConfiguredZipEntryBytesAndCompressionRatioRejectBeforeReading(): void
+    {
+        $packs = $this->temporaryPacks([]);
+        $archive = new \ZipArchive();
+        self::assertTrue($archive->open($packs . '/pack.zip', \ZipArchive::CREATE) === true);
+        $archive->addFromString('one.md', str_repeat('a', 200));
+        $archive->close();
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum ZIP entry uncompressed bytes exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumZipEntryBytes: 100)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testConfiguredCompressionRatioRejectsCompressibleZipEntry(): void
+    {
+        $packs = $this->temporaryPacks([]);
+        $archive = new \ZipArchive();
+        self::assertTrue($archive->open($packs . '/pack.zip', \ZipArchive::CREATE) === true);
+        $archive->addFromString('one.md', str_repeat('a', 2_000));
+        $archive->close();
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum ZIP compression ratio exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumCompressionRatio: 1)))->build($packs);
         } finally {
             $this->deleteDirectory($packs);
         }
@@ -151,7 +198,7 @@ final class PackLedgerBuilderTest extends TestCase
         try {
             $writer = new LedgerArtifactWriter(
                 moveFile: static function (string $from, string $to) use ($markdown): bool {
-                    return str_starts_with($to, $markdown . '.bak-') ? false : rename($from, $to);
+                    return str_starts_with(str_replace('\\', '/', $to), str_replace('\\', '/', $markdown) . '.bak-') ? false : rename($from, $to);
                 },
             );
 
@@ -160,6 +207,111 @@ final class PackLedgerBuilderTest extends TestCase
         } finally {
             self::assertSame('previous-json', file_get_contents($json));
             self::assertSame('previous-markdown', file_get_contents($markdown));
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testAtomicWriterPublishesVerifiableMarkerAfterBothArtifacts(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+
+        try {
+            $writer = new LedgerArtifactWriter();
+            $marker = $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+
+            self::assertTrue($writer->isPublishedGenerationValid($marker));
+            $published = json_decode((string) file_get_contents($marker), true, flags: JSON_THROW_ON_ERROR);
+            self::assertSame(realpath($directory) . DIRECTORY_SEPARATOR . 'ledger.json', $published['json']['path']);
+            self::assertSame(realpath($directory) . DIRECTORY_SEPARATOR . 'ledger.md', $published['markdown']['path']);
+        } finally {
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testSecondFinalInstallationFailureLeavesNoValidMixedGeneration(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+
+        try {
+            $canonicalMarkdown = realpath($directory) . DIRECTORY_SEPARATOR . 'ledger.md';
+            $writer = new LedgerArtifactWriter(moveFile: static fn (string $from, string $to): bool => $to === $canonicalMarkdown ? false : rename($from, $to));
+            try {
+                $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+                self::fail('Expected second final installation to fail.');
+            } catch (\RuntimeException) {
+                self::assertFalse($writer->isPublishedGenerationValid($json . '.generation.json'));
+            }
+        } finally {
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testMarkerReplacementFailureLeavesInstalledPairInvalid(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+
+        try {
+            $baseline = new LedgerArtifactWriter();
+            $marker = $baseline->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            $writer = new LedgerArtifactWriter(moveFile: static fn (string $from, string $to): bool => $to === $marker ? false : rename($from, $to));
+            try {
+                $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [['pack' => 'new', 'relativePath' => 'new.md', 'sha256' => str_repeat('a', 64)]], 'requirements' => []], new PackLedgerBuilder());
+                self::fail('Expected marker replacement to fail.');
+            } catch (\RuntimeException) {
+                self::assertFalse($baseline->isPublishedGenerationValid($marker));
+            }
+        } finally {
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testAtomicWriterRejectsIdenticalCanonicalOutputDestinations(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $output = $directory . '/ledger.json';
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            (new LedgerArtifactWriter())->write($output, $output, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+        } finally {
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testAtomicWriterRejectsMarkdownDestinationThatCollidesWithMarker(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $json = $directory . '/ledger.json';
+
+        try {
+            $this->expectException(\InvalidArgumentException::class);
+            (new LedgerArtifactWriter())->write($json, $json . '.generation.json', ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+        } finally {
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testMarkerValidationRejectsTamperedArtifactPathCollisions(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+
+        try {
+            $writer = new LedgerArtifactWriter();
+            $marker = $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            $contents = json_decode((string) file_get_contents($marker), true, flags: JSON_THROW_ON_ERROR);
+            $contents['markdown'] = $contents['json'];
+            file_put_contents($marker, json_encode($contents, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+
+            self::assertFalse($writer->isPublishedGenerationValid($marker));
+        } finally {
             $this->deleteDirectory($directory);
         }
     }
@@ -182,11 +334,13 @@ final class PackLedgerBuilderTest extends TestCase
             exec($command, $firstOutput, $firstExit);
             self::assertSame(0, $firstExit, implode("\n", $firstOutput));
             self::assertIsArray(json_decode((string) file_get_contents($json), true, flags: JSON_THROW_ON_ERROR));
-            $firstHashes = [hash_file('sha256', $json), hash_file('sha256', $markdown)];
+            $marker = realpath($output) . DIRECTORY_SEPARATOR . 'ledger.json.generation.json';
+            self::assertTrue((new LedgerArtifactWriter())->isPublishedGenerationValid($marker));
+            $firstHashes = [hash_file('sha256', $json), hash_file('sha256', $markdown), hash_file('sha256', $marker)];
 
             exec($command, $secondOutput, $secondExit);
             self::assertSame(0, $secondExit, implode("\n", $secondOutput));
-            self::assertSame($firstHashes, [hash_file('sha256', $json), hash_file('sha256', $markdown)]);
+            self::assertSame($firstHashes, [hash_file('sha256', $json), hash_file('sha256', $markdown), hash_file('sha256', $marker)]);
             self::assertStringEndsWith("\n", (string) file_get_contents($markdown));
         } finally {
             $this->deleteDirectory($packs);

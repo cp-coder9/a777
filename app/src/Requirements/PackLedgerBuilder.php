@@ -15,6 +15,7 @@ final class PackLedgerBuilder
 {
     private const EXTENSIONS = ['md', 'txt', 'json', 'ts', 'tsx'];
     private int $totalBytes = 0;
+    private int $sourceCount = 0;
 
     public function __construct(private readonly PackLedgerLimits $limits = new PackLedgerLimits()) {}
 
@@ -22,6 +23,7 @@ final class PackLedgerBuilder
     public function build(string $packsDir): array
     {
         $this->totalBytes = 0;
+        $this->sourceCount = 0;
         $sources = []; $requirements = [];
         foreach ($this->discover($packsDir) as $source) {
             $content = $this->read($source);
@@ -73,6 +75,7 @@ final class PackLedgerBuilder
             $relative = $this->relative($base, $file->getPathname()); $extension = strtolower($file->getExtension());
             if (in_array($extension, self::EXTENSIONS, true)) {
                 $this->allowBytes($file->getSize(), $relative);
+                $this->registerSource();
                 $found[] = ['kind'=>'file','path'=>$file->getPathname(),'pack'=>$this->pack($relative),'relativePath'=>$relative,'extension'=>$extension,'bytes'=>$file->getSize()];
             } elseif ($extension === 'zip') array_push($found, ...$this->zipSources($file->getPathname(), $relative));
         }
@@ -93,6 +96,7 @@ final class PackLedgerBuilder
                 $bytes=(int)$entry['size']; if($bytes>$this->limits->maximumZipEntryBytes) throw new RuntimeException('Maximum ZIP entry uncompressed bytes exceeded.');
                 if($bytes/max(1,(int)$entry['comp_size'])>$this->limits->maximumCompressionRatio) throw new RuntimeException('Maximum ZIP compression ratio exceeded.');
                 $relative=$relativeArchive.'!/'.str_replace('\\','/',$entry['name']); $this->allowBytes($bytes,$relative);
+                $this->registerSource();
                 $found[]=['kind'=>'zip','path'=>$path,'entry'=>$i,'pack'=>$this->zipPack($relativeArchive,$entry['name']),'relativePath'=>$relative,'extension'=>$extension,'bytes'=>$bytes];
             }
             return $found;
@@ -108,6 +112,7 @@ final class PackLedgerBuilder
         return $content;
     }
     private function allowBytes(int $bytes,string $path): void { if($bytes>$this->limits->perSourceBytes) throw new RuntimeException("Per-source byte limit exceeded: $path"); $this->totalBytes+=$bytes; if($this->totalBytes>$this->limits->maximumTotalInputBytes) throw new RuntimeException('Maximum total input bytes exceeded.'); }
+    private function registerSource(): void { if ($this->sourceCount >= $this->limits->maximumSources) throw new RuntimeException('Maximum source count exceeded.'); $this->sourceCount++; }
     /** @return iterable<string> */
     private function statements(string $content,string $extension): iterable
     {

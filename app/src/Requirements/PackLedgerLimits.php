@@ -15,6 +15,7 @@ final readonly class PackLedgerLimits
         public int $maximumTotalInputBytes = 16_777_216,
         public int $maximumCompressionRatio = 100,
         public int $maximumRequirements = 100_000,
+        public int $maximumSources = 5_000,
     ) {
         foreach (get_object_vars($this) as $name => $value) {
             if ($value < 1) {
