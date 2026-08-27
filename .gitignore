@@ -5,6 +5,8 @@
 !/.env.example
 /.superpowers/
 /app/vendor/
+/vendor/
+/.phpunit.cache/
 /app/storage/cache/
 /app/storage/logs/
 /app/storage/sessions/

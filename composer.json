@@ -1,0 +1,33 @@
+{
+  "name": "architex/platform",
+  "description": "Architex production platform.",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.3",
+    "ext-json": "*",
+    "ext-pdo": "*",
+    "ext-pdo_mysql": "*",
+    "ext-zip": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Architex\\": "app/src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Architex\\Tests\\": "app/tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  },
+  "config": {
+    "sort-packages": true,
+    "optimize-autoloader": true
+  }
+}
