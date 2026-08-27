@@ -1,0 +1,63 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Architex\Http;
+
+use LogicException;
+
+final class Router
+{
+    /** @var array<string,array<string,callable(Request):Response>> */
+    private array $routes = [];
+
+    /** @param callable(Request):Response $handler */
+    public function get(string $path, callable $handler): void
+    {
+        $this->add('GET', $path, $handler);
+    }
+
+    /** @param callable(Request):Response $handler */
+    public function add(string $method, string $path, callable $handler): void
+    {
+        $this->routes[$this->normalisePath($path)][strtoupper($method)] = $handler;
+    }
+
+    public function dispatch(Request $request): Response
+    {
+        $routes = $this->routes[$request->path()] ?? null;
+        if ($routes === null) {
+            return Response::error(404, 'not_found', 'Route not found.');
+        }
+
+        $method = $request->method();
+        $handler = $routes[$method] ?? ($method === 'HEAD' ? ($routes['GET'] ?? null) : null);
+        if ($handler === null) {
+            return Response::error(405, 'method_not_allowed', 'Method not allowed.', null, null, ['Allow' => implode(', ', $this->allowedMethods($routes))]);
+        }
+
+        $response = $handler($request);
+        if (!$response instanceof Response) {
+            throw new LogicException('Route handlers must return an HTTP response.');
+        }
+
+        return $method === 'HEAD' ? $response->withoutBody() : $response;
+    }
+
+    /** @param array<string,callable(Request):Response> $routes @return list<string> */
+    private function allowedMethods(array $routes): array
+    {
+        $methods = array_keys($routes);
+        if (in_array('GET', $methods, true) && !in_array('HEAD', $methods, true)) {
+            $methods[] = 'HEAD';
+        }
+        sort($methods);
+        return $methods;
+    }
+
+    private function normalisePath(string $path): string
+    {
+        $normalised = '/' . ltrim($path, '/');
+        return $normalised === '/' ? $normalised : rtrim($normalised, '/');
+    }
+}
