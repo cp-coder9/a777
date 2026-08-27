@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Architex\Tests\Requirements;
 
 use Architex\Requirements\PackLedgerBuilder;
+use Architex\Requirements\PackLedgerLimits;
+use Architex\Requirements\LedgerArtifactWriter;
 use PHPUnit\Framework\TestCase;
 
 final class PackLedgerBuilderTest extends TestCase
@@ -17,7 +19,9 @@ final class PackLedgerBuilderTest extends TestCase
         self::assertContains('10. architex-site-execution-field-control-pack', array_column($ledger['sources'], 'pack'));
         self::assertNotEmpty($ledger['requirements']);
         self::assertSame(['not_implemented'], array_values(array_unique(array_column($ledger['requirements'], 'status'))));
-        self::assertSame($ledger, (new PackLedgerBuilder())->build(dirname(__DIR__, 3) . '/packs'));
+        $firstDigest = hash('sha256', serialize($ledger));
+        unset($ledger);
+        self::assertSame($firstDigest, hash('sha256', serialize((new PackLedgerBuilder())->build(dirname(__DIR__, 3) . '/packs'))));
     }
 
     public function testNodeModuleContentIsExcludedFromDirectoryAndArchiveSources(): void
@@ -48,6 +52,163 @@ final class PackLedgerBuilderTest extends TestCase
         } finally {
             $this->deleteDirectory($packs);
         }
+    }
+
+    public function testRepeatedStatementsRetainDistinctOccurrenceStableIds(): void
+    {
+        $packs = $this->temporaryPacks(['requirements.md' => "# Repeated\n# Repeated\n"]);
+
+        try {
+            $requirements = (new PackLedgerBuilder())->build($packs)['requirements'];
+
+            self::assertCount(2, $requirements);
+            self::assertSame(['# Repeated', '# Repeated'], array_column($requirements, 'statement'));
+            self::assertNotSame($requirements[0]['id'], $requirements[1]['id']);
+            self::assertSame([1, 2], array_column($requirements, 'ordinal'));
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testConfiguredSourceAndRequirementLimitsRejectBeforeLedgerGrowth(): void
+    {
+        $packs = $this->temporaryPacks(['requirements.md' => "# One\n# Two\n"]);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum requirement count exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumRequirements: 1)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testConfiguredInputByteLimitsRejectBeforeReadingSources(): void
+    {
+        $packs = $this->temporaryPacks(['one.md' => '# one', 'two.md' => '# two']);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum total input bytes exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumTotalInputBytes: 5)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testConfiguredZipEntryAndCompressionLimitsRejectArchiveMetadata(): void
+    {
+        $packs = $this->temporaryPacks([]);
+        $archive = new \ZipArchive();
+        self::assertTrue($archive->open($packs . '/pack.zip', \ZipArchive::CREATE) === true);
+        $archive->addFromString('one.md', str_repeat('a', 200));
+        $archive->addFromString('two.md', '# two');
+        $archive->close();
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Maximum ZIP entry count exceeded');
+            (new PackLedgerBuilder(new PackLedgerLimits(maximumZipEntries: 1)))->build($packs);
+        } finally {
+            $this->deleteDirectory($packs);
+        }
+    }
+
+    public function testAtomicWriterPreservesExistingArtifactsWhenAWriteIsShort(): void
+    {
+        $directory = sys_get_temp_dir() . '/architex-ledger-output-' . bin2hex(random_bytes(8));
+        mkdir($directory, 0777, true);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+        file_put_contents($json, 'previous-json');
+        file_put_contents($markdown, 'previous-markdown');
+
+        try {
+            $writer = new LedgerArtifactWriter(static function ($handle, string $data): int|false {
+                fwrite($handle, $data);
+                return max(0, strlen($data) - 1);
+            });
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Short write');
+            $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+        } finally {
+            self::assertSame('previous-json', file_get_contents($json));
+            self::assertSame('previous-markdown', file_get_contents($markdown));
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testAtomicWriterRestoresBothArtifactsWhenSecondBackupMoveFails(): void
+    {
+        $directory = sys_get_temp_dir() . '/architex-ledger-output-' . bin2hex(random_bytes(8));
+        mkdir($directory, 0777, true);
+        $json = $directory . '/ledger.json';
+        $markdown = $directory . '/ledger.md';
+        file_put_contents($json, 'previous-json');
+        file_put_contents($markdown, 'previous-markdown');
+
+        try {
+            $writer = new LedgerArtifactWriter(
+                moveFile: static function (string $from, string $to) use ($markdown): bool {
+                    return str_starts_with($to, $markdown . '.bak-') ? false : rename($from, $to);
+                },
+            );
+
+            $this->expectException(\RuntimeException::class);
+            $writer->write($json, $markdown, ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+        } finally {
+            self::assertSame('previous-json', file_get_contents($json));
+            self::assertSame('previous-markdown', file_get_contents($markdown));
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testCliProducesParseableByteStableArtifacts(): void
+    {
+        $packs = $this->temporaryPacks(['requirements.md' => "# One\n- Two\n"]);
+        $output = $this->temporaryPacks([]);
+        $json = $output . '/ledger.json';
+        $markdown = $output . '/ledger.md';
+
+        try {
+            $command = implode(' ', [
+                escapeshellarg(PHP_BINARY),
+                escapeshellarg(dirname(__DIR__, 3) . '/app/bin/build-pack-ledger.php'),
+                '--packs=' . escapeshellarg($packs),
+                '--json=' . escapeshellarg($json),
+                '--markdown=' . escapeshellarg($markdown),
+            ]);
+            exec($command, $firstOutput, $firstExit);
+            self::assertSame(0, $firstExit, implode("\n", $firstOutput));
+            self::assertIsArray(json_decode((string) file_get_contents($json), true, flags: JSON_THROW_ON_ERROR));
+            $firstHashes = [hash_file('sha256', $json), hash_file('sha256', $markdown)];
+
+            exec($command, $secondOutput, $secondExit);
+            self::assertSame(0, $secondExit, implode("\n", $secondOutput));
+            self::assertSame($firstHashes, [hash_file('sha256', $json), hash_file('sha256', $markdown)]);
+            self::assertStringEndsWith("\n", (string) file_get_contents($markdown));
+        } finally {
+            $this->deleteDirectory($packs);
+            $this->deleteDirectory($output);
+        }
+    }
+
+    /** @param array<string, string> $files */
+    private function temporaryPacks(array $files): string
+    {
+        $directory = sys_get_temp_dir() . '/architex-pack-ledger-' . bin2hex(random_bytes(8));
+        mkdir($directory, 0777, true);
+        foreach ($files as $path => $content) {
+            $target = $directory . '/' . $path;
+            $parent = dirname($target);
+            if (!is_dir($parent)) {
+                mkdir($parent, 0777, true);
+            }
+            file_put_contents($target, $content);
+        }
+
+        return $directory;
     }
 
     private function deleteDirectory(string $path): void
