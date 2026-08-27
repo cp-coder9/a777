@@ -1,0 +1,28 @@
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS project_team_members (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  project_id BINARY(16) NOT NULL,
+  user_id BINARY(16) NOT NULL,
+  discipline VARCHAR(80) NOT NULL,
+  role_label VARCHAR(120) NOT NULL,
+  verification_grade ENUM('manually_reviewed','externally_verified') NOT NULL,
+  status ENUM('invited','active','declined','removed') NOT NULL DEFAULT 'invited',
+  active_slot TINYINT AS (CASE WHEN status IN ('invited','active') THEN 1 ELSE NULL END) PERSISTENT,
+  invited_by BINARY(16) NOT NULL,
+  invited_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  accepted_at DATETIME(6) NULL,
+  declined_at DATETIME(6) NULL,
+  removed_by BINARY(16) NULL,
+  removed_at DATETIME(6) NULL,
+  removal_reason VARCHAR(500) NULL,
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_project_team_active_discipline_user (project_id,user_id,discipline,active_slot),
+  KEY idx_project_team_status (organisation_id,project_id,status,discipline),
+  KEY idx_project_team_invitee (user_id,status,invited_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (invited_by) REFERENCES users(id),
+  FOREIGN KEY (removed_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

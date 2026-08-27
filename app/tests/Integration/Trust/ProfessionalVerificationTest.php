@@ -47,6 +47,7 @@ final class ProfessionalVerificationTest extends MariaDbTestCase
         $results = $service->searchDirectory('architect', 'Gauteng');
         self::assertCount(1, $results);
         self::assertSame($profile['id'], $results[0]['profileId']);
+        self::assertSame($ownerId, $results[0]['userId']);
         self::assertSame('manually_reviewed', $results[0]['verificationGrade']);
         self::assertArrayNotHasKey('purpose', $results[0]);
         self::assertArrayNotHasKey('reviewNote', $results[0]);

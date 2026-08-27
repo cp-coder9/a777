@@ -45,11 +45,90 @@
     return id === 'settings' ? trustWorkspace() : originalGlobalPage(id);
   };
 
+  TOOLS.professional_directory.status = 'live';
+  TOOLS.team_workspace.status = 'live';
+  const originalRenderMain = window.renderMain;
+  window.renderMain = function () {
+    if (state.tool === 'team_workspace') {
+      document.getElementById('main').innerHTML = teamWorkspace();
+      setTimeout(hydrateTeamWorkspace, 0);
+      return;
+    }
+    originalRenderMain();
+  };
+
+  function teamWorkspace() {
+    const activeProject=window.__ARCHITEX_SHELL_STATE__?.projects.find(item=>item.id===window.__ARCHITEX_SHELL_STATE__?.selectedProjectId);
+    return `${pageHead('Project team','Invite independently verified professionals, track acceptance and preserve assignment history.','team_workspace','coral')}
+      <div class="notice team-boundary"><b>Access boundary:</b> a project invitation grants only the recorded project assignment after acceptance. It never grants organisation administration or changes the professional’s own practice membership.</div>
+      <section class="team-layout">
+        <form id="projectTeamInviteForm" class="panel panel-pad team-card">
+          <div class="trust-card-head"><div><h2>Invite a verified professional</h2><p>${escapeHtml(activeProject?.name||'Select a project')} · eligible directory records only</p></div><span class="status">Audited</span></div>
+          <div class="scaffold-grid">
+            <label class="trust-wide">Professional<select class="form-select" name="candidateId" required><option value="">Loading verified directory…</option></select></label>
+            <label>Discipline<input class="form-input" name="discipline" required maxlength="80" placeholder="e.g. structure"></label>
+            <label>Project role<input class="form-input" name="roleLabel" required maxlength="120" placeholder="e.g. Structural engineer"></label>
+          </div>
+          <div class="trust-actions"><button class="btn dark" type="submit">Send invitation</button><span id="projectTeamInviteMessage" role="status"></span></div>
+        </form>
+        <div class="panel panel-pad team-card"><div class="trust-card-head"><div><h2>Incoming invitations</h2><p>Accept only into the named project and discipline.</p></div></div><div id="projectTeamPending" class="trust-list"><div class="notice">Loading invitations…</div></div></div>
+      </section>
+      <section class="panel panel-pad team-card team-current"><div class="trust-card-head"><div><h2>Current project team</h2><p>Pending and active assignments. Removed records remain in audit history.</p></div><button class="btn ghost" type="button" onclick="refreshProjectTeam()">Refresh</button></div><div id="projectTeamList" class="trust-list"><div class="notice">Loading project team…</div></div></section>`;
+  }
+
+  async function hydrateTeamWorkspace() {
+    const form=document.getElementById('projectTeamInviteForm');if(!form)return;
+    const projectId=window.__ARCHITEX_SHELL_STATE__?.selectedProjectId;
+    if(!projectId){
+      document.getElementById('projectTeamList').innerHTML='<div class="notice">Create or select a project before managing its team.</div>';
+      form.querySelectorAll('input,select,button').forEach(control=>control.disabled=true);
+      try{renderPendingInvitations(await api.get('/team-invitations'));}catch(error){document.getElementById('projectTeamPending').innerHTML=`<div class="notice">${escapeHtml(error.message)}</div>`;}
+      return;
+    }
+    try {
+      const [directory,team,pending]=await Promise.all([api.get('/directory/search'),api.get(`/projects/${encodeURIComponent(projectId)}/team`),api.get('/team-invitations')]);
+      const currentUser=window.__ARCHITEX_SHELL_STATE__?.session.userId;
+      const eligible=directory.filter(item=>['manually_reviewed','externally_verified'].includes(item.verificationGrade)&&item.userId!==currentUser);
+      const select=form.elements.candidateId;
+      select.innerHTML='<option value="">Select a verified professional</option>'+eligible.map(item=>`<option value="${escapeHtml(item.userId)}">${escapeHtml(item.displayName)} · ${escapeHtml(item.profession.replaceAll('_',' '))} · ${escapeHtml(item.verificationGrade.replaceAll('_',' '))}</option>`).join('');
+      if(!eligible.length)select.innerHTML='<option value="">No independently verified candidates available</option>';
+      renderProjectTeam(team);renderPendingInvitations(pending);
+      if(!form.dataset.teamBound){form.dataset.teamBound='1';form.addEventListener('submit',submitProjectTeamInvitation);}
+    } catch(error){document.getElementById('projectTeamList').innerHTML=`<div class="notice">${escapeHtml(error.message)}</div>`;if(!form.dataset.teamBound){form.dataset.teamBound='1';form.addEventListener('submit',submitProjectTeamInvitation);}}
+  }
+
+  async function submitProjectTeamInvitation(event) {
+    event.preventDefault();const form=event.currentTarget,values=new FormData(form),message=document.getElementById('projectTeamInviteMessage'),projectId=window.__ARCHITEX_SHELL_STATE__?.selectedProjectId;message.textContent='Sending…';
+    try{await api.post(`/projects/${encodeURIComponent(projectId)}/team`,{candidateId:values.get('candidateId'),discipline:values.get('discipline'),roleLabel:values.get('roleLabel')});message.textContent='Invitation sent and audited.';form.reset();await hydrateTeamWorkspace();}
+    catch(error){message.textContent=error.message;}
+  }
+
+  function renderProjectTeam(team) {
+    const list=document.getElementById('projectTeamList');if(!list)return;
+    list.innerHTML=team.length?team.map(member=>`<article class="trust-row team-row"><div><b>${escapeHtml(member.displayName||member.roleLabel)}</b><span>${escapeHtml(member.roleLabel)} · ${escapeHtml(member.discipline)}</span><small>${escapeHtml(member.profession||'registered professional')} · ${escapeHtml(member.verificationGrade.replaceAll('_',' '))}</small></div><div class="trust-row-actions"><span class="status ${member.status==='active'?'green':'amber'}">${escapeHtml(member.status)}</span><button class="btn ghost" type="button" onclick="removeProjectTeamMember('${escapeHtml(member.id)}')">Remove</button></div></article>`).join(''):'<div class="notice">No pending or active project team assignments.</div>';
+  }
+
+  function renderPendingInvitations(invitations) {
+    const list=document.getElementById('projectTeamPending');if(!list)return;
+    list.innerHTML=invitations.length?invitations.map(item=>`<article class="trust-row team-row"><div><b>${escapeHtml(item.projectName)}</b><span>${escapeHtml(item.organisationName)} · ${escapeHtml(item.roleLabel)}</span><small>${escapeHtml(item.discipline)} · invited by ${escapeHtml(item.inviterEmail)}</small></div><button class="btn dark" type="button" onclick="acceptProjectTeamInvitation('${escapeHtml(item.id)}')">Accept</button></article>`).join(''):'<div class="notice">No pending project team invitations.</div>';
+  }
+
+  window.refreshProjectTeam=hydrateTeamWorkspace;
+  window.acceptProjectTeamInvitation=async function(id){try{await api.post(`/team-invitations/${encodeURIComponent(id)}/accept`);showToast('Project team invitation accepted.');await hydrateTeamWorkspace();}catch(error){showToast(error.message)}};
+  window.removeProjectTeamMember=async function(id){const reason=prompt('Reason for ending this project assignment?');if(!reason?.trim())return;const projectId=window.__ARCHITEX_SHELL_STATE__?.selectedProjectId;try{await api.request('DELETE',`/projects/${encodeURIComponent(projectId)}/team/${encodeURIComponent(id)}`,{reason:reason.trim()});showToast('Project team assignment ended; history preserved.');await hydrateTeamWorkspace();}catch(error){showToast(error.message)}};
+
   const originalRenderAll = window.renderAll;
   window.renderAll = function () {
     originalRenderAll();
+    if(state.tool==='team_workspace'){
+      document.getElementById('main').innerHTML=teamWorkspace();
+      renderTeamNavigator();renderTeamInspector();setTimeout(hydrateTeamWorkspace,0);
+    }
     enforceProductionControls(window.__ARCHITEX_SHELL_STATE__?.session || null);
   };
+
+  function renderTeamNavigator(){const nav=document.getElementById('navigator'),active=window.__ARCHITEX_SHELL_STATE__?.projects.find(item=>item.id===window.__ARCHITEX_SHELL_STATE__?.selectedProjectId);if(!nav)return;nav.innerHTML=`<div class="nav-head"><div class="kicker">Project collaboration</div><div class="nav-title">Project team</div><div class="nav-sub">${escapeHtml(active?.name||'No project selected')}</div></div><div class="back-row" onclick="openProjectSpace()"><span>←</span><span class="nav-label">Back to datum project space</span></div><div class="nav-section"><div class="nav-heading">Team workflow</div><button class="nav-row active" onclick="document.getElementById('projectTeamList')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('team_workspace',21)}</span><span class="nav-label">Current team</span></button><button class="nav-row" onclick="document.getElementById('projectTeamInviteForm')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('professional_directory',21)}</span><span class="nav-label">Invite professional</span></button><button class="nav-row" onclick="document.getElementById('projectTeamPending')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('inbox',21)}</span><span class="nav-label">Incoming invitations</span></button></div><div class="nav-note"><b>Production workflow:</b><br>Only independently verified directory professionals are eligible. Acceptance, removal and notifications are persisted and audited.</div>`;}
+  function renderTeamInspector(){const title=document.getElementById('inspectTitle'),sub=document.getElementById('inspectSub'),body=document.getElementById('inspectBody');if(title)title.textContent='Project team';if(sub)sub.textContent='Verified assignments';if(body)body.innerHTML='<div class="inspect-note"><b>Least-privilege assignment</b><br>Accepting an invitation adds a project-team record only. Organisation membership is never inferred.</div><div class="inspect-block"><h4>Controlled states</h4><p>Invited<br>Active<br>Removed with reason<br>Immutable audit events</p></div><div class="inspect-block"><h4>Verification gate</h4><p>Manual or external verification must be current both when invited and when accepted.</p></div>';}
 
   async function hydrateTrustWorkspace() {
     const profileForm = document.getElementById('trustProfileForm');
@@ -195,7 +274,7 @@
       if (rows[1]) rows[1].textContent = 'No live Release 1 metrics';
     });
     const main = document.getElementById('main');
-    if (main && !main.querySelector('.release1-data-note')) main.insertAdjacentHTML('afterbegin', '<div class="notice release1-data-note"><b>Live implemented scope:</b> Release 1 project identity, phase, readiness, account, inbox and file data plus the Release 2 professional trust slice come from MariaDB. Other tool metrics remain non-authoritative prototypes until their release pack is implemented.</div>');
+    if (main && !main.querySelector('.release1-data-note')) main.insertAdjacentHTML('afterbegin', '<div class="notice release1-data-note"><b>Live implemented scope:</b> Release 1 project identity, phase, readiness, account, inbox and file data plus Release 2 professional trust, guided briefs and project-team invitations come from MariaDB. Other tool metrics remain non-authoritative prototypes until their release pack is implemented.</div>');
     document.querySelectorAll('#navigator .badge').forEach(badge => { if (badge.closest('button')?.textContent.includes('Action Centre')) badge.textContent = String(inbox.length); });
   }
   function renderEmptyProjects(session) {

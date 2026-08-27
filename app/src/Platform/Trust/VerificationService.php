@@ -153,7 +153,7 @@ final readonly class VerificationService
             if ($serviceArea !== null && $serviceArea !== '' && !$this->containsCaseInsensitive($areas, trim($serviceArea))) continue;
             $badge = $this->bestBadge((string)$profile['organisation_id'], (string)$profile['user_id']);
             $results[] = [
-                'profileId'=>$profile['profile_id'],'organisationId'=>$profile['organisation_id'],'displayName'=>$profile['display_name'],
+                'profileId'=>$profile['profile_id'],'organisationId'=>$profile['organisation_id'],'userId'=>$profile['user_id'],'displayName'=>$profile['display_name'],
                 'profession'=>$profile['profession'],'bio'=>$profile['bio'],'serviceAreas'=>$areas,
                 'verificationGrade'=>$badge['grade'],'verificationKind'=>$badge['kind'],'registrationBody'=>$badge['registrationBody'],'registrationNumber'=>$badge['registrationNumber'],
             ];

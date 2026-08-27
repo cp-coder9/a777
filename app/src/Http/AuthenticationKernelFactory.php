@@ -14,6 +14,7 @@ use Architex\Http\Controller\ReadinessController;
 use Architex\Http\Controller\FileController;
 use Architex\Http\Controller\TrustController;
 use Architex\Http\Controller\BriefController;
+use Architex\Http\Controller\TeamController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -36,6 +37,7 @@ use Architex\Platform\Files\FileService;
 use Architex\Platform\Files\LocalFileStorage;
 use Architex\Platform\Trust\VerificationService;
 use Architex\Platform\Brief\GuidedBriefService;
+use Architex\Platform\Team\ProjectTeamService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -105,6 +107,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new BriefRoutes(
             new BriefController(new GuidedBriefService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new TeamRoutes(
+            new TeamController(new ProjectTeamService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

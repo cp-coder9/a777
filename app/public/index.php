@@ -17,6 +17,16 @@ use Architex\Infrastructure\Mail\MailRuntime;
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+// PHP's built-in server invokes this file as a router. Let it serve real public
+// assets directly; production Apache/LiteSpeed reaches this file only for app
+// routes through .htaccess.
+if (PHP_SAPI === 'cli-server') {
+    $requestPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH);
+    if (is_string($requestPath) && $requestPath !== '/' && is_file(__DIR__ . $requestPath)) {
+        return false;
+    }
+}
+
 $request = Request::fromGlobals();
 if ($request->method() === 'GET' && in_array($request->path(), ['/', '/app'], true)) {
     header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
