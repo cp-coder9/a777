@@ -34,6 +34,7 @@ final class DisposableDatabaseGuardTest extends TestCase
         yield 'localhost hostname is not exact loopback' => [['DB_HOST' => 'localhost']];
         yield 'generic test suffix' => [['DB_NAME' => 'customer_test']];
         yield 'old shared task schema' => [['DB_NAME' => 'architex_task3_test']];
+        yield 'unscoped unique schema' => [['DB_NAME' => 'architex_deadbeef_test']];
         yield 'identifier injection' => [['DB_NAME' => 'architex_task3_deadbeef_test`; DROP DATABASE prod;--']];
     }
 

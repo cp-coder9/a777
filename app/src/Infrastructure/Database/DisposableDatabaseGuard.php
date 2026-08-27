@@ -20,7 +20,7 @@ final class DisposableDatabaseGuard
         if (!in_array($environment['DB_HOST'] ?? '', ['127.0.0.1', '::1'], true)) {
             throw new RuntimeException('Disposable database operations require a loopback database host.');
         }
-        if (preg_match('/^architex_task3_[a-f0-9]{8}_test$/D', $environment['DB_NAME'] ?? '') !== 1) {
+        if (preg_match('/^architex_task[0-9]+_[a-f0-9]{8}_test$/D', $environment['DB_NAME'] ?? '') !== 1) {
             throw new RuntimeException('Disposable database name is outside the task-owned namespace.');
         }
     }

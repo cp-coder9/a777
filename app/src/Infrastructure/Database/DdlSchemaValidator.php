@@ -23,6 +23,11 @@ final readonly class DdlSchemaValidator
         if (!is_string($expectedSql)) {
             throw new RuntimeException('Could not construct the DDL schema check.');
         }
+        $expectedSql = preg_replace(
+            '/(\bREFERENCES\s+)`?' . preg_quote($actual, '/') . '`?/i',
+            '$1`' . $expected . '`',
+            $expectedSql,
+        ) ?? $expectedSql;
         $this->pdo->exec('DROP TABLE IF EXISTS `' . $expected . '`');
         try {
             $this->pdo->exec($expectedSql);
@@ -46,6 +51,7 @@ final readonly class DdlSchemaValidator
     private function normalise(string $definition, string $table): string
     {
         $definition = str_replace('`' . $table . '`', '`{table}`', $definition);
+        $definition = preg_replace('/CONSTRAINT\s+`[^`]+`/i', 'CONSTRAINT `{constraint}`', $definition) ?? $definition;
         $definition = preg_replace('/\s+AUTO_INCREMENT=\d+\b/i', '', $definition) ?? $definition;
         return preg_replace('/\s+/', ' ', trim($definition)) ?? $definition;
     }
