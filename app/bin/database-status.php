@@ -6,7 +6,7 @@ use Architex\Infrastructure\Config\AppConfig;
 use Architex\Infrastructure\Database\ConnectionFactory;
 use Architex\Infrastructure\Database\MigrationRunner;
 
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require dirname(__DIR__) . '/bootstrap.php';
 
 $environment = getenv();
 if (!is_array($environment)) {

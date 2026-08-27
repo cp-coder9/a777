@@ -15,7 +15,7 @@ use Architex\Infrastructure\Database\ConnectionFactory;
 use Architex\Infrastructure\Database\MigrationRunner;
 use Architex\Infrastructure\Mail\MailRuntime;
 
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require dirname(__DIR__) . '/bootstrap.php';
 
 $request = Request::fromGlobals();
 if ($request->method() === 'GET' && in_array($request->path(), ['/', '/app'], true)) {
@@ -44,7 +44,8 @@ try {
         static fn (): bool => (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('scheduled_jobs','scheduled_job_deduplication_keys')")->fetchColumn() === 2,
         static fn (): bool => $runtime->isReady(),
     );
-    $kernel = (new AuthenticationKernelFactory($pdo, $runtime->registrationNotifier, $runtime->passwordResetNotifier, $readiness))->create();
+    $fileStorageRoot = is_string($environment['FILE_STORAGE_PATH'] ?? null) && trim($environment['FILE_STORAGE_PATH']) !== '' ? trim($environment['FILE_STORAGE_PATH']) : null;
+    $kernel = (new AuthenticationKernelFactory($pdo, $runtime->registrationNotifier, $runtime->passwordResetNotifier, $readiness, $fileStorageRoot))->create();
 } catch (Throwable) {
     $router = new Router();
     if ($request->path() === '/api/v1/readiness') {

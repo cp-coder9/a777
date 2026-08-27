@@ -42,6 +42,7 @@ final readonly class AuthenticationKernelFactory
         private RegistrationNotifier $registrationNotifier,
         private PasswordResetNotifier $passwordResetNotifier,
         private ?ReadinessController $readinessController = null,
+        private ?string $fileStorageRoot = null,
     ) {}
 
     public function create(): Kernel
@@ -88,7 +89,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
         ))->register($router);
         (new FileRoutes(
-            new FileController(new FileService($this->pdo, new LocalFileStorage(dirname(__DIR__, 2) . '/storage/files'))),
+            new FileController(new FileService($this->pdo, new LocalFileStorage($this->fileStorageRoot ?? dirname(__DIR__, 2) . '/storage/files'))),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

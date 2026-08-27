@@ -7,7 +7,7 @@ use Architex\Infrastructure\Database\ConnectionFactory;
 use Architex\Infrastructure\Mail\MailRuntime;
 use Architex\Platform\Jobs\JobDispatcher;
 
-require dirname(__DIR__, 2) . '/vendor/autoload.php';
+require dirname(__DIR__) . '/bootstrap.php';
 
 $environment = getenv();
 $environment = is_array($environment) ? $environment : [];
