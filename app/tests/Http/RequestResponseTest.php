@@ -28,6 +28,8 @@ final class RequestResponseTest extends TestCase
         self::assertSame('2', $request->header('Content-Length'));
         self::assertSame('{}', $request->body());
         self::assertSame('127.0.0.1', $request->attribute('remoteIp'));
+        self::assertSame('one', $request->query('probe'));
+        self::assertNull($request->query('missing'));
     }
 
     public function testEmitUsesInjectedEmittersAndContentTypeCannotBeOverriddenOrDuplicated(): void

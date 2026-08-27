@@ -14,14 +14,23 @@ final readonly class Request
         private string $body,
         private array $attributes = [],
         private array $uploadedFiles = [],
+        private array $query = [],
     ) {}
 
     /** @param array<string,string> $headers */
     public static function json(string $method, string $uri, array $headers = [], string $body = ''): self
     {
-        $path = explode('?', $uri, 2)[0];
+        $parts = explode('?', $uri, 2);
+        $path = $parts[0];
+        $query = [];
+        if (isset($parts[1])) {
+            parse_str($parts[1], $parsed);
+            foreach ($parsed as $name => $value) {
+                if (is_string($name) && is_string($value)) $query[$name] = $value;
+            }
+        }
 
-        return new self(strtoupper($method), $path === '' ? '/' : $path, self::normaliseHeaders($headers), $body);
+        return new self(strtoupper($method), $path === '' ? '/' : $path, self::normaliseHeaders($headers), $body, query: $query);
     }
 
     /** @param array<string,mixed>|null $server */
@@ -84,6 +93,11 @@ final readonly class Request
         return $this->body;
     }
 
+    public function query(string $name): ?string
+    {
+        return $this->query[$name] ?? null;
+    }
+
     public function attribute(string $name): mixed
     {
         return $this->attributes[$name] ?? null;
@@ -91,7 +105,7 @@ final readonly class Request
 
     public function withAttribute(string $name, mixed $value): self
     {
-        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]), $this->uploadedFiles);
+        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]), $this->uploadedFiles, $this->query);
     }
 
     public function uploadedFile(string $field): ?UploadedFile
@@ -104,7 +118,7 @@ final readonly class Request
         if (preg_match('/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/', $field) !== 1) {
             throw new \InvalidArgumentException('The upload field name is invalid.');
         }
-        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, array_replace($this->uploadedFiles, [$field => $file]));
+        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, array_replace($this->uploadedFiles, [$field => $file]), $this->query);
     }
 
     /** @return array<string,mixed> */

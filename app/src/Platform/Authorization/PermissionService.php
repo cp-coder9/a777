@@ -7,8 +7,8 @@ final class PermissionService
 {
     /** @var array<string,list<string>> */
     private const ROLE_PERMISSIONS = [
-        'owner' => ['organisation.manage','members.manage','projects.read','projects.write','tools.use'],
-        'admin' => ['members.manage','projects.read','projects.write','tools.use'],
+        'owner' => ['organisation.manage','members.manage','projects.read','projects.write','tools.use','verification.review'],
+        'admin' => ['members.manage','projects.read','projects.write','tools.use','verification.review'],
         'member' => ['projects.read','projects.write','tools.use'],
         'viewer' => ['projects.read'],
     ];
