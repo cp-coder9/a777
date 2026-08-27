@@ -7,10 +7,12 @@ namespace Architex\Http;
 use Architex\Http\Controller\AuthController;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
+use Architex\Http\Controller\ProjectController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
 use Architex\Http\Middleware\RateLimitMiddleware;
+use Architex\Http\Middleware\PermissionMiddleware;
 use Architex\Http\Middleware\SecurityHeadersMiddleware;
 use Architex\Http\Middleware\SessionMiddleware;
 use Architex\Platform\Identity\AuthenticationService;
@@ -20,6 +22,9 @@ use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\RegistrationService;
 use Architex\Platform\Identity\SessionService;
 use Architex\Platform\Security\RateLimiter;
+use Architex\Platform\Authorization\PermissionService;
+use Architex\Platform\Project\LifecycleService;
+use Architex\Platform\Project\ProjectPassportService;
 use PDO;
 
 final readonly class AuthenticationKernelFactory
@@ -59,6 +64,10 @@ final readonly class AuthenticationKernelFactory
             new RateLimitMiddleware($limiter, 'registration', 5, 3_600, $remoteKey),
             new RateLimitMiddleware($limiter, 'login', 10, 900, $loginKey),
             new RateLimitMiddleware($limiter, 'password_reset', 5, 3_600, $remoteKey),
+        ))->register($router);
+        (new ProjectRoutes(
+            new ProjectController(new ProjectPassportService($this->pdo), new LifecycleService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
 
         return new Kernel($router, middleware: [
