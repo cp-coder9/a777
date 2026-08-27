@@ -1,6 +1,5 @@
-Options -Indexes
-
 RewriteEngine On
+RewriteRule (^|/)\.(?!well-known(?:/|$)) - [F,L]
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]

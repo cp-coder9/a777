@@ -20,7 +20,7 @@ final class Router
     /** @param callable(Request):Response $handler */
     public function add(string $method, string $path, callable $handler): void
     {
-        $this->routes[$this->normalisePath($path)][strtoupper($method)] = $handler;
+        $this->routes[$path][strtoupper($method)] = $handler;
     }
 
     public function dispatch(Request $request): Response
@@ -53,11 +53,5 @@ final class Router
         }
         sort($methods);
         return $methods;
-    }
-
-    private function normalisePath(string $path): string
-    {
-        $normalised = '/' . ltrim($path, '/');
-        return $normalised === '/' ? $normalised : rtrim($normalised, '/');
     }
 }

@@ -17,16 +17,17 @@ final readonly class Request
     /** @param array<string,string> $headers */
     public static function json(string $method, string $uri, array $headers = [], string $body = ''): self
     {
-        $path = parse_url($uri, PHP_URL_PATH);
-        $path = is_string($path) && $path !== '' ? $path : '/';
+        $path = explode('?', $uri, 2)[0];
 
-        return new self(strtoupper($method), self::normalisePath($path), self::normaliseHeaders($headers), $body);
+        return new self(strtoupper($method), $path === '' ? '/' : $path, self::normaliseHeaders($headers), $body);
     }
 
-    public static function fromGlobals(): self
+    /** @param array<string,mixed>|null $server */
+    public static function fromGlobals(?array $server = null, ?string $body = null): self
     {
+        $server ??= $_SERVER;
         $headers = [];
-        foreach ($_SERVER as $name => $value) {
+        foreach ($server as $name => $value) {
             if (!is_string($name) || !is_scalar($value)) {
                 continue;
             }
@@ -39,10 +40,10 @@ final readonly class Request
         }
 
         return self::json(
-            is_string($_SERVER['REQUEST_METHOD'] ?? null) ? $_SERVER['REQUEST_METHOD'] : 'GET',
-            is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '/',
+            is_string($server['REQUEST_METHOD'] ?? null) ? $server['REQUEST_METHOD'] : 'GET',
+            is_string($server['REQUEST_URI'] ?? null) ? $server['REQUEST_URI'] : '/',
             $headers,
-            (string) file_get_contents('php://input'),
+            $body ?? (string) file_get_contents('php://input'),
         );
     }
 
@@ -64,12 +65,6 @@ final readonly class Request
     public function body(): string
     {
         return $this->body;
-    }
-
-    private static function normalisePath(string $path): string
-    {
-        $normalised = '/' . ltrim($path, '/');
-        return $normalised === '/' ? $normalised : rtrim($normalised, '/');
     }
 
     /** @param array<string,string> $headers @return array<string,string> */

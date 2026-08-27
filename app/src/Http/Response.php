@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Architex\Http;
 
+use Closure;
 use JsonException;
 
 final readonly class Response
@@ -79,19 +80,27 @@ final readonly class Response
         }
     }
 
-    public function emit(): void
+    /** @param Closure(int):void|null $statusEmitter @param Closure(string):void|null $headerEmitter @param Closure(string):void|null $bodyEmitter */
+    public function emit(?Closure $statusEmitter = null, ?Closure $headerEmitter = null, ?Closure $bodyEmitter = null): void
     {
-        http_response_code($this->status);
+        $statusEmitter ??= static fn (int $status): int|bool => http_response_code($status);
+        $headerEmitter ??= static function (string $header): void { header($header, true); };
+        $bodyEmitter ??= static function (string $body): void { echo $body; };
+
+        $statusEmitter($this->status);
         foreach ($this->headers as $name => $value) {
-            header($name . ': ' . $value, true);
+            $headerEmitter($name . ': ' . $value);
         }
-        echo $this->body();
+        $body = $this->body();
+        if ($body !== '') {
+            $bodyEmitter($body);
+        }
     }
 
     /** @param array<string,mixed> $payload @param array<string,string> $headers */
     private static function make(int $status, array $payload, array $headers = [], bool $suppressBody = false): self
     {
-        $headers = ['Content-Type' => 'application/json; charset=utf-8', ...$headers];
+        $headers = self::normaliseHeaders($headers);
         try {
             json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
             return new self($status, $payload, $headers, $suppressBody);
@@ -109,5 +118,27 @@ final readonly class Response
             'meta' => is_string($requestId) ? ['requestId' => $requestId] : [],
             'error' => ['code' => 'internal_error', 'message' => 'The response could not be encoded.', 'details' => null],
         ];
+    }
+
+    /** @param array<string,string> $headers @return array<string,string> */
+    private static function normaliseHeaders(array $headers): array
+    {
+        $normalised = [];
+        foreach ($headers as $name => $value) {
+            $normalised[strtolower($name)] = [self::canonicalHeaderName($name), $value];
+        }
+        unset($normalised['content-type']);
+
+        $result = ['Content-Type' => 'application/json; charset=utf-8'];
+        foreach ($normalised as [$name, $value]) {
+            $result[$name] = $value;
+        }
+
+        return $result;
+    }
+
+    private static function canonicalHeaderName(string $name): string
+    {
+        return implode('-', array_map(static fn (string $part): string => ucfirst(strtolower($part)), explode('-', $name)));
     }
 }
