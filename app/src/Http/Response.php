@@ -45,6 +45,12 @@ final readonly class Response
         return new self($this->status, $this->payload, $this->headers, true);
     }
 
+    /** @param array<string,string> $headers */
+    public function withHeaders(array $headers): self
+    {
+        return self::make($this->status, $this->payload, array_replace($this->headers, $headers), $this->suppressBody);
+    }
+
     public function status(): int
     {
         return $this->status;

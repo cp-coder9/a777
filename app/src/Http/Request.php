@@ -12,6 +12,7 @@ final readonly class Request
         private string $path,
         private array $headers,
         private string $body,
+        private array $attributes = [],
     ) {}
 
     /** @param array<string,string> $headers */
@@ -65,6 +66,26 @@ final readonly class Request
     public function body(): string
     {
         return $this->body;
+    }
+
+    public function attribute(string $name): mixed
+    {
+        return $this->attributes[$name] ?? null;
+    }
+
+    public function withAttribute(string $name, mixed $value): self
+    {
+        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]));
+    }
+
+    /** @return array<string,mixed> */
+    public function jsonBody(): array
+    {
+        $decoded = json_decode($this->body, true, 32, JSON_THROW_ON_ERROR);
+        if (!is_array($decoded) || array_is_list($decoded)) {
+            throw new \JsonException('JSON request body must be an object.');
+        }
+        return $decoded;
     }
 
     /** @param array<string,string> $headers @return array<string,string> */

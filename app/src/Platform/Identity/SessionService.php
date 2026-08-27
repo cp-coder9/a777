@@ -59,6 +59,11 @@ final readonly class SessionService
 
     public function authenticate(string $plaintextToken): AuthenticatedIdentity
     {
+        return $this->resolve($plaintextToken)->identity;
+    }
+
+    public function resolve(string $plaintextToken): AuthenticatedSession
+    {
         $statement = $this->pdo->prepare("SELECT HEX(s.id) session_id,HEX(u.id) user_id,u.email FROM user_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=:token_hash AND s.revoked_at IS NULL AND s.expires_at>UTC_TIMESTAMP(6) AND u.status='active'");
         $statement->execute(['token_hash' => hash('sha256', $plaintextToken)]);
         $row = $statement->fetch();
@@ -67,7 +72,10 @@ final readonly class SessionService
         }
         $this->pdo->prepare('UPDATE user_sessions SET last_seen_at=UTC_TIMESTAMP(6) WHERE id=UNHEX(:id)')->execute(['id' => strtolower((string) $row['session_id'])]);
         $userId = strtolower((string) $row['user_id']);
-        return new AuthenticatedIdentity($userId, (string) $row['email'], $this->memberships->activeForUser($userId));
+        return new AuthenticatedSession(
+            strtolower((string) $row['session_id']),
+            new AuthenticatedIdentity($userId, (string) $row['email'], $this->memberships->activeForUser($userId)),
+        );
     }
 
     public function verifyCsrf(string $sessionId, string $plaintextCsrf): bool

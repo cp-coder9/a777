@@ -13,7 +13,8 @@ final readonly class Kernel
     private Closure $idGenerator;
 
     /** @param Closure():string|null $idGenerator */
-    public function __construct(private Router $router, ?Closure $idGenerator = null)
+    /** @param list<Middleware> $middleware */
+    public function __construct(private Router $router, ?Closure $idGenerator = null, private array $middleware = [])
     {
         $this->idGenerator = $idGenerator ?? self::generateUlid(...);
     }
@@ -23,7 +24,12 @@ final readonly class Kernel
         $requestId = $this->requestId();
 
         try {
-            $response = $this->router->dispatch($request)->withMeta(['requestId' => $requestId]);
+            $next = fn (Request $candidate): Response => $this->router->dispatch($candidate);
+            foreach (array_reverse($this->middleware) as $middleware) {
+                $downstream = $next;
+                $next = fn (Request $candidate): Response => $middleware->process($candidate, $downstream);
+            }
+            $response = $next($request)->withMeta(['requestId' => $requestId]);
         } catch (Throwable) {
             $response = Response::error(500, 'internal_error', 'The request could not be completed.', $requestId);
         }
