@@ -40,12 +40,17 @@ final readonly class Request
             }
         }
 
-        return self::json(
+        $request = self::json(
             is_string($server['REQUEST_METHOD'] ?? null) ? $server['REQUEST_METHOD'] : 'GET',
             is_string($server['REQUEST_URI'] ?? null) ? $server['REQUEST_URI'] : '/',
             $headers,
             $body ?? (string) file_get_contents('php://input'),
         );
+        $remoteIp = $server['REMOTE_ADDR'] ?? null;
+        if (is_string($remoteIp) && filter_var($remoteIp, FILTER_VALIDATE_IP) !== false) {
+            $request = $request->withAttribute('remoteIp', $remoteIp);
+        }
+        return $request;
     }
 
     public function method(): string

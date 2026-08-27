@@ -459,7 +459,7 @@ git commit -m "feat: enforce authenticated tenant access"
 ### Task 6: Project Passport, lifecycle, records, inbox and audit
 
 **Files:**
-- Create: `app/database/migrations/0003_project_workflow_spine.sql`
+- Create: `app/database/migrations/0004_project_workflow_spine.sql`
 - Create: `app/src/Platform/Project/ProjectPassportService.php`
 - Create: `app/src/Platform/Project/LifecycleService.php`
 - Create: `app/src/Platform/Records/ProjectRecordService.php`
@@ -668,7 +668,7 @@ git commit -m "feat: add reliable jobs and readiness checks"
 ### Task 9: Secure files, headers and audit-safe diagnostics
 
 **Files:**
-- Create: `app/database/migrations/0004_files_and_security.sql`
+- Create: `app/database/migrations/0005_files_and_security.sql`
 - Create: `app/src/Platform/Files/FileService.php`
 - Create: `app/src/Http/Controller/FileController.php`
 - Create: `app/src/Http/Middleware/SecurityHeadersMiddleware.php`

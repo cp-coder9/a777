@@ -18,9 +18,9 @@ final readonly class Response
     ) {}
 
     /** @param array<string,mixed> $meta */
-    public static function success(mixed $data, array $meta = []): self
+    public static function success(mixed $data, array $meta = [], int $status = 200, array $headers = []): self
     {
-        return self::make(200, ['data' => $data, 'meta' => $meta, 'error' => null]);
+        return self::make($status, ['data' => $data, 'meta' => $meta, 'error' => null], $headers);
     }
 
     /** @param array<string,mixed>|null $details @param array<string,string> $headers */

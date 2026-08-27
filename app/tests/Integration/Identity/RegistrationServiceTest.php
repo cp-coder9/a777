@@ -12,6 +12,7 @@ use Architex\Platform\Identity\Identifier;
 use Architex\Platform\Identity\IdentityException;
 use Architex\Platform\Identity\RegisterOrganisation;
 use Architex\Platform\Identity\RegistrationService;
+use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\SessionService;
 use Architex\Platform\Legal\LegalAcceptanceService;
 use Architex\Platform\Organisation\OrganisationRepository;
@@ -173,6 +174,29 @@ final class RegistrationServiceTest extends TestCase
         $repository = new OrganisationRepository($this->pdo);
         self::assertSame($a->organisationId, $repository->findForUser($a->organisationId, $a->userId)['id']);
         self::assertNull($repository->findForUser($b->organisationId, $a->userId));
+    }
+
+    public function testRegistrationDeliveryFailsClosedAndParticipatesInTheTransaction(): void
+    {
+        $unavailable = new class implements RegistrationNotifier {
+            public function isAvailable(): bool { return false; }
+            public function send(string $email, string $token, string $expiresAt): void { throw new \LogicException(); }
+        };
+        try {
+            (new RegistrationService($this->pdo, $unavailable))->register($this->registration());
+            self::fail('Expected unavailable registration delivery to fail closed.');
+        } catch (IdentityException $exception) {
+            self::assertSame('registration_email_unavailable', $exception->reason);
+        }
+        self::assertSame(0, $this->countRows('users'));
+
+        $captured = new class implements RegistrationNotifier {
+            public ?string $token = null;
+            public function isAvailable(): bool { return true; }
+            public function send(string $email, string $token, string $expiresAt): void { $this->token = $token; }
+        };
+        $pending = (new RegistrationService($this->pdo, $captured))->register($this->registration());
+        self::assertSame($pending->verificationToken, $captured->token);
     }
 
     /** @param array<string,mixed> $override */

@@ -7,12 +7,12 @@ use Architex\Http\Middleware;
 use Architex\Http\Request;
 use Architex\Http\Response;
 use Architex\Platform\Identity\AuthenticatedSession;
-use Architex\Platform\Identity\SessionService;
+use Architex\Platform\Identity\SessionGateway;
 use Closure;
 
 final readonly class CsrfMiddleware implements Middleware
 {
-    public function __construct(private SessionService $sessions) {}
+    public function __construct(private SessionGateway $sessions) {}
 
     public function process(Request $request, Closure $next): Response
     {

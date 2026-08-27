@@ -6,7 +6,7 @@ namespace Architex\Platform\Identity;
 use Architex\Platform\Organisation\MembershipRepository;
 use PDO;
 
-final readonly class SessionService
+final readonly class SessionService implements SessionGateway
 {
     private MembershipRepository $memberships;
 

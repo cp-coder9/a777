@@ -10,14 +10,14 @@ use PDO;
 use PDOException;
 use Throwable;
 
-final readonly class RegistrationService
+final readonly class RegistrationService implements RegistrationGateway
 {
     private PasswordHasher $passwords;
     private OrganisationRepository $organisations;
     private MembershipRepository $memberships;
     private LegalAcceptanceService $legal;
 
-    public function __construct(private PDO $pdo)
+    public function __construct(private PDO $pdo, private ?RegistrationNotifier $notifier = null)
     {
         $this->passwords = new PasswordHasher();
         $this->organisations = new OrganisationRepository($pdo);
@@ -27,6 +27,9 @@ final readonly class RegistrationService
 
     public function register(RegisterOrganisation $command): PendingRegistration
     {
+        if ($this->notifier !== null && !$this->notifier->isAvailable()) {
+            throw new IdentityException('registration_email_unavailable', 'Registration email delivery is temporarily unavailable.');
+        }
         $this->pdo->beginTransaction();
         try {
             $userId = Identifier::generate();
@@ -39,6 +42,10 @@ final readonly class RegistrationService
             $token = $this->newToken();
             $issue = $this->pdo->prepare("INSERT INTO email_verification_tokens (id,user_id,token_hash,expires_at) VALUES (UNHEX(:id),UNHEX(:user_id),:token_hash,UTC_TIMESTAMP(6) + INTERVAL 30 MINUTE)");
             $issue->execute(['id' => Identifier::generate(), 'user_id' => $userId, 'token_hash' => hash('sha256', $token)]);
+            if ($this->notifier !== null) {
+                $expires = (string) $this->pdo->query("SELECT DATE_FORMAT(UTC_TIMESTAMP(6)+INTERVAL 30 MINUTE,'%Y-%m-%dT%H:%i:%s.%fZ')")->fetchColumn();
+                $this->notifier->send($command->email, $token, $expires);
+            }
             $this->pdo->commit();
             return new PendingRegistration($userId, $organisationId, $token);
         } catch (Throwable $exception) {

@@ -6,7 +6,7 @@ namespace Architex\Platform\Identity;
 use Architex\Platform\Organisation\MembershipRepository;
 use PDO;
 
-final readonly class AuthenticationService
+final readonly class AuthenticationService implements AuthenticationGateway
 {
     private const DUMMY_HASH = '$argon2id$v=19$m=19456,t=2,p=1$UDdpMUdWTWhmUlJmTjcxbw$LJpLqubuUkzpZfSVHfRjtfvxAPDiDO0o7p2oddgHeT8';
     private PasswordHasher $passwords;

@@ -18,6 +18,7 @@ final class RequestResponseTest extends TestCase
             'HTTP_X_REQUEST_ID' => 'browser-request',
             'CONTENT_TYPE' => 'application/json',
             'CONTENT_LENGTH' => '2',
+            'REMOTE_ADDR' => '127.0.0.1',
         ], '{}');
 
         self::assertSame('POST', $request->method());
@@ -26,6 +27,7 @@ final class RequestResponseTest extends TestCase
         self::assertSame('application/json', $request->header('content-type'));
         self::assertSame('2', $request->header('Content-Length'));
         self::assertSame('{}', $request->body());
+        self::assertSame('127.0.0.1', $request->attribute('remoteIp'));
     }
 
     public function testEmitUsesInjectedEmittersAndContentTypeCannotBeOverriddenOrDuplicated(): void
