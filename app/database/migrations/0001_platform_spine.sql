@@ -1,4 +1,5 @@
-CREATE TABLE legal_notices (
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS legal_notices (
   id BINARY(16) PRIMARY KEY,
   notice_type VARCHAR(64) NOT NULL,
   version VARCHAR(32) NOT NULL,
@@ -12,7 +13,7 @@ CREATE TABLE legal_notices (
   KEY idx_legal_notice_effective (notice_type, effective_at, retired_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE idempotency_keys (
+CREATE TABLE IF NOT EXISTS idempotency_keys (
   id BINARY(16) PRIMARY KEY,
   scope VARCHAR(100) NOT NULL,
   idempotency_key VARCHAR(200) NOT NULL,
@@ -29,7 +30,7 @@ CREATE TABLE idempotency_keys (
   KEY idx_idempotency_status_lock (status, locked_until)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE scheduled_jobs (
+CREATE TABLE IF NOT EXISTS scheduled_jobs (
   id BINARY(16) PRIMARY KEY,
   job_type VARCHAR(100) NOT NULL,
   payload JSON NOT NULL,
@@ -48,7 +49,7 @@ CREATE TABLE scheduled_jobs (
   KEY idx_scheduled_jobs_type_status (job_type, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE tool_definitions (
+CREATE TABLE IF NOT EXISTS tool_definitions (
   id BINARY(16) PRIMARY KEY,
   tool_key VARCHAR(100) NOT NULL,
   label VARCHAR(160) NOT NULL,

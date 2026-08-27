@@ -84,6 +84,24 @@ final class AppConfigTest extends TestCase
         ];
     }
 
+    /** @param array<string,mixed> $override */
+    #[DataProvider('nonStringEnvironmentProvider')]
+    public function testTextConfigurationRejectsNonStringValues(array $override, string $message): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage($message);
+        AppConfig::fromEnvironment(array_replace($this->validEnvironment(), $override));
+    }
+
+    /** @return iterable<string,array{array<string,mixed>,string}> */
+    public static function nonStringEnvironmentProvider(): iterable
+    {
+        yield 'environment boolean' => [['APP_ENV' => true], 'APP_ENV must be a string'];
+        yield 'host integer' => [['DB_HOST' => 127001], 'DB_HOST must be a string'];
+        yield 'database boolean' => [['DB_NAME' => false], 'DB_NAME must be a string'];
+        yield 'user integer' => [['DB_USER' => 42], 'DB_USER must be a string'];
+    }
+
     /** @return array<string,string> */
     private function validEnvironment(): array
     {

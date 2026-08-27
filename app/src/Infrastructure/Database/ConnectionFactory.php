@@ -28,6 +28,7 @@ final class ConnectionFactory
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
                     PDO::ATTR_STRINGIFY_FETCHES => false,
+                    PDO::MYSQL_ATTR_MULTI_STATEMENTS => false,
                 ],
             );
             $pdo->exec("SET SESSION time_zone = '+00:00'");

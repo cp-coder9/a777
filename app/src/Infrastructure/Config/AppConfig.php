@@ -104,11 +104,11 @@ final readonly class AppConfig
     private static function stringValue(array $environment, string $key, string $default = ''): string
     {
         $value = $environment[$key] ?? $default;
-        if (!is_string($value) && !is_int($value) && !is_bool($value)) {
+        if (!is_string($value)) {
             throw new InvalidArgumentException($key . ' must be a string');
         }
 
-        return trim((string) $value);
+        return trim($value);
     }
 
     /** @param array<string,mixed> $environment */
