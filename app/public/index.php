@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Architex\Http\AuthenticationKernelFactory;
 use Architex\Http\Controller\HealthController;
+use Architex\Http\Controller\ReadinessController;
 use Architex\Http\Kernel;
 use Architex\Http\Middleware\SecurityHeadersMiddleware;
 use Architex\Http\Request;
@@ -11,7 +12,8 @@ use Architex\Http\Response;
 use Architex\Http\Router;
 use Architex\Infrastructure\Config\AppConfig;
 use Architex\Infrastructure\Database\ConnectionFactory;
-use Architex\Infrastructure\Mail\UnavailableIdentityNotifier;
+use Architex\Infrastructure\Database\MigrationRunner;
+use Architex\Infrastructure\Mail\MailRuntime;
 
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
@@ -33,11 +35,24 @@ if ($request->path() === '/api/v1/health') {
 try {
     $environment = getenv();
     $config = AppConfig::fromEnvironment(is_array($environment) ? $environment : []);
-    $notifier = new UnavailableIdentityNotifier();
-    $kernel = (new AuthenticationKernelFactory(ConnectionFactory::create($config), $notifier, $notifier))->create();
+    $pdo = ConnectionFactory::create($config);
+    $runtime = MailRuntime::fromEnvironment($pdo, is_array($environment) ? $environment : []);
+    $migrations = dirname(__DIR__) . '/database/migrations';
+    $readiness = new ReadinessController(
+        static fn (): bool => (int)$pdo->query('SELECT 1')->fetchColumn() === 1,
+        static fn (): bool => (new MigrationRunner($pdo, $migrations))->status()->isCurrent(),
+        static fn (): bool => (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('scheduled_jobs','scheduled_job_deduplication_keys')")->fetchColumn() === 2,
+        static fn (): bool => $runtime->isReady(),
+    );
+    $kernel = (new AuthenticationKernelFactory($pdo, $runtime->registrationNotifier, $runtime->passwordResetNotifier, $readiness))->create();
 } catch (Throwable) {
     $router = new Router();
-    $router->add($request->method(), $request->path(), static fn (Request $request): Response => Response::error(503, 'service_unavailable', 'The service is temporarily unavailable.'));
+    if ($request->path() === '/api/v1/readiness') {
+        $unavailable = static fn (): bool => false;
+        $router->get('/api/v1/readiness', new ReadinessController($unavailable, $unavailable, $unavailable, $unavailable));
+    } else {
+        $router->add($request->method(), $request->path(), static fn (Request $request): Response => Response::error(503, 'service_unavailable', 'The service is temporarily unavailable.'));
+    }
     $kernel = new Kernel($router, middleware: [new SecurityHeadersMiddleware()]);
 }
 

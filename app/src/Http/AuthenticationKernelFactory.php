@@ -10,6 +10,7 @@ use Architex\Http\Controller\RegistrationController;
 use Architex\Http\Controller\ProjectController;
 use Architex\Http\Controller\InboxController;
 use Architex\Http\Controller\ToolRegistryController;
+use Architex\Http\Controller\ReadinessController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -36,6 +37,7 @@ final readonly class AuthenticationKernelFactory
         private PDO $pdo,
         private RegistrationNotifier $registrationNotifier,
         private PasswordResetNotifier $passwordResetNotifier,
+        private ?ReadinessController $readinessController = null,
     ) {}
 
     public function create(): Kernel
@@ -61,6 +63,9 @@ final readonly class AuthenticationKernelFactory
 
         $router = new Router();
         $router->get('/api/v1/health', new HealthController());
+        if ($this->readinessController !== null) {
+            $router->get('/api/v1/readiness', $this->readinessController);
+        }
         (new AuthenticationRoutes(
             $registration,
             $authentication,
