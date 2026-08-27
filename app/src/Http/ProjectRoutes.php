@@ -7,9 +7,11 @@ use Closure;
 
 final readonly class ProjectRoutes
 {
-    public function __construct(private ProjectController $controller, private Middleware $writePermission) {}
+    public function __construct(private ProjectController $controller, private Middleware $readPermission, private Middleware $writePermission) {}
     public function register(Router $router): void
     {
+        $router->get('/api/v1/projects', $this->through($this->readPermission, $this->controller->index(...)));
+        $router->get('/api/v1/projects/{projectId}', $this->through($this->readPermission, $this->controller->show(...)));
         $router->post('/api/v1/projects', $this->through($this->writePermission, $this->controller->create(...)));
         $router->post('/api/v1/projects/transition', $this->through($this->writePermission, $this->controller->transition(...)));
     }

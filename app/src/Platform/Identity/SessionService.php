@@ -87,6 +87,16 @@ final readonly class SessionService implements SessionGateway
         return is_string($hash) && hash_equals($hash, hash('sha256', $plaintextCsrf));
     }
 
+    public function issueCsrf(string $sessionId): string
+    {
+        Identifier::binary($sessionId);
+        $token = $this->newToken();
+        $statement = $this->pdo->prepare('UPDATE user_sessions SET csrf_token_hash=:csrf_hash WHERE id=UNHEX(:id) AND revoked_at IS NULL AND expires_at>UTC_TIMESTAMP(6)');
+        $statement->execute(['csrf_hash'=>hash('sha256', $token), 'id'=>$sessionId]);
+        if ($statement->rowCount() !== 1) throw new IdentityException('session_invalid', 'The session is invalid or expired.');
+        return $token;
+    }
+
     public function revoke(string $sessionId): void
     {
         Identifier::binary($sessionId);

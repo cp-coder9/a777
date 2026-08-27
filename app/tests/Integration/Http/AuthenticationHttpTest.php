@@ -38,10 +38,23 @@ final class AuthenticationHttpTest extends MariaDbTestCase
         self::assertSame(200, $loggedIn->status());
         $cookie = explode(';', (string) $loggedIn->header('Set-Cookie'), 2)[0];
         $csrf = $loggedIn->json()['data']['csrfToken'];
+        $organisationId = $loggedIn->json()['data']['identity']['memberships'][0]['organisationId'];
 
         $current = $kernel->handle(Request::json('GET', '/api/v1/session', ['Cookie'=>$cookie])->withAttribute('remoteIp', '127.0.0.1'));
         self::assertSame(200, $current->status());
         self::assertSame('owner@example.com', $current->json()['data']['email']);
+        self::assertIsString($current->json()['data']['csrfToken']);
+        $csrf = $current->json()['data']['csrfToken'];
+        $projectBody = json_encode(['projectCode'=>'LIVE-001','projectName'=>'Live Project','clientName'=>'Client','municipality'=>'Tshwane','propertyReference'=>'Erf 1','propertyUse'=>'Residential','landUseNotes'=>'','leadProfessionalRole'=>'architect'], JSON_THROW_ON_ERROR);
+        $projectHeaders = ['Cookie'=>$cookie,'X-CSRF-Token'=>$csrf,'X-Organisation-Id'=>$organisationId,'Content-Type'=>'application/json'];
+        $createdProject = $kernel->handle(Request::json('POST', '/api/v1/projects', $projectHeaders, $projectBody)->withAttribute('remoteIp', '127.0.0.1'));
+        self::assertSame(201, $createdProject->status(), json_encode($createdProject->json(), JSON_THROW_ON_ERROR));
+        $projectId = $createdProject->json()['data']['projectId'];
+        $readHeaders = ['Cookie'=>$cookie,'X-Organisation-Id'=>$organisationId];
+        self::assertCount(1, $kernel->handle(Request::json('GET', '/api/v1/projects', $readHeaders))->json()['data']);
+        self::assertSame('Live Project', $kernel->handle(Request::json('GET', '/api/v1/projects/' . $projectId, $readHeaders))->json()['data']['name']);
+        self::assertSame(45, count($kernel->handle(Request::json('GET', '/api/v1/tools', $readHeaders))->json()['data']));
+        self::assertSame([], $kernel->handle(Request::json('GET', '/api/v1/inbox', $readHeaders))->json()['data']);
         $missingCsrf = $kernel->handle(Request::json('DELETE', '/api/v1/session', ['Cookie'=>$cookie])->withAttribute('remoteIp', '127.0.0.1'));
         self::assertSame(419, $missingCsrf->status());
         $logout = $kernel->handle(Request::json('DELETE', '/api/v1/session', ['Cookie'=>$cookie,'X-CSRF-Token'=>$csrf])->withAttribute('remoteIp', '127.0.0.1'));

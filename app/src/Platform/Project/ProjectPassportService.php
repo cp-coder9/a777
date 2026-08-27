@@ -34,7 +34,7 @@ final readonly class ProjectPassportService
 
     public function find(ProjectContext $context): ?ProjectPassport
     {
-        $statement = $this->pdo->prepare("SELECT HEX(p.id) project_id,HEX(p.organisation_id) organisation_id,p.project_code,p.project_name,p.current_phase,p.version FROM projects p JOIN organisation_memberships m ON m.organisation_id=p.organisation_id AND m.user_id=UNHEX(:user_id) AND m.status='active' WHERE p.id=UNHEX(:project_id) AND p.organisation_id=UNHEX(:organisation_id)");
+        $statement = $this->pdo->prepare("SELECT HEX(p.id) project_id,HEX(p.organisation_id) organisation_id,p.project_code,p.project_name,p.client_name,p.municipality,p.property_reference,p.property_use,p.land_use_notes,p.lead_professional_role,p.current_phase,p.version FROM projects p JOIN organisation_memberships m ON m.organisation_id=p.organisation_id AND m.user_id=UNHEX(:user_id) AND m.status='active' WHERE p.id=UNHEX(:project_id) AND p.organisation_id=UNHEX(:organisation_id)");
         $statement->execute(['user_id'=>$context->userId,'project_id'=>$context->projectId,'organisation_id'=>$context->organisationId]);
         $row = $statement->fetch(PDO::FETCH_ASSOC);
         if (!is_array($row)) return null;
@@ -45,6 +45,29 @@ final readonly class ProjectPassportService
             $priority = $type === 'municipal_approval_letter' ? 'critical' : (in_array($type, ['professional_appointment','construction_programme','snag_register'], true) ? 'high' : 'medium');
             $missing[] = ['recordType'=>$type,'priority'=>$priority,'reason'=>'Required for ' . $phase->value . ': ' . $type];
         }
-        return new ProjectPassport(strtolower((string)$row['project_id']), strtolower((string)$row['organisation_id']), (string)$row['project_code'], (string)$row['project_name'], $phase, (int)$row['version'], $missing, $missing === []);
+        return $this->hydrate($row, $phase, $missing);
+    }
+
+    /** @return list<ProjectPassport> */
+    public function list(string $organisationId, string $userId): array
+    {
+        $statement = $this->pdo->prepare("SELECT HEX(p.id) project_id FROM projects p JOIN organisation_memberships m ON m.organisation_id=p.organisation_id AND m.user_id=UNHEX(:user_id) AND m.status='active' WHERE p.organisation_id=UNHEX(:organisation_id) ORDER BY p.updated_at DESC,p.project_name");
+        $statement->execute(['user_id'=>$userId,'organisation_id'=>$organisationId]);
+        $projects = [];
+        foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $projectId) {
+            $found = $this->find(new ProjectContext($organisationId, $userId, strtolower((string)$projectId), 'member'));
+            if ($found !== null) $projects[] = $found;
+        }
+        return $projects;
+    }
+
+    /** @param array<string,mixed> $row @param list<array{recordType:string,priority:string,reason:string}> $missing */
+    private function hydrate(array $row, ProjectPhase $phase, array $missing): ProjectPassport
+    {
+        return new ProjectPassport(
+            strtolower((string)$row['project_id']), strtolower((string)$row['organisation_id']), (string)$row['project_code'], (string)$row['project_name'],
+            (string)$row['client_name'], (string)$row['municipality'], (string)$row['property_reference'], (string)$row['property_use'],
+            (string)$row['land_use_notes'], (string)$row['lead_professional_role'], $phase, (int)$row['version'], $missing, $missing === [],
+        );
     }
 }

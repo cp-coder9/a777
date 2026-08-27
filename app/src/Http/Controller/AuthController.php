@@ -46,10 +46,11 @@ final readonly class AuthController
     public function current(Request $request): Response
     {
         $identity = $request->attribute('identity');
-        if (!$identity instanceof AuthenticatedIdentity) {
+        $session = $request->attribute('session');
+        if (!$identity instanceof AuthenticatedIdentity || !$session instanceof AuthenticatedSession) {
             return Response::error(401, 'unauthenticated', 'Authentication is required.');
         }
-        return Response::success($this->identityData($identity));
+        return Response::success($this->identityData($identity) + ['csrfToken' => $this->sessions->issueCsrf($session->sessionId)]);
     }
 
     public function logout(Request $request): Response

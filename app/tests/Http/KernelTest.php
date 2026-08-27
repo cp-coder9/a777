@@ -60,6 +60,18 @@ final class KernelTest extends TestCase
         self::assertCurrentUlid($response->json()['meta']['requestId']);
     }
 
+    public function testDynamicRouteAddsDecodedPathParameterWithoutMatchingExtraSegments(): void
+    {
+        $router = new Router();
+        $router->get('/api/v1/projects/{projectId}', static fn (Request $request): Response => Response::success(['id' => $request->attribute('projectId')]));
+        $kernel = new Kernel($router, static fn (): string => self::currentUlid());
+
+        $response = $kernel->handle(Request::json('GET', '/api/v1/projects/abc%20123'));
+        self::assertSame(200, $response->status());
+        self::assertSame('abc 123', $response->json()['data']['id']);
+        self::assertSame(404, $kernel->handle(Request::json('GET', '/api/v1/projects/a/b'))->status());
+    }
+
     public function testHeadUsesGetRouteAndSuppressesBody(): void
     {
         $response = $this->kernel()->handle(Request::json('HEAD', '/api/v1/health'));

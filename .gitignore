@@ -11,6 +11,7 @@
 /app/storage/logs/
 /app/storage/sessions/
 /app/storage/tmp/
+/app/storage/evidence/
 /coverage/
 /dist/
 /node_modules/

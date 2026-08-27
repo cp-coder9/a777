@@ -8,6 +8,8 @@ use Architex\Http\Controller\AuthController;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
 use Architex\Http\Controller\ProjectController;
+use Architex\Http\Controller\InboxController;
+use Architex\Http\Controller\ToolRegistryController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -25,6 +27,7 @@ use Architex\Platform\Security\RateLimiter;
 use Architex\Platform\Authorization\PermissionService;
 use Architex\Platform\Project\LifecycleService;
 use Architex\Platform\Project\ProjectPassportService;
+use Architex\Platform\Inbox\InboxService;
 use PDO;
 
 final readonly class AuthenticationKernelFactory
@@ -67,7 +70,13 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new ProjectRoutes(
             new ProjectController(new ProjectPassportService($this->pdo), new LifecycleService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new ShellDataRoutes(
+            new InboxController(new InboxService($this->pdo)),
+            new ToolRegistryController(dirname(__DIR__, 2) . '/public/assets/tool-registry.json'),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
         ))->register($router);
 
         return new Kernel($router, middleware: [

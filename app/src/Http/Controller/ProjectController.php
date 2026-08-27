@@ -35,6 +35,23 @@ final readonly class ProjectController
         }
     }
 
+    public function index(Request $request): Response
+    {
+        $scope = $this->scope($request);
+        if ($scope instanceof Response) return $scope;
+        return Response::success(array_map($this->serialize(...), $this->projects->list($scope[0], $scope[1]->userId)));
+    }
+
+    public function show(Request $request): Response
+    {
+        $scope = $this->scope($request);
+        if ($scope instanceof Response) return $scope;
+        $projectId = $request->attribute('projectId');
+        if (!is_string($projectId)) return Response::error(404, 'not_found', 'Project not found.');
+        $project = $this->projects->find(new ProjectContext($scope[0], $scope[1]->userId, strtolower($projectId), (string)$request->attribute('role')));
+        return $project === null ? Response::error(404, 'not_found', 'Project not found.') : Response::success($this->serialize($project));
+    }
+
     public function transition(Request $request): Response
     {
         try {
@@ -54,5 +71,21 @@ final readonly class ProjectController
         } catch (\JsonException) {
             return Response::error(400, 'invalid_json', 'Request body must contain valid JSON.');
         }
+    }
+
+    /** @return array{string,AuthenticatedIdentity}|Response */
+    private function scope(Request $request): array|Response
+    {
+        $organisationId = $request->attribute('organisationId');
+        $identity = $request->attribute('identity');
+        return is_string($organisationId) && $identity instanceof AuthenticatedIdentity
+            ? [$organisationId, $identity]
+            : Response::error(401, 'authentication_required', 'Authentication is required.');
+    }
+
+    /** @return array<string,mixed> */
+    private function serialize(\Architex\Platform\Project\ProjectPassport $project): array
+    {
+        return ['id'=>$project->projectId,'organisationId'=>$project->organisationId,'projectCode'=>$project->projectCode,'name'=>$project->projectName,'clientName'=>$project->clientName,'municipality'=>$project->municipality,'propertyReference'=>$project->propertyReference,'propertyUse'=>$project->propertyUse,'landUseNotes'=>$project->landUseNotes,'leadProfessionalRole'=>$project->leadProfessionalRole,'phase'=>$project->currentPhase->value,'version'=>$project->version,'missingRecords'=>$project->missingRecords,'mayAdvance'=>$project->mayAdvance];
     }
 }

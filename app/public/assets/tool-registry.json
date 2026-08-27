@@ -1,0 +1,319 @@
+{
+    "tools": [
+        {
+            "id": "practice",
+            "name": "Practice Management \u2014 Project Command Centre",
+            "status": "prototype_live",
+            "group": "Practice & Project Management",
+            "stage": "All stages"
+        },
+        {
+            "id": "wingman",
+            "name": "Wingman AI Workspace",
+            "status": "prototype_live",
+            "group": "Intelligence & Improvement",
+            "stage": "All stages"
+        },
+        {
+            "id": "planning",
+            "name": "Town Planning Tracker",
+            "status": "prototype_live",
+            "group": "Planning & Approvals",
+            "stage": "Brief / Comply"
+        },
+        {
+            "id": "municipal",
+            "name": "Municipal Approval Readiness",
+            "status": "prototype_live",
+            "group": "Planning & Approvals",
+            "stage": "Comply"
+        },
+        {
+            "id": "xa",
+            "name": "SANS 10400-XA Energy",
+            "status": "prototype_live",
+            "group": "Compliance & Environment",
+            "stage": "Design / Comply"
+        },
+        {
+            "id": "forms",
+            "name": "Integrated Form System",
+            "status": "prototype_live",
+            "group": "Design & Documentation",
+            "stage": "All stages"
+        },
+        {
+            "id": "specforge",
+            "name": "SpecForge",
+            "status": "prototype_live",
+            "group": "Design & Documentation",
+            "stage": "Design / Procure"
+        },
+        {
+            "id": "bom",
+            "name": "BoM / BoQ & Tender Builder",
+            "status": "prototype_live",
+            "group": "Commercial & Procurement",
+            "stage": "Design / Procure / Build"
+        },
+        {
+            "id": "itp",
+            "name": "Inspection Test Plans",
+            "status": "prototype_live",
+            "group": "Site Execution & Quality",
+            "stage": "Build"
+        },
+        {
+            "id": "safety",
+            "name": "Health & Safety",
+            "status": "prototype_live",
+            "group": "Site Execution & Quality",
+            "stage": "Build"
+        },
+        {
+            "id": "feedback",
+            "name": "Feedback Intelligence & Product Roadmap",
+            "status": "prototype_live",
+            "group": "Intelligence & Improvement",
+            "stage": "Platform-wide"
+        },
+        {
+            "id": "project_passport",
+            "name": "Project Passport",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "All stages"
+        },
+        {
+            "id": "project_explorer",
+            "name": "Project Explorer",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "All stages"
+        },
+        {
+            "id": "professional_directory",
+            "name": "Professional Directory",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "Appoint"
+        },
+        {
+            "id": "team_workspace",
+            "name": "Team Workspace",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "All stages"
+        },
+        {
+            "id": "inbox_action",
+            "name": "Inbox / Action Centre",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "All stages"
+        },
+        {
+            "id": "issues_rfis",
+            "name": "Issues / RFIs",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "Design / Build"
+        },
+        {
+            "id": "documents_drawings",
+            "name": "Documents & Drawings",
+            "status": "scaffold",
+            "group": "Design & Documentation",
+            "stage": "All stages"
+        },
+        {
+            "id": "fee_proposal",
+            "name": "Fee Proposal Builder",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Appoint"
+        },
+        {
+            "id": "council_navigator",
+            "name": "Council Drawing Navigator",
+            "status": "scaffold",
+            "group": "Planning & Approvals",
+            "stage": "Comply"
+        },
+        {
+            "id": "compliance_hub",
+            "name": "Compliance Hub",
+            "status": "scaffold",
+            "group": "Compliance & Environment",
+            "stage": "Design / Comply"
+        },
+        {
+            "id": "municipal_tracker",
+            "name": "Municipal Tracker",
+            "status": "scaffold",
+            "group": "Planning & Approvals",
+            "stage": "Comply"
+        },
+        {
+            "id": "environmental_heritage",
+            "name": "Environmental & Heritage",
+            "status": "scaffold",
+            "group": "Compliance & Environment",
+            "stage": "Brief / Comply"
+        },
+        {
+            "id": "eia_workspace",
+            "name": "EIA Workspace",
+            "status": "scaffold",
+            "group": "Compliance & Environment",
+            "stage": "Brief / Comply"
+        },
+        {
+            "id": "refuse_calculator",
+            "name": "Refuse Area Calculator",
+            "status": "scaffold",
+            "group": "Compliance & Environment",
+            "stage": "Design / Comply"
+        },
+        {
+            "id": "survey_geomatics",
+            "name": "Survey & Geomatics",
+            "status": "scaffold",
+            "group": "Design & Documentation",
+            "stage": "Brief / Design"
+        },
+        {
+            "id": "nhbrc_enrolment",
+            "name": "NHBRC Enrolment",
+            "status": "scaffold",
+            "group": "Compliance & Environment",
+            "stage": "Comply / Build"
+        },
+        {
+            "id": "insurance_register",
+            "name": "Insurance Register",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Appoint / Build"
+        },
+        {
+            "id": "bim_ifc",
+            "name": "BIM / IFC Extraction",
+            "status": "scaffold",
+            "group": "Design & Documentation",
+            "stage": "Design / Procure"
+        },
+        {
+            "id": "rfq_marketplace",
+            "name": "RFQ Marketplace",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Procure"
+        },
+        {
+            "id": "supplier_catalog",
+            "name": "Supplier Catalogue",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Design / Procure"
+        },
+        {
+            "id": "market_insights",
+            "name": "Market Insights",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "All stages"
+        },
+        {
+            "id": "contract_admin",
+            "name": "Contract Administration",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Build / Pay"
+        },
+        {
+            "id": "contractor_compliance",
+            "name": "Contractor Compliance",
+            "status": "scaffold",
+            "group": "Site Execution & Quality",
+            "stage": "Build"
+        },
+        {
+            "id": "approvals_queue",
+            "name": "Approvals Queue",
+            "status": "scaffold",
+            "group": "Project & Collaboration",
+            "stage": "All stages"
+        },
+        {
+            "id": "payments_escrow",
+            "name": "Payments & Escrow",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Pay"
+        },
+        {
+            "id": "dispute_resolution",
+            "name": "Dispute Resolution",
+            "status": "scaffold",
+            "group": "Commercial & Procurement",
+            "stage": "Build / Pay"
+        },
+        {
+            "id": "site_instructions",
+            "name": "Site Instructions",
+            "status": "scaffold",
+            "group": "Site Execution & Quality",
+            "stage": "Build"
+        },
+        {
+            "id": "ncr_manager",
+            "name": "NCR Manager",
+            "status": "scaffold",
+            "group": "Site Execution & Quality",
+            "stage": "Build"
+        },
+        {
+            "id": "snag_manager",
+            "name": "Snag Manager",
+            "status": "scaffold",
+            "group": "Site Execution & Quality",
+            "stage": "Build / Close-out"
+        },
+        {
+            "id": "fm_bridge",
+            "name": "FM Bridge",
+            "status": "scaffold",
+            "group": "Site Execution & Quality",
+            "stage": "Handover / Close-out"
+        },
+        {
+            "id": "remote_desktop",
+            "name": "Remote Desktop",
+            "status": "scaffold",
+            "group": "Platform Services",
+            "stage": "All stages"
+        },
+        {
+            "id": "cpd_learning",
+            "name": "CPD & Learning",
+            "status": "scaffold",
+            "group": "Platform Services",
+            "stage": "Platform-wide"
+        },
+        {
+            "id": "admin_review",
+            "name": "Admin Review",
+            "status": "scaffold",
+            "group": "Platform Services",
+            "stage": "Platform-wide"
+        },
+        {
+            "id": "iconography_registry",
+            "name": "Iconography Registry",
+            "status": "scaffold",
+            "group": "Platform Services",
+            "stage": "Platform-wide"
+        }
+    ]
+}

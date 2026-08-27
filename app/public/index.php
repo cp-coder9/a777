@@ -16,6 +16,13 @@ use Architex\Infrastructure\Mail\UnavailableIdentityNotifier;
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 $request = Request::fromGlobals();
+if ($request->method() === 'GET' && in_array($request->path(), ['/', '/app'], true)) {
+    header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('X-Content-Type-Options: nosniff');
+    require __DIR__ . '/app.php';
+    return;
+}
 if ($request->path() === '/api/v1/health') {
     $router = new Router();
     $router->get('/api/v1/health', new HealthController());

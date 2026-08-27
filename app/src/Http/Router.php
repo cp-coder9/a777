@@ -39,6 +39,32 @@ final class Router
     {
         $routes = $this->routes[$request->path()] ?? null;
         if ($routes === null) {
+            foreach ($this->routes as $pattern => $candidateRoutes) {
+                if (!str_contains($pattern, '{')) {
+                    continue;
+                }
+                $names = [];
+                $quoted = preg_quote($pattern, '#');
+                $regex = preg_replace_callback('/\\\\\{([A-Za-z][A-Za-z0-9_]*)\\\\\}/', static function (array $match) use (&$names): string {
+                    $names[] = $match[1];
+                    return '([^/]+)';
+                }, $quoted);
+                if (!is_string($regex) || preg_match('#^' . $regex . '$#D', $request->path(), $matches) !== 1) {
+                    continue;
+                }
+                array_shift($matches);
+                foreach ($names as $index => $name) {
+                    $value = rawurldecode($matches[$index]);
+                    if ($value === '' || str_contains($value, '/')) {
+                        continue 2;
+                    }
+                    $request = $request->withAttribute($name, $value);
+                }
+                $routes = $candidateRoutes;
+                break;
+            }
+        }
+        if ($routes === null) {
             return Response::error(404, 'not_found', 'Route not found.');
         }
 

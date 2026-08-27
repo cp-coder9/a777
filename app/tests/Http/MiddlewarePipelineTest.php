@@ -65,6 +65,7 @@ final class MiddlewarePipelineTest extends TestCase
                 return new AuthenticatedSession(str_repeat('c', 32), $this->identity);
             }
             public function verifyCsrf(string $sessionId, string $plaintextCsrf): bool { return $plaintextCsrf === 'valid-csrf'; }
+            public function issueCsrf(string $sessionId): string { return 'fresh-csrf'; }
             public function revoke(string $sessionId): void {}
         };
         $next = static fn (Request $request): Response => Response::success(['identity' => $request->attribute('identity') instanceof AuthenticatedIdentity]);

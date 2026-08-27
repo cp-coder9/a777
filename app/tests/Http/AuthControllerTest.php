@@ -164,6 +164,7 @@ final class AuthControllerTest extends TestCase
             public function rotate(string $userId, ?string $previousSessionId = null, ?string $ipAddress = null, ?string $userAgent = null): SessionToken { return new SessionToken(str_repeat('c', 32), 'session-secret', 'csrf-secret', '2099-01-01T00:00:00Z'); }
             public function resolve(string $plaintextToken): AuthenticatedSession { return new AuthenticatedSession(str_repeat('c', 32), $this->identity ?? throw new \LogicException()); }
             public function verifyCsrf(string $sessionId, string $plaintextCsrf): bool { return true; }
+            public function issueCsrf(string $sessionId): string { return 'fresh-csrf'; }
             public function revoke(string $sessionId): void {}
         };
     }
