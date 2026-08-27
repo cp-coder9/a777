@@ -3,6 +3,7 @@
 /.env
 /.env.*
 !/.env.example
+/.superpowers/
 /app/vendor/
 /app/storage/cache/
 /app/storage/logs/
