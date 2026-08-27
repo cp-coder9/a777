@@ -557,7 +557,7 @@ public function testExtractedShellRetainsCanonicalSelectorsAndToolIds(): void
         self::assertStringContainsString($selector, $html);
     }
     $registry = json_decode(file_get_contents(dirname(__DIR__, 3) . '/app/public/assets/tool-registry.json'), true, flags: JSON_THROW_ON_ERROR);
-    self::assertSame(45, count($registry['tools']));
+    self::assertSame(47, count($registry['tools']));
     self::assertContains('project_passport', array_column($registry['tools'], 'id'));
 }
 ```
@@ -566,7 +566,7 @@ public function testExtractedShellRetainsCanonicalSelectorsAndToolIds(): void
 
 Run: `php app/bin/extract-v1-assets.php --source=v1.html --public=app/public`
 
-Expected: prints canonical source hash, 45 tools, 11 prototype-live labels, 34 scaffold labels, and generated asset hashes.
+Expected: prints canonical source hash, 47 tools, 13 prototype-live labels, 34 scaffold labels, and generated asset hashes.
 
 - [ ] **Step 3: Replace authoritative prototype state with API state**
 
