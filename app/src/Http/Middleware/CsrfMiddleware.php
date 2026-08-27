@@ -19,6 +19,9 @@ final readonly class CsrfMiddleware implements Middleware
         if (!in_array($request->method(), ['POST','PUT','PATCH','DELETE'], true)) {
             return $next($request);
         }
+        if ($request->method() === 'POST' && preg_match('#\A/api/v1/proposal-acceptance/[A-Za-z0-9_-]{43}\z#D', $request->path()) === 1) {
+            return $next($request);
+        }
         $session = $request->attribute('session');
         if (!$session instanceof AuthenticatedSession) {
             return $next($request);

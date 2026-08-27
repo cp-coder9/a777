@@ -75,6 +75,8 @@ final class MiddlewarePipelineTest extends TestCase
         $authenticatedRequest = Request::json('POST', '/', ['Authorization' => 'Bearer ' . str_repeat('x', 43)]);
         $missingCsrf = (new SessionMiddleware($gateway))->process($authenticatedRequest, static fn (Request $request): Response => (new CsrfMiddleware($gateway))->process($request, $next));
         self::assertSame(419, $missingCsrf->status());
+        $publicAcceptance = (new SessionMiddleware($gateway))->process(Request::json('POST', '/api/v1/proposal-acceptance/' . str_repeat('a', 43), ['Authorization' => 'Bearer ' . str_repeat('x', 43)]), static fn (Request $request): Response => (new CsrfMiddleware($gateway))->process($request, $next));
+        self::assertSame(200, $publicAcceptance->status());
         $valid = (new SessionMiddleware($gateway))->process(Request::json('POST', '/', ['Authorization' => 'Bearer ' . str_repeat('x', 43), 'X-CSRF-Token' => 'valid-csrf']), static fn (Request $request): Response => (new CsrfMiddleware($gateway))->process($request, $next));
         self::assertSame(200, $valid->status());
         self::assertTrue($valid->json()['data']['identity']);
