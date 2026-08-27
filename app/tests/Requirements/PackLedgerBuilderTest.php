@@ -223,8 +223,8 @@ final class PackLedgerBuilderTest extends TestCase
 
             self::assertTrue($writer->isPublishedGenerationValid($marker));
             $published = json_decode((string) file_get_contents($marker), true, flags: JSON_THROW_ON_ERROR);
-            self::assertSame(realpath($directory) . DIRECTORY_SEPARATOR . 'ledger.json', $published['json']['path']);
-            self::assertSame(realpath($directory) . DIRECTORY_SEPARATOR . 'ledger.md', $published['markdown']['path']);
+            self::assertSame('ledger.json', $published['json']['path']);
+            self::assertSame('ledger.md', $published['markdown']['path']);
         } finally {
             $this->deleteDirectory($directory);
         }
@@ -313,6 +313,72 @@ final class PackLedgerBuilderTest extends TestCase
             self::assertFalse($writer->isPublishedGenerationValid($marker));
         } finally {
             $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testPortableMarkerValidatesAfterGenerationDirectoryMoves(): void
+    {
+        $source = $this->temporaryPacks([]);
+        $destination = $this->temporaryPacks([]);
+
+        try {
+            $writer = new LedgerArtifactWriter();
+            $marker = $writer->write($source . '/ledger.json', $source . '/ledger.md', ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            foreach (['ledger.json', 'ledger.md', basename($marker)] as $file) {
+                copy($source . '/' . $file, $destination . '/' . $file);
+                unlink($source . '/' . $file);
+            }
+
+            self::assertTrue($writer->isPublishedGenerationValid($destination . '/' . basename($marker)));
+        } finally {
+            $this->deleteDirectory($source);
+            $this->deleteDirectory($destination);
+        }
+    }
+
+    public function testMarkerValidationRejectsAbsoluteAndTraversalArtifactPaths(): void
+    {
+        $directory = $this->temporaryPacks([]);
+        $outside = dirname($directory) . '/outside-ledger.json';
+
+        try {
+            $writer = new LedgerArtifactWriter();
+            $marker = $writer->write($directory . '/ledger.json', $directory . '/ledger.md', ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            $contents = json_decode((string) file_get_contents($marker), true, flags: JSON_THROW_ON_ERROR);
+            $contents['json']['path'] = $directory . '/ledger.json';
+            file_put_contents($marker, json_encode($contents, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+            self::assertFalse($writer->isPublishedGenerationValid($marker));
+
+            copy($directory . '/ledger.json', $outside);
+            $contents['json']['path'] = '../' . basename($outside);
+            $contents['json']['sha256'] = hash_file('sha256', $outside);
+            file_put_contents($marker, json_encode($contents, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
+            $initialDirectory = getcwd();
+            chdir($directory);
+            try {
+                self::assertFalse($writer->isPublishedGenerationValid($marker));
+            } finally {
+                chdir($initialDirectory);
+            }
+        } finally {
+            if (file_exists($outside)) unlink($outside);
+            $this->deleteDirectory($directory);
+        }
+    }
+
+    public function testPortableMarkerBytesAreStableAcrossAbsoluteRoots(): void
+    {
+        $first = $this->temporaryPacks([]);
+        $second = $this->temporaryPacks([]);
+
+        try {
+            $writer = new LedgerArtifactWriter();
+            $firstMarker = $writer->write($first . '/ledger.json', $first . '/ledger.md', ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            $secondMarker = $writer->write($second . '/ledger.json', $second . '/ledger.md', ['schemaVersion' => 1, 'sources' => [], 'requirements' => []], new PackLedgerBuilder());
+            self::assertSame(hash_file('sha256', $firstMarker), hash_file('sha256', $secondMarker));
+        } finally {
+            $this->deleteDirectory($first);
+            $this->deleteDirectory($second);
         }
     }
 
