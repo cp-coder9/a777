@@ -17,6 +17,9 @@ final readonly class BriefRoutes
         $router->post('/api/v1/guided-briefs/{briefId}',$this->through($this->write,$this->controller->save(...)));
         $router->post('/api/v1/guided-briefs/{briefId}/submit',$this->through($this->write,$this->controller->submit(...)));
         $router->post('/api/v1/guided-briefs/{briefId}/assign',$this->through($this->write,$this->controller->assign(...)));
+        $router->get('/api/v1/guided-briefs/{briefId}/files',$this->through($this->read,$this->controller->files(...)));
+        $router->post('/api/v1/guided-briefs/{briefId}/files',$this->through($this->write,$this->controller->uploadFile(...)));
+        $router->get('/api/v1/guided-brief-files/{fileId}',$this->through($this->read,$this->controller->downloadFile(...)));
     }
     /** @param Closure(Request):Response $handler @return Closure(Request):Response */
     private function through(Middleware $middleware,Closure $handler):Closure{return static fn(Request $request):Response=>$middleware->process($request,$handler);}

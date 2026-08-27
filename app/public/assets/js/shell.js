@@ -5,6 +5,66 @@
   root.dataset.shellState = 'loading';
   const originalGlobalPage = window.renderGlobalPage;
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
+  let activeBriefId = null;
+  let briefHydrationTimer = null;
+
+  function scheduleGuidedBriefHydration() {
+    if (briefHydrationTimer !== null) clearTimeout(briefHydrationTimer);
+    briefHydrationTimer = setTimeout(() => { briefHydrationTimer = null; hydrateGuidedBriefWorkspace(); }, 0);
+  }
+
+  function guidedBriefWorkspace() {
+    scheduleGuidedBriefHydration();
+    return `${pageHead('Guided brief','Capture the client intent, constraints and evidence before converting an approved brief into the project record.','project_passport','core')}
+      <div class="notice brief-boundary"><b>Advisory boundary:</b> the interpretation is rule-based guidance for human review. It is not professional advice, an approval determination, a fee quotation or an appointment.</div>
+      <section class="brief-layout">
+        <div class="panel panel-pad brief-card">
+          <div class="trust-card-head"><div><h2>Your briefs</h2><p>Drafts resume from MariaDB across sessions.</p></div><span class="status green">Private</span></div>
+          <form id="guidedBriefCreate" class="brief-create"><input class="form-input" name="title" required maxlength="180" placeholder="e.g. Home alteration brief"><button class="btn dark" type="submit">Start brief</button></form>
+          <div id="guidedBriefList" class="trust-list"><div class="notice">Loading briefs…</div></div>
+        </div>
+        <div id="guidedBriefEditor" class="panel panel-pad brief-card"><div class="notice">Select a saved brief or start a new one.</div></div>
+      </section>`;
+  }
+
+  function briefEditor(brief, files) {
+    const answers=brief.answers||{},locked=brief.status!=='draft',projects=window.__ARCHITEX_SHELL_STATE__?.projects||[];
+    const selected=(name,value)=>answers[name]===value?' selected':'';
+    const checked=(name,value)=>Array.isArray(answers[name])&&answers[name].includes(value)?' checked':'';
+    const interpretation=brief.interpretation?`<div class="notice brief-interpretation"><b>Advisory interpretation</b><br>${escapeHtml(brief.interpretation.clientFriendlySummary)}<br><small>${escapeHtml(brief.interpretation.suggestedNextAction)} ${escapeHtml(brief.interpretation.limitations)}</small></div>`:'';
+    return `<div class="trust-card-head"><div><h2>${escapeHtml(brief.title)}</h2><p>Step ${escapeHtml(brief.currentStep)} of 8 · version ${escapeHtml(brief.version)}</p></div><span class="status ${brief.status==='draft'?'amber':'green'}">${escapeHtml(brief.status)}</span></div>
+      <form id="guidedBriefAnswers" class="scaffold-grid">
+        <label>What do you need?<select class="form-select" name="intent" required ${locked?'disabled':''}><option value="">Choose one</option><option value="renovate_or_add"${selected('intent','renovate_or_add')}>Renovate or add</option><option value="plans_approved"${selected('intent','plans_approved')}>Get plans approved</option><option value="updated_plans_for_sale"${selected('intent','updated_plans_for_sale')}>Update plans for sale</option><option value="construction_price"${selected('intent','construction_price')}>Obtain construction pricing</option><option value="not_sure"${selected('intent','not_sure')}>Not sure yet</option></select></label>
+        <label>Urgency<select class="form-select" name="urgency" required ${locked?'disabled':''}><option value="">Choose one</option><option value="normal"${selected('urgency','normal')}>Normal</option><option value="soon"${selected('urgency','soon')}>Soon</option><option value="urgent"${selected('urgency','urgent')}>Urgent — validate feasibility</option></select></label>
+        <label class="trust-wide">What outcome are you trying to achieve?<textarea class="form-textarea" name="goal" required maxlength="4000" ${locked?'disabled':''}>${escapeHtml(answers.goal||'')}</textarea></label>
+        <fieldset><legend>Existing plans available?</legend><label><input type="radio" name="hasExistingPlans" value="true" ${answers.hasExistingPlans===true?'checked':''} ${locked?'disabled':''}> Yes</label><label><input type="radio" name="hasExistingPlans" value="false" ${answers.hasExistingPlans===false?'checked':''} ${locked?'disabled':''}> No</label></fieldset>
+        <fieldset><legend>Work already exists?</legend><label><input type="radio" name="workAlreadyExists" value="true" ${answers.workAlreadyExists===true?'checked':''} ${locked?'disabled':''}> Yes</label><label><input type="radio" name="workAlreadyExists" value="false" ${answers.workAlreadyExists===false?'checked':''} ${locked?'disabled':''}> No</label></fieldset>
+        <label>Budget position<select class="form-select" name="budgetBand" required ${locked?'disabled':''}><option value="">Choose one</option><option value="defined"${selected('budgetBand','defined')}>Defined</option><option value="range"${selected('budgetBand','range')}>Working range</option><option value="needs_guidance"${selected('budgetBand','needs_guidance')}>Needs guidance</option><option value="unknown"${selected('budgetBand','unknown')}>Unknown</option></select></label>
+        <fieldset class="trust-wide"><legend>Support needed</legend><label><input type="checkbox" name="supportNeeds" value="plans"${checked('supportNeeds','plans')} ${locked?'disabled':''}> Plans</label><label><input type="checkbox" name="supportNeeds" value="approvals"${checked('supportNeeds','approvals')} ${locked?'disabled':''}> Approvals</label><label><input type="checkbox" name="supportNeeds" value="construction_pricing"${checked('supportNeeds','construction_pricing')} ${locked?'disabled':''}> Construction pricing</label><label><input type="checkbox" name="supportNeeds" value="full_delivery"${checked('supportNeeds','full_delivery')} ${locked?'disabled':''}> Full delivery</label><label><input type="checkbox" name="supportNeeds" value="advice_only"${checked('supportNeeds','advice_only')} ${locked?'disabled':''}> Advice only</label></fieldset>
+        ${locked?'':`<div class="trust-actions trust-wide"><button class="btn ghost" type="submit">Save draft</button><button class="btn dark" type="button" id="guidedBriefSubmit">Submit for human review</button><span id="guidedBriefMessage" role="status"></span></div>`}
+      </form>${interpretation}
+      <section class="brief-evidence"><div class="trust-card-head"><div><h3>Private evidence</h3><p>Files are content-checked, integrity-hashed and kept outside the public web root.</p></div></div>
+        ${locked?'':`<form id="guidedBriefEvidence" class="scaffold-grid"><label class="trust-wide">Evidence file<input class="form-input" type="file" name="file" required accept="application/pdf,image/jpeg,image/png,.docx"></label><label>Category<select class="form-select" name="category"><option value="existing_plan">Existing plan</option><option value="title_deed">Title deed</option><option value="site_photo">Site photo</option><option value="brief_document">Brief document</option><option value="other">Other</option></select></label><label>Retain until<input class="form-input" type="date" name="retentionUntil" required></label><label class="trust-wide">Processing purpose<input class="form-input" name="processingPurpose" required maxlength="500" value="Assess information supplied for this guided brief"></label><label class="trust-check trust-wide"><input type="checkbox" name="consentGiven" required> I consent to processing this file for the stated purpose and period.</label><div class="trust-actions trust-wide"><button class="btn dark" type="submit">Upload private evidence</button><span id="guidedBriefEvidenceMessage" role="status"></span></div></form>`}
+        <div class="trust-list">${files.length?files.map(file=>`<article class="trust-row"><div><b>${escapeHtml(file.originalName)}</b><span>${escapeHtml(file.category.replaceAll('_',' '))} · ${Math.ceil(file.byteSize/1024)} KB</span><small>Retain until ${escapeHtml(file.retentionUntil)} · SHA-256 ${escapeHtml(file.sha256.slice(0,12))}…</small></div><a class="btn ghost" href="/api/v1/guided-brief-files/${encodeURIComponent(file.id)}">Download</a></article>`).join(''):'<div class="notice">No evidence attached.</div>'}</div>
+      </section>${brief.status==='submitted'?`<form id="guidedBriefAssign" class="brief-assign"><label>Convert into project record<select class="form-select" name="projectId" required><option value="">Select project</option>${projects.map(project=>`<option value="${escapeHtml(project.id)}">${escapeHtml(project.name)}</option>`).join('')}</select></label><button class="btn dark" type="submit" ${projects.length?'':'disabled'}>Assign approved brief</button><span id="guidedBriefAssignMessage" role="status"></span></form>`:''}`;
+  }
+
+  async function hydrateGuidedBriefWorkspace() {
+    const list=document.getElementById('guidedBriefList');if(!list)return;
+    try{
+      const briefs=await api.get('/guided-briefs');if(activeBriefId&&!briefs.some(item=>item.id===activeBriefId))activeBriefId=null;
+      list.innerHTML=briefs.length?briefs.map(item=>`<button class="brief-list-row ${item.id===activeBriefId?'active':''}" type="button" data-brief-id="${escapeHtml(item.id)}"><span><b>${escapeHtml(item.title)}</b><small>Step ${item.currentStep}/8 · v${item.version}</small></span><span class="status ${item.status==='draft'?'amber':'green'}">${escapeHtml(item.status)}</span></button>`).join(''):'<div class="notice">No guided briefs yet.</div>';
+      list.querySelectorAll('[data-brief-id]').forEach(button=>button.addEventListener('click',()=>{activeBriefId=button.dataset.briefId;hydrateGuidedBriefWorkspace();}));
+      const active=briefs.find(item=>item.id===activeBriefId);if(active){const files=await api.get(`/guided-briefs/${encodeURIComponent(active.id)}/files`);document.getElementById('guidedBriefEditor').innerHTML=briefEditor(active,files);bindGuidedBriefEditor(active);}
+      const create=document.getElementById('guidedBriefCreate');if(create&&!create.dataset.bound){create.dataset.bound='1';create.addEventListener('submit',createGuidedBrief);}
+    }catch(error){list.innerHTML=`<div class="notice">${escapeHtml(error.message)}</div>`;}
+  }
+
+  async function createGuidedBrief(event){event.preventDefault();const title=new FormData(event.currentTarget).get('title');try{const brief=await api.post('/guided-briefs',{title});activeBriefId=brief.id;await hydrateGuidedBriefWorkspace();}catch(error){showToast(error.message);}}
+  function bindGuidedBriefEditor(brief){const form=document.getElementById('guidedBriefAnswers');form?.addEventListener('submit',event=>saveGuidedBrief(event,brief,false));document.getElementById('guidedBriefSubmit')?.addEventListener('click',event=>saveGuidedBrief(event,brief,true));document.getElementById('guidedBriefEvidence')?.addEventListener('submit',event=>uploadGuidedBriefEvidence(event,brief));document.getElementById('guidedBriefAssign')?.addEventListener('submit',event=>assignGuidedBrief(event,brief));const retention=document.querySelector('#guidedBriefEvidence [name="retentionUntil"]');if(retention&&!retention.value){const date=new Date();date.setFullYear(date.getFullYear()+5);retention.value=date.toISOString().slice(0,10);}}
+  async function saveGuidedBrief(event,brief,submit){event.preventDefault();const form=document.getElementById('guidedBriefAnswers'),values=new FormData(form),message=document.getElementById('guidedBriefMessage');if(message)message.textContent=submit?'Validating…':'Saving…';const bool=name=>values.get(name)==='true';const body={expectedVersion:brief.version,currentStep:submit?8:Math.max(brief.currentStep,7),intent:values.get('intent'),goal:values.get('goal'),hasExistingPlans:bool('hasExistingPlans'),workAlreadyExists:bool('workAlreadyExists'),urgency:values.get('urgency'),budgetBand:values.get('budgetBand'),supportNeeds:values.getAll('supportNeeds')};try{const saved=await api.post(`/guided-briefs/${encodeURIComponent(brief.id)}`,body);if(submit)await api.post(`/guided-briefs/${encodeURIComponent(brief.id)}/submit`,{expectedVersion:saved.version});await hydrateGuidedBriefWorkspace();showToast(submit?'Brief submitted for human review.':'Draft saved.');}catch(error){if(message)message.textContent=error.message;}}
+  async function uploadGuidedBriefEvidence(event,brief){event.preventDefault();const form=event.currentTarget,message=document.getElementById('guidedBriefEvidenceMessage'),body=new FormData(form);message.textContent='Uploading…';try{const response=await fetch(`/api/v1/guided-briefs/${encodeURIComponent(brief.id)}/files`,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-Organisation-Id':api.organisationId,'X-CSRF-Token':api.csrfToken},body});const payload=await response.json();if(!response.ok)throw Object.assign(new Error(payload?.error?.message||'Evidence upload failed.'),{status:response.status});message.textContent='Evidence stored privately and audited.';form.elements.file.value='';await hydrateGuidedBriefWorkspace();}catch(error){message.textContent=error.message;}}
+  async function assignGuidedBrief(event,brief){event.preventDefault();const message=document.getElementById('guidedBriefAssignMessage'),projectId=new FormData(event.currentTarget).get('projectId');message.textContent='Converting…';try{await api.post(`/guided-briefs/${encodeURIComponent(brief.id)}/assign`,{projectId,expectedVersion:brief.version});await hydrateGuidedBriefWorkspace();showToast('Guided brief converted into an approved project record.');}catch(error){message.textContent=error.message;}}
 
   function trustWorkspace() {
     setTimeout(hydrateTrustWorkspace, 0);
@@ -47,8 +107,13 @@
 
   TOOLS.professional_directory.status = 'live';
   TOOLS.team_workspace.status = 'live';
+  TOOLS.project_passport.status = 'live';
   const originalRenderMain = window.renderMain;
   window.renderMain = function () {
+    if (state.tool === 'project_passport') {
+      document.getElementById('main').innerHTML = guidedBriefWorkspace();
+      return;
+    }
     if (state.tool === 'team_workspace') {
       document.getElementById('main').innerHTML = teamWorkspace();
       setTimeout(hydrateTeamWorkspace, 0);
@@ -120,6 +185,9 @@
   const originalRenderAll = window.renderAll;
   window.renderAll = function () {
     originalRenderAll();
+    if(state.tool==='project_passport'){
+      renderBriefNavigator();renderBriefInspector();
+    }
     if(state.tool==='team_workspace'){
       document.getElementById('main').innerHTML=teamWorkspace();
       renderTeamNavigator();renderTeamInspector();setTimeout(hydrateTeamWorkspace,0);
@@ -129,6 +197,8 @@
 
   function renderTeamNavigator(){const nav=document.getElementById('navigator'),active=window.__ARCHITEX_SHELL_STATE__?.projects.find(item=>item.id===window.__ARCHITEX_SHELL_STATE__?.selectedProjectId);if(!nav)return;nav.innerHTML=`<div class="nav-head"><div class="kicker">Project collaboration</div><div class="nav-title">Project team</div><div class="nav-sub">${escapeHtml(active?.name||'No project selected')}</div></div><div class="back-row" onclick="openProjectSpace()"><span>←</span><span class="nav-label">Back to datum project space</span></div><div class="nav-section"><div class="nav-heading">Team workflow</div><button class="nav-row active" onclick="document.getElementById('projectTeamList')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('team_workspace',21)}</span><span class="nav-label">Current team</span></button><button class="nav-row" onclick="document.getElementById('projectTeamInviteForm')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('professional_directory',21)}</span><span class="nav-label">Invite professional</span></button><button class="nav-row" onclick="document.getElementById('projectTeamPending')?.scrollIntoView({behavior:'smooth'})"><span class="nav-icon">${icon('inbox',21)}</span><span class="nav-label">Incoming invitations</span></button></div><div class="nav-note"><b>Production workflow:</b><br>Only independently verified directory professionals are eligible. Acceptance, removal and notifications are persisted and audited.</div>`;}
   function renderTeamInspector(){const title=document.getElementById('inspectTitle'),sub=document.getElementById('inspectSub'),body=document.getElementById('inspectBody');if(title)title.textContent='Project team';if(sub)sub.textContent='Verified assignments';if(body)body.innerHTML='<div class="inspect-note"><b>Least-privilege assignment</b><br>Accepting an invitation adds a project-team record only. Organisation membership is never inferred.</div><div class="inspect-block"><h4>Controlled states</h4><p>Invited<br>Active<br>Removed with reason<br>Immutable audit events</p></div><div class="inspect-block"><h4>Verification gate</h4><p>Manual or external verification must be current both when invited and when accepted.</p></div>';}
+  function renderBriefNavigator(){const nav=document.getElementById('navigator');if(!nav)return;nav.innerHTML=`<div class="nav-head"><div class="kicker">Client onboarding</div><div class="nav-title">Guided brief</div><div class="nav-sub">Standalone first, project-connected when approved.</div></div><div class="back-row" onclick="openProjectSpace()"><span>←</span><span class="nav-label">Back to datum project space</span></div><div class="nav-section"><div class="nav-heading">Brief workflow</div><div class="nav-row active"><span class="nav-icon">${icon('brief',21)}</span><span class="nav-label">Capture intent</span></div><div class="nav-row"><span class="nav-icon">${icon('documents_drawings',21)}</span><span class="nav-label">Private evidence</span></div><div class="nav-row"><span class="nav-icon">${icon('integration',21)}</span><span class="nav-label">Human review & convert</span></div></div><div class="nav-note"><b>Resumable by design:</b><br>Every save uses optimistic version control. Submitted content locks before project conversion.</div>`;}
+  function renderBriefInspector(){const title=document.getElementById('inspectTitle'),sub=document.getElementById('inspectSub'),body=document.getElementById('inspectBody');if(title)title.textContent='Guided brief';if(sub)sub.textContent='Advisory onboarding';if(body)body.innerHTML='<div class="inspect-note"><b>Human decision remains required.</b><br>Automated interpretation identifies possible routes and risks; it never represents statutory or professional approval.</div><div class="inspect-block"><h4>Evidence controls</h4><p>Explicit consent<br>Declared purpose<br>Retention date<br>Content validation<br>SHA-256 integrity</p></div>';}
 
   async function hydrateTrustWorkspace() {
     const profileForm = document.getElementById('trustProfileForm');
@@ -281,7 +351,7 @@
     const main = document.getElementById('main');
     if (!main) return;
     const navigator = document.getElementById('navigator');
-    if (navigator) navigator.innerHTML = '<div class="nav-head"><div class="kicker">Active organisation</div><div class="nav-title">No projects yet</div><div class="nav-sub">Create the first project to initialise its datum.</div></div>';
+    if (navigator) navigator.innerHTML = '<div class="nav-head"><div class="kicker">Active organisation</div><div class="nav-title">No projects yet</div><div class="nav-sub">Start with a standalone brief or create the first project.</div></div><div class="nav-section"><button class="nav-row" onclick="openTool(\'project_passport\',\'standalone\')"><span class="nav-icon">'+icon('brief',21)+'</span><span class="nav-label">Open guided brief</span></button></div>';
     const breadcrumb = document.getElementById('breadcrumb');
     if (breadcrumb) breadcrumb.textContent = 'Architex OS › Projects › New project';
     const projectChip = document.getElementById('projectChip');

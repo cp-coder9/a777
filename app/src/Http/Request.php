@@ -6,7 +6,7 @@ namespace Architex\Http;
 
 final readonly class Request
 {
-    /** @param array<string,string> $headers @param array<string,UploadedFile> $uploadedFiles */
+    /** @param array<string,string> $headers @param array<string,UploadedFile> $uploadedFiles @param array<string,string> $form */
     private function __construct(
         private string $method,
         private string $path,
@@ -15,6 +15,7 @@ final readonly class Request
         private array $attributes = [],
         private array $uploadedFiles = [],
         private array $query = [],
+        private array $form = [],
     ) {}
 
     /** @param array<string,string> $headers */
@@ -34,7 +35,7 @@ final readonly class Request
     }
 
     /** @param array<string,mixed>|null $server */
-    public static function fromGlobals(?array $server = null, ?string $body = null, ?array $files = null): self
+    public static function fromGlobals(?array $server = null, ?string $body = null, ?array $files = null, ?array $form = null): self
     {
         $server ??= $_SERVER;
         $headers = [];
@@ -70,6 +71,14 @@ final readonly class Request
             } catch (\InvalidArgumentException) {
             }
         }
+        $form ??= $_POST;
+        $normalisedForm = [];
+        foreach ($form as $field => $value) {
+            if (is_string($field) && is_scalar($value)) {
+                $normalisedForm[$field] = (string) $value;
+            }
+        }
+        $request = $request->withForm($normalisedForm);
         return $request;
     }
 
@@ -98,6 +107,19 @@ final readonly class Request
         return $this->query[$name] ?? null;
     }
 
+    public function form(string $name): ?string
+    {
+        return $this->form[$name] ?? null;
+    }
+
+    public function withFormField(string $name, string $value): self
+    {
+        if (preg_match('/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/', $name) !== 1) {
+            throw new \InvalidArgumentException('The form field name is invalid.');
+        }
+        return $this->withForm(array_replace($this->form, [$name => $value]));
+    }
+
     public function attribute(string $name): mixed
     {
         return $this->attributes[$name] ?? null;
@@ -105,7 +127,7 @@ final readonly class Request
 
     public function withAttribute(string $name, mixed $value): self
     {
-        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]), $this->uploadedFiles, $this->query);
+        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]), $this->uploadedFiles, $this->query, $this->form);
     }
 
     public function uploadedFile(string $field): ?UploadedFile
@@ -118,7 +140,13 @@ final readonly class Request
         if (preg_match('/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/', $field) !== 1) {
             throw new \InvalidArgumentException('The upload field name is invalid.');
         }
-        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, array_replace($this->uploadedFiles, [$field => $file]), $this->query);
+        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, array_replace($this->uploadedFiles, [$field => $file]), $this->query, $this->form);
+    }
+
+    /** @param array<string,string> $form */
+    private function withForm(array $form): self
+    {
+        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, $this->uploadedFiles, $this->query, $form);
     }
 
     /** @return array<string,mixed> */

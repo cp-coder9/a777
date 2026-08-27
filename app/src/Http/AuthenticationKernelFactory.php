@@ -37,6 +37,7 @@ use Architex\Platform\Files\FileService;
 use Architex\Platform\Files\LocalFileStorage;
 use Architex\Platform\Trust\VerificationService;
 use Architex\Platform\Brief\GuidedBriefService;
+use Architex\Platform\Brief\BriefEvidenceService;
 use Architex\Platform\Team\ProjectTeamService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
@@ -106,7 +107,10 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'verification.review'),
         ))->register($router);
         (new BriefRoutes(
-            new BriefController(new GuidedBriefService($this->pdo)),
+            new BriefController(
+                new GuidedBriefService($this->pdo),
+                new BriefEvidenceService($this->pdo,new LocalFileStorage(($this->fileStorageRoot ?? dirname(__DIR__,2).'/storage/files').'/guided-briefs')),
+            ),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

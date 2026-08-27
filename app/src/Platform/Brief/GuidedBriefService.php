@@ -89,9 +89,9 @@ final readonly class GuidedBriefService
     public function listForUser(string $organisationId,string $userId):array
     {
         $this->assertMember($organisationId,$userId);
-        $statement=$this->pdo->prepare('SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) project_id,title,answers,current_step,status,version,submitted_at,converted_at,created_at,updated_at FROM guided_briefs WHERE organisation_id=UNHEX(:organisation_id) AND created_by=UNHEX(:user_id) ORDER BY updated_at DESC,id');
+        $statement=$this->pdo->prepare('SELECT LOWER(HEX(b.id)) id,LOWER(HEX(b.project_id)) project_id,b.title,b.answers,b.current_step,b.status,b.version,b.submitted_at,b.converted_at,b.created_at,b.updated_at,(SELECT bi.interpretation FROM brief_interpretations bi WHERE bi.organisation_id=b.organisation_id AND bi.brief_id=b.id ORDER BY bi.brief_version DESC LIMIT 1) interpretation FROM guided_briefs b WHERE b.organisation_id=UNHEX(:organisation_id) AND b.created_by=UNHEX(:user_id) ORDER BY b.updated_at DESC,b.id');
         $statement->execute(['organisation_id'=>$organisationId,'user_id'=>$userId]);$rows=[];
-        foreach($statement as $row){$answers=json_decode((string)$row['answers'],true,32,JSON_THROW_ON_ERROR);$rows[]=['id'=>$row['id'],'projectId'=>is_string($row['project_id'])?$row['project_id']:null,'title'=>$row['title'],'answers'=>is_array($answers)?$answers:[],'currentStep'=>(int)$row['current_step'],'status'=>$row['status'],'version'=>(int)$row['version'],'submittedAt'=>$row['submitted_at'],'convertedAt'=>$row['converted_at'],'createdAt'=>$row['created_at'],'updatedAt'=>$row['updated_at']];}
+        foreach($statement as $row){$answers=json_decode((string)$row['answers'],true,32,JSON_THROW_ON_ERROR);$interpretation=is_string($row['interpretation'])?json_decode($row['interpretation'],true,32,JSON_THROW_ON_ERROR):null;$rows[]=['id'=>$row['id'],'projectId'=>is_string($row['project_id'])?$row['project_id']:null,'title'=>$row['title'],'answers'=>is_array($answers)?$answers:[],'currentStep'=>(int)$row['current_step'],'status'=>$row['status'],'version'=>(int)$row['version'],'interpretation'=>is_array($interpretation)?$interpretation:null,'submittedAt'=>$row['submitted_at'],'convertedAt'=>$row['converted_at'],'createdAt'=>$row['created_at'],'updatedAt'=>$row['updated_at']];}
         return $rows;
     }
 

@@ -29,6 +29,7 @@ final class GuidedBriefWorkflowTest extends MariaDbTestCase
         self::assertContains('quantity_surveyor',$submitted['interpretation']['likelyProfessionalRequirements']);
         self::assertContains('existing_work_requires_assessment',$submitted['interpretation']['riskFlags']);
         self::assertTrue($submitted['interpretation']['advisoryOnly']);
+        self::assertTrue($service->listForUser($organisationId,$userId)[0]['interpretation']['advisoryOnly']);
         self::assertSame(1,(int)$this->pdo->query('SELECT COUNT(*) FROM brief_interpretations')->fetchColumn());
         self::assertSame(3,(int)$this->pdo->query('SELECT COUNT(*) FROM audit_events')->fetchColumn());
     }

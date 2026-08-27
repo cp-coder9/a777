@@ -83,10 +83,17 @@ final class RequestResponseTest extends TestCase
                 'REQUEST_URI'=>'/api/v1/projects/' . str_repeat('a', 32) . '/files',
                 'CONTENT_TYPE'=>'multipart/form-data; boundary=test',
                 'CONTENT_LENGTH'=>'4',
-            ], '', ['file'=>['name'=>'client.pdf','tmp_name'=>$temporary,'error'=>UPLOAD_ERR_OK,'size'=>4,'type'=>'application/pdf']]);
+            ], '', ['file'=>['name'=>'client.pdf','tmp_name'=>$temporary,'error'=>UPLOAD_ERR_OK,'size'=>4,'type'=>'application/pdf']], [
+                'category'=>'existing_plan',
+                'consentGiven'=>'true',
+                'ignored'=>['nested'],
+            ]);
 
             self::assertSame('client.pdf', $request->uploadedFile('file')?->clientName);
             self::assertSame($temporary, $request->uploadedFile('file')?->temporaryPath);
+            self::assertSame('existing_plan', $request->form('category'));
+            self::assertSame('true', $request->form('consentGiven'));
+            self::assertNull($request->form('ignored'));
         } finally {
             unlink($temporary);
         }
