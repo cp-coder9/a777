@@ -8,7 +8,7 @@ use Closure;
 
 final readonly class ToolDefinition
 {
-    /** @param list<string> $roles @param list<string> $tags @param array<string,string> $inputSchema @param array<string,string> $outputSchema @param list<string> $downstreamWriteBack @param Closure(array<string,mixed>):array<string,mixed> $execute */
+    /** @param list<string> $roles @param list<string> $tags @param array<string,string> $inputSchema @param array<string,string> $outputSchema @param list<string> $downstreamWriteBack @param Closure(array<string,mixed>,array<string,string>):array<string,mixed> $execute */
     public function __construct(
         public string $id,
         public string $name,

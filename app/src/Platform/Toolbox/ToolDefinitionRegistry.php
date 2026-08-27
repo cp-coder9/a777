@@ -25,4 +25,7 @@ final class ToolDefinitionRegistry
     {
         return array_values(array_filter($this->definitions, static fn(ToolDefinition $definition):bool=>in_array($role,$definition->roles,true)));
     }
+
+    /** @return list<ToolDefinition> */
+    public function all(): array{return array_values($this->definitions);}
 }

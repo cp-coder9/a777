@@ -26,7 +26,7 @@ final readonly class ToolboxEngine
         $assignment=$this->assignment($organisationId,$assignment);
         if($issueImmediately&&$definition->requiresProfessionalConfirmation&&trim((string)$issueReason)==='')throw new ToolException('professional_confirmation_required');
         $id=Identifier::generate();$createdAt=(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z');
-        try{$output=($definition->execute)($input);if(!is_array($output))throw new ToolException('invalid_tool_output');}
+        try{$output=($definition->execute)($input,['organisationId'=>$organisationId,'userId'=>$userId,'role'=>$role]);if(!is_array($output))throw new ToolException('invalid_tool_output');}
         catch(Throwable $exception){$this->storeFailure($id,$organisationId,$userId,$role,$definition,$assignment,$input,$exception);throw $exception;}
         $status=$issueImmediately?'issued':'completed';$issuedAt=$issueImmediately?$createdAt:null;
         $snapshot=$issueImmediately?['organisationId'=>$organisationId,'userId'=>$userId,'toolId'=>$definition->id,'toolVersion'=>$definition->version,'role'=>$role,'assignment'=>$assignment,'input'=>$input,'output'=>$output,'issuedAt'=>$issuedAt,'reason'=>trim((string)$issueReason)]:null;
@@ -72,6 +72,9 @@ final readonly class ToolboxEngine
     {
         $this->get($organisationId,$userId,$runId);$statement=$this->pdo->prepare('SELECT LOWER(HEX(e.id)) id,e.format,e.filename,e.mime_type,e.sha256,e.created_at FROM tool_run_exports e WHERE e.organisation_id=UNHEX(:organisation_id) AND e.run_id=UNHEX(:run_id) ORDER BY FIELD(e.format,\'json\',\'csv\',\'html\')');$statement->execute(['organisation_id'=>$organisationId,'run_id'=>$runId]);return$statement->fetchAll();
     }
+
+    /** @return array{filename:string,mimeType:string,byteSize:int,sha256:string,content:string} */
+    public function export(string $organisationId,string $userId,string $exportId):array{$statement=$this->pdo->prepare('SELECT e.filename,e.mime_type,e.content,e.sha256 FROM tool_run_exports e JOIN tool_runs r ON r.id=e.run_id AND r.organisation_id=e.organisation_id AND r.user_id=UNHEX(:user_id) WHERE e.id=UNHEX(:id) AND e.organisation_id=UNHEX(:organisation_id)');$statement->execute(['user_id'=>$userId,'id'=>$exportId,'organisation_id'=>$organisationId]);$row=$statement->fetch();if(!is_array($row))throw new ToolException('tool_export_not_found');$content=(string)$row['content'];if(!hash_equals((string)$row['sha256'],hash('sha256',$content)))throw new ToolException('tool_export_integrity_failed');return['filename'=>(string)$row['filename'],'mimeType'=>(string)$row['mime_type'],'byteSize'=>strlen($content),'sha256'=>(string)$row['sha256'],'content'=>$content];}
 
     /** @param array<string,mixed> $assignment @return array<string,mixed> */
     private function assignment(string $organisationId,array $assignment):array
