@@ -10,19 +10,27 @@ use Closure;
 
 final readonly class JsonRequestMiddleware implements Middleware
 {
-    public function __construct(private int $maximumBytes = 1_048_576) {}
+    public function __construct(private int $maximumBytes = 1_048_576, private int $maximumUploadBytes = 26_214_400) {}
 
     public function process(Request $request, Closure $next): Response
     {
-        if (strlen($request->body()) > $this->maximumBytes) {
+        $contentType = strtolower(trim(explode(';', $request->header('Content-Type') ?? '')[0]));
+        $multipart = $contentType === 'multipart/form-data';
+        $contentLength = $request->header('Content-Length');
+        if ($multipart && is_string($contentLength) && preg_match('/\A[0-9]+\z/', $contentLength) === 1 && (int)$contentLength > $this->maximumUploadBytes) {
+            return Response::error(413, 'request_too_large', 'Request body is too large.');
+        }
+        if (!$multipart && strlen($request->body()) > $this->maximumBytes) {
             return Response::error(413, 'request_too_large', 'Request body is too large.');
         }
         if (in_array($request->method(), ['POST','PUT','PATCH'], true) && $request->body() !== '') {
-            $contentType = strtolower(trim(explode(';', $request->header('Content-Type') ?? '')[0]));
-            if ($contentType !== 'application/json') {
+            if ($contentType !== 'application/json' && !$multipart) {
                 return Response::error(415, 'unsupported_media_type', 'Content-Type must be application/json.');
             }
             try {
+                if ($multipart) {
+                    return $next($request);
+                }
                 $request->jsonBody();
             } catch (\JsonException) {
                 return Response::error(400, 'invalid_json', 'Request body must contain valid JSON.');

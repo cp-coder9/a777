@@ -6,6 +6,7 @@ namespace Architex\Http;
 
 use Closure;
 use Throwable;
+use Architex\Infrastructure\Logging\JsonLogger;
 
 final readonly class Kernel
 {
@@ -14,7 +15,7 @@ final readonly class Kernel
 
     /** @param Closure():string|null $idGenerator */
     /** @param list<Middleware> $middleware */
-    public function __construct(private Router $router, ?Closure $idGenerator = null, private array $middleware = [])
+    public function __construct(private Router $router, ?Closure $idGenerator = null, private array $middleware = [], private ?JsonLogger $logger = null)
     {
         $this->idGenerator = $idGenerator ?? self::generateUlid(...);
     }
@@ -30,7 +31,13 @@ final readonly class Kernel
                 $next = fn (Request $candidate): Response => $middleware->process($candidate, $downstream);
             }
             $response = $next($request)->withMeta(['requestId' => $requestId]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            $this->logger?->error('http.request_failed', [
+                'requestId'=>$requestId,
+                'method'=>$request->method(),
+                'path'=>$request->path(),
+                'exceptionClass'=>$exception::class,
+            ]);
             $response = Response::error(500, 'internal_error', 'The request could not be completed.', $requestId);
         }
 

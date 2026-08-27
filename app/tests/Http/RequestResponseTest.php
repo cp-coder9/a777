@@ -69,4 +69,35 @@ final class RequestResponseTest extends TestCase
         self::assertSame(['Content-Type: application/json; charset=utf-8'], $headers);
         self::assertSame([], $bodies);
     }
+
+    public function testFromGlobalsCapturesSinglePhpUploadWithoutTrustingClientMime(): void
+    {
+        $temporary = tempnam(sys_get_temp_dir(), 'architex-upload-');
+        self::assertIsString($temporary);
+        file_put_contents($temporary, 'test');
+        try {
+            $request = Request::fromGlobals([
+                'REQUEST_METHOD'=>'POST',
+                'REQUEST_URI'=>'/api/v1/projects/' . str_repeat('a', 32) . '/files',
+                'CONTENT_TYPE'=>'multipart/form-data; boundary=test',
+                'CONTENT_LENGTH'=>'4',
+            ], '', ['file'=>['name'=>'client.pdf','tmp_name'=>$temporary,'error'=>UPLOAD_ERR_OK,'size'=>4,'type'=>'application/pdf']]);
+
+            self::assertSame('client.pdf', $request->uploadedFile('file')?->clientName);
+            self::assertSame($temporary, $request->uploadedFile('file')?->temporaryPath);
+        } finally {
+            unlink($temporary);
+        }
+    }
+
+    public function testBinaryResponsePreservesContentTypeAndBodyThroughHeadersAndMeta(): void
+    {
+        $response = Response::binary('binary-body', 'application/pdf', ['Content-Disposition'=>'attachment'])->withHeaders(['X-Test'=>'yes'])->withMeta(['requestId'=>'test']);
+
+        self::assertSame('application/pdf', $response->header('Content-Type'));
+        self::assertSame('attachment', $response->header('Content-Disposition'));
+        self::assertSame('yes', $response->header('X-Test'));
+        self::assertSame('binary-body', $response->body());
+        self::assertSame('', $response->withoutBody()->body());
+    }
 }

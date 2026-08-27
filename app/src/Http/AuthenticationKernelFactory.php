@@ -11,6 +11,7 @@ use Architex\Http\Controller\ProjectController;
 use Architex\Http\Controller\InboxController;
 use Architex\Http\Controller\ToolRegistryController;
 use Architex\Http\Controller\ReadinessController;
+use Architex\Http\Controller\FileController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -29,6 +30,9 @@ use Architex\Platform\Authorization\PermissionService;
 use Architex\Platform\Project\LifecycleService;
 use Architex\Platform\Project\ProjectPassportService;
 use Architex\Platform\Inbox\InboxService;
+use Architex\Platform\Files\FileService;
+use Architex\Platform\Files\LocalFileStorage;
+use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
 final readonly class AuthenticationKernelFactory
@@ -83,6 +87,11 @@ final readonly class AuthenticationKernelFactory
             new ToolRegistryController(dirname(__DIR__, 2) . '/public/assets/tool-registry.json'),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
         ))->register($router);
+        (new FileRoutes(
+            new FileController(new FileService($this->pdo, new LocalFileStorage(dirname(__DIR__, 2) . '/storage/files'))),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
 
         return new Kernel($router, middleware: [
             new SecurityHeadersMiddleware(),
@@ -90,6 +99,6 @@ final readonly class AuthenticationKernelFactory
             new SessionMiddleware($sessions),
             new OrganisationContextMiddleware(),
             new CsrfMiddleware($sessions),
-        ]);
+        ], logger: JsonLogger::toFile(dirname(__DIR__, 2) . '/storage/logs/application.jsonl'));
     }
 }

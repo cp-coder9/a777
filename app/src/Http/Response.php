@@ -15,6 +15,7 @@ final readonly class Response
         private array $payload,
         private array $headers,
         private bool $suppressBody,
+        private ?string $rawBody = null,
     ) {}
 
     /** @param array<string,mixed> $meta */
@@ -30,6 +31,16 @@ final readonly class Response
         return self::make($status, ['data' => null, 'meta' => $meta, 'error' => ['code' => $code, 'message' => $message, 'details' => $details]], $headers);
     }
 
+    /** @param array<string,string> $headers */
+    public static function binary(string $body, string $contentType, array $headers = [], int $status = 200): self
+    {
+        if (preg_match('/\A[a-z0-9][a-z0-9!#$&^_.+\/-]{0,126}\z/i', $contentType) !== 1) {
+            throw new \InvalidArgumentException('The response content type is invalid.');
+        }
+        $headers = self::normaliseHeaders(array_replace($headers, ['Content-Type' => $contentType]), false);
+        return new self($status, ['data'=>null,'meta'=>[],'error'=>null], $headers, false, $body);
+    }
+
     /** @param array<string,mixed> $meta */
     public function withMeta(array $meta): self
     {
@@ -37,18 +48,18 @@ final readonly class Response
             'data' => $this->payload['data'],
             'meta' => array_replace($this->payload['meta'], $meta),
             'error' => $this->payload['error'],
-        ], $this->headers, $this->suppressBody);
+        ], $this->headers, $this->suppressBody, $this->rawBody);
     }
 
     public function withoutBody(): self
     {
-        return new self($this->status, $this->payload, $this->headers, true);
+        return new self($this->status, $this->payload, $this->headers, true, $this->rawBody);
     }
 
     /** @param array<string,string> $headers */
     public function withHeaders(array $headers): self
     {
-        return self::make($this->status, $this->payload, array_replace($this->headers, $headers), $this->suppressBody);
+        return self::make($this->status, $this->payload, array_replace($this->headers, $headers), $this->suppressBody, $this->rawBody);
     }
 
     public function status(): int
@@ -78,6 +89,9 @@ final readonly class Response
         if ($this->suppressBody) {
             return '';
         }
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
+        }
 
         try {
             return json_encode($this->payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
@@ -104,14 +118,14 @@ final readonly class Response
     }
 
     /** @param array<string,mixed> $payload @param array<string,string> $headers */
-    private static function make(int $status, array $payload, array $headers = [], bool $suppressBody = false): self
+    private static function make(int $status, array $payload, array $headers = [], bool $suppressBody = false, ?string $rawBody = null): self
     {
-        $headers = self::normaliseHeaders($headers);
+        $headers = self::normaliseHeaders($headers, $rawBody === null);
         try {
             json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
-            return new self($status, $payload, $headers, $suppressBody);
+            return new self($status, $payload, $headers, $suppressBody, $rawBody);
         } catch (JsonException) {
-            return new self(500, self::encodingFailurePayload($payload), $headers, $suppressBody);
+            return new self(500, self::encodingFailurePayload($payload), $headers, $suppressBody, null);
         }
     }
 
@@ -127,15 +141,17 @@ final readonly class Response
     }
 
     /** @param array<string,string> $headers @return array<string,string> */
-    private static function normaliseHeaders(array $headers): array
+    private static function normaliseHeaders(array $headers, bool $forceJson = true): array
     {
         $normalised = [];
         foreach ($headers as $name => $value) {
             $normalised[strtolower($name)] = [self::canonicalHeaderName($name), $value];
         }
-        unset($normalised['content-type']);
+        if ($forceJson) {
+            unset($normalised['content-type']);
+        }
 
-        $result = ['Content-Type' => 'application/json; charset=utf-8'];
+        $result = $forceJson ? ['Content-Type' => 'application/json; charset=utf-8'] : [];
         foreach ($normalised as [$name, $value]) {
             $result[$name] = $value;
         }

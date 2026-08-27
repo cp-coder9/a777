@@ -6,13 +6,14 @@ namespace Architex\Http;
 
 final readonly class Request
 {
-    /** @param array<string,string> $headers */
+    /** @param array<string,string> $headers @param array<string,UploadedFile> $uploadedFiles */
     private function __construct(
         private string $method,
         private string $path,
         private array $headers,
         private string $body,
         private array $attributes = [],
+        private array $uploadedFiles = [],
     ) {}
 
     /** @param array<string,string> $headers */
@@ -24,7 +25,7 @@ final readonly class Request
     }
 
     /** @param array<string,mixed>|null $server */
-    public static function fromGlobals(?array $server = null, ?string $body = null): self
+    public static function fromGlobals(?array $server = null, ?string $body = null, ?array $files = null): self
     {
         $server ??= $_SERVER;
         $headers = [];
@@ -49,6 +50,16 @@ final readonly class Request
         $remoteIp = $server['REMOTE_ADDR'] ?? null;
         if (is_string($remoteIp) && filter_var($remoteIp, FILTER_VALIDATE_IP) !== false) {
             $request = $request->withAttribute('remoteIp', $remoteIp);
+        }
+        $files ??= $_FILES;
+        foreach ($files as $field => $upload) {
+            if (!is_string($field) || !is_array($upload)) {
+                continue;
+            }
+            try {
+                $request = $request->withUploadedFile($field, UploadedFile::fromPhpUpload($upload));
+            } catch (\InvalidArgumentException) {
+            }
         }
         return $request;
     }
@@ -80,7 +91,20 @@ final readonly class Request
 
     public function withAttribute(string $name, mixed $value): self
     {
-        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]));
+        return new self($this->method, $this->path, $this->headers, $this->body, array_replace($this->attributes, [$name => $value]), $this->uploadedFiles);
+    }
+
+    public function uploadedFile(string $field): ?UploadedFile
+    {
+        return $this->uploadedFiles[$field] ?? null;
+    }
+
+    public function withUploadedFile(string $field, UploadedFile $file): self
+    {
+        if (preg_match('/\A[A-Za-z][A-Za-z0-9_-]{0,63}\z/', $field) !== 1) {
+            throw new \InvalidArgumentException('The upload field name is invalid.');
+        }
+        return new self($this->method, $this->path, $this->headers, $this->body, $this->attributes, array_replace($this->uploadedFiles, [$field => $file]));
     }
 
     /** @return array<string,mixed> */
