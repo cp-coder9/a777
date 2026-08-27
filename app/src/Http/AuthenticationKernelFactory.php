@@ -13,6 +13,7 @@ use Architex\Http\Controller\ToolRegistryController;
 use Architex\Http\Controller\ReadinessController;
 use Architex\Http\Controller\FileController;
 use Architex\Http\Controller\TrustController;
+use Architex\Http\Controller\BriefController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -34,6 +35,7 @@ use Architex\Platform\Inbox\InboxService;
 use Architex\Platform\Files\FileService;
 use Architex\Platform\Files\LocalFileStorage;
 use Architex\Platform\Trust\VerificationService;
+use Architex\Platform\Brief\GuidedBriefService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -100,6 +102,11 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
             new PermissionMiddleware(new PermissionService(), 'verification.review'),
+        ))->register($router);
+        (new BriefRoutes(
+            new BriefController(new GuidedBriefService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
 
         return new Kernel($router, middleware: [
