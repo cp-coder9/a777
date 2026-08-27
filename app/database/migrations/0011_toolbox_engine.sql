@@ -1,0 +1,47 @@
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS tool_runs (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  user_id BINARY(16) NOT NULL,
+  tool_id VARCHAR(80) NOT NULL,
+  tool_version VARCHAR(40) NOT NULL,
+  executed_role VARCHAR(40) NOT NULL,
+  assignment_mode ENUM('none','internal_project','external_reference') NOT NULL,
+  project_id BINARY(16) NULL,
+  project_name VARCHAR(180) NULL,
+  external_reference VARCHAR(180) NULL,
+  assignment_notes VARCHAR(1000) NULL,
+  status ENUM('completed','issued','superseded','failed') NOT NULL,
+  input_payload JSON NOT NULL,
+  output_payload JSON NULL,
+  error_code VARCHAR(80) NULL,
+  snapshot_payload JSON NULL,
+  audit_hash CHAR(64) NULL,
+  audit_reason VARCHAR(180) NULL,
+  issued_at DATETIME(6) NULL,
+  supersedes_run_id BINARY(16) NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  KEY idx_tool_runs_user_history (organisation_id,user_id,created_at),
+  KEY idx_tool_runs_tool_history (organisation_id,user_id,tool_id,created_at),
+  KEY idx_tool_runs_project (organisation_id,project_id,created_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (supersedes_run_id) REFERENCES tool_runs(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tool_run_exports (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  run_id BINARY(16) NOT NULL,
+  format ENUM('json','csv','html') NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(100) NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  sha256 CHAR(64) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_tool_run_export_format (run_id,format),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (run_id) REFERENCES tool_runs(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
