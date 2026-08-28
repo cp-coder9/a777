@@ -23,6 +23,8 @@ final class DocumentEvidenceWorkspaceTest extends TestCase
             'humanConfirmed:true', 'acceptDrawingIntelligenceCandidate', 'rejectDrawingIntelligenceCandidate',
         ] as $expected) self::assertStringContainsString($expected, $shell);
         self::assertStringContainsString('.document-evidence-grid', $styles);
+        self::assertStringContainsString('grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr)', $styles);
+        self::assertStringContainsString('.document-evidence-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))', $styles);
         self::assertStringContainsString('@media(max-width:760px)', $styles);
     }
 }

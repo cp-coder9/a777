@@ -26,7 +26,7 @@
 - [x] Write failing tests for draft creation, exact revision selection, eligibility, issue confirmation, SHA-256 snapshot and immutability.
 - [x] Persist project-scoped transmittals and item links with deduplicated codes.
 - [x] Create issued ProjectRecord, audit event and recipient-role inbox evidence without claiming delivery.
-- [ ] Prove cross-tenant and post-issue mutation attempts fail closed.
+- [x] Prove cross-tenant and post-issue mutation attempts fail closed.
 
 ### Task 2: Provider-honest drawing-intelligence candidates
 
@@ -53,15 +53,15 @@
 - [x] Add failing authenticated API and frontend contracts first.
 - [x] Expose transmittal create/list/show/issue and intelligence candidate create/list/review operations.
 - [x] Add native sections to Documents & Drawings with explicit provider and delivery boundaries.
-- [ ] Verify escaping, revision eligibility, responsive behavior and reload persistence. (Static contracts green; live browser and reload gate pending.)
+- [x] Verify escaping, revision eligibility, responsive behavior and reload persistence.
 
 ### Task 4: Local release evidence
 
 **Files:**
 - Create: `docs/evidence/2026-08-28-release3-transmittals-drawing-intelligence.md`
 
-- [ ] Run schema, service, HTTP, frontend, security and applicable regression suites.
-- [ ] Apply the migration only to the bounded live development database.
-- [ ] Use persistent Chrome DevTools to create/review a human-entered candidate and issue an exact-revision transmittal.
-- [ ] Correlate browser state with MariaDB snapshots, hashes, reviews, ProjectRecords, inbox and audit events.
-- [ ] Keep local proof separate from shared-hosting staging certification.
+- [x] Run schema, service, HTTP, frontend, security and applicable regression suites.
+- [x] Apply the migration only to the bounded live development database.
+- [x] Use persistent Chrome DevTools to create/review a human-entered candidate and issue an exact-revision transmittal.
+- [x] Correlate browser state with MariaDB snapshots, hashes, reviews, ProjectRecords, inbox and audit events.
+- [x] Keep local proof separate from shared-hosting staging certification.
