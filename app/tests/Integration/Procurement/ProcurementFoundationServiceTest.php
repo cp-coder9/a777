@@ -107,9 +107,42 @@ final class ProcurementFoundationServiceTest extends MariaDbTestCase
         self::assertContains('tax_clearance',$comparison['quotes'][1]['missingReturnables']);
         self::assertContains('drainage upgrade',$comparison['quotes'][1]['exclusions']);
         self::assertTrue($comparison['quotes'][1]['conflictDeclared']);
+        $recommendation=$service->recommendAward($buyerOrganisation,$buyer,'owner',$issued['id'],[
+            'comparisonId'=>$comparison['id'],'quoteRevisionId'=>$comparison['quotes'][0]['revisionId'],
+            'reason'=>'Top normalized score with complete returnables; all exclusions and qualifications remain subject to human review.',
+            'riskNotes'=>['Confirm final programme','Retain municipal fees outside contractor price'],'humanConfirmed'=>true,
+        ]);
+        self::assertSame('recommended',$recommendation['status']);
+        self::assertTrue($recommendation['clientApprovalRequired']);
+        self::assertTrue($recommendation['professionalApprovalRequired']);
+        self::assertSame(0,(int)$this->pdo->query('SELECT COUNT(*) FROM procurement_appointment_placeholders')->fetchColumn());
+
+        $clientApproval=$service->approveAward($buyerOrganisation,$buyer,'owner',$recommendation['id'],[
+            'approvalType'=>'client','approverCapacity'=>'client_authorised_representative','decision'=>'approved',
+            'reason'=>'Client reviewed the exact recommendation, price, exclusions, qualifications and risk notes.','humanConfirmed'=>true,
+        ]);
+        self::assertSame('approved',$clientApproval['decision']);
+        try{$service->finaliseAward($buyerOrganisation,$buyer,'owner',$recommendation['id'],true,'Attempt before professional approval.');self::fail('Dual approval must be complete before an appointment placeholder.');}catch(ProcurementException$exception){self::assertSame('procurement_award_approvals_incomplete',$exception->reason);}
+
+        $professional=Identifier::generate();
+        $this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),'qs@example.test','hash','active',UTC_TIMESTAMP(6))")->execute(['id'=>$professional]);
+        $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'member','active')")->execute(['id'=>Identifier::generate(),'o'=>$buyerOrganisation,'u'=>$professional]);
+        $this->pdo->prepare("INSERT INTO professional_profiles(id,organisation_id,user_id,display_name,profession,bio,service_areas,directory_visible) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'Review QS','quantity_surveyor','Independent procurement review.','[\"Gauteng\"]',0)")->execute(['id'=>Identifier::generate(),'o'=>$buyerOrganisation,'u'=>$professional]);
+        $this->pdo->prepare("INSERT INTO verification_records(id,organisation_id,user_id,kind,grade,registration_body,registration_number,popia_consent_at,processing_purpose,retention_until,reviewed_by,reviewed_at) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'professional_registration','manually_reviewed','Test QS body','TEST-QS-1',UTC_TIMESTAMP(6),'Procurement professional authority test',DATE_ADD(UTC_DATE(),INTERVAL 1 YEAR),UNHEX(:reviewer),UTC_TIMESTAMP(6))")->execute(['id'=>Identifier::generate(),'o'=>$buyerOrganisation,'u'=>$professional,'reviewer'=>$reviewer]);
+        $this->pdo->prepare("INSERT INTO project_team_members(id,organisation_id,project_id,user_id,discipline,role_label,verification_grade,status,invited_by,accepted_at) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:p),UNHEX(:u),'quantity_surveyor','Procurement review QS','manually_reviewed','active',UNHEX(:buyer),UTC_TIMESTAMP(6))")->execute(['id'=>Identifier::generate(),'o'=>$buyerOrganisation,'p'=>$project,'u'=>$professional,'buyer'=>$buyer]);
+        $professionalApproval=$service->approveAward($buyerOrganisation,$professional,'member',$recommendation['id'],[
+            'approvalType'=>'professional','approverCapacity'=>'quantity_surveyor','decision'=>'approved',
+            'reason'=>'Registered QS reviewed the exact comparison, returnables, exclusions, qualifications, conflicts and recommendation.','humanConfirmed'=>true,
+        ]);
+        self::assertSame('approved',$professionalApproval['decision']);
+        $placeholder=$service->finaliseAward($buyerOrganisation,$buyer,'owner',$recommendation['id'],true,'Both distinct human approvals recorded; create appointment placeholder for formalisation.');
+        self::assertSame('appointment_pending_formalisation',$placeholder['status']);
+        self::assertFalse($placeholder['signedAppointment']);
+        self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/',$placeholder['snapshotSha256']);
+        self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE record_type='procurement_appointment_placeholder'")->fetchColumn());
         self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE record_type='rfq_package'")->fetchColumn());
         self::assertSame(3,(int)$this->pdo->query("SELECT COUNT(*) FROM procurement_quote_revisions")->fetchColumn());
-        self::assertGreaterThanOrEqual(10,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'procurement.%'")->fetchColumn());
+        self::assertGreaterThanOrEqual(15,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'procurement.%'")->fetchColumn());
 
         $this->expectException(ProcurementException::class);
         $service->getPackage($sellerOrganisation,$seller,$issued['id']);
