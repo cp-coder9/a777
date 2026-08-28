@@ -57,8 +57,8 @@
 **Files:**
 - Create: `docs/evidence/2026-08-28-release3-specforge-core.md`
 
-- [ ] Run focused and applicable regression suites against the disposable MariaDB database.
-- [ ] Apply migration only to the bounded live development database.
-- [ ] Use persistent Chrome DevTools to create, review and issue a specification, then prove reload persistence and responsive layout.
-- [ ] Correlate browser output with MariaDB snapshot hash, document revision, ProjectRecord and audit evidence.
-- [ ] Keep local proof separate from shared-hosting staged-release certification.
+- [x] Run focused and applicable regression suites against the disposable MariaDB database.
+- [x] Apply migration only to the bounded live development database.
+- [x] Use persistent Chrome DevTools to create, review and issue a specification, then prove reload persistence and responsive layout.
+- [x] Correlate browser output with MariaDB snapshot hash, document revision, ProjectRecord and audit evidence.
+- [x] Keep local proof separate from shared-hosting staged-release certification.
