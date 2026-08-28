@@ -22,6 +22,7 @@ use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
+use Architex\Http\Controller\ComplianceController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -139,6 +140,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules)))->create();
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
+        (new ComplianceRoutes(
+            new ComplianceController($complianceRules),
+            new PermissionMiddleware(new PermissionService(),'tools.use'),
+            new PermissionMiddleware(new PermissionService(),'verification.review'),
+        ))->register($router);
         (new ProposalRoutes(
             new ProposalController(new ProposalService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
