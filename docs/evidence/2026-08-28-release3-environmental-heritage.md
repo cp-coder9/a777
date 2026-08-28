@@ -15,16 +15,17 @@ Source boundaries were checked against primary official material:
 - Forward-only migration `0026_environmental_heritage_cases.sql` creates tenant- and project-scoped cases and evidence registers.
 - Authenticated, permission-checked, CSRF-protected PHP routes support create, list, read, evidence, determination, and JSON/CSV/HTML exports.
 - Evidence writes use optimistic versions; stale writes fail closed.
-- A determination requires explicit human confirmation, the case's responsible discipline, an active matching project responsibility, and a current independently reviewed professional-registration record whose reviewer is not the subject.
+- A determination requires explicit human confirmation, the case's responsible discipline, an active matching project responsibility, a matching professional-profile profession, and a current independently reviewed professional-registration record whose reviewer is not the subject.
 - Environmental determinations require both a screening report and site-sensitivity verification. Heritage determinations require both an NID and heritage-impact assessment.
 - Determination snapshots are SHA-256 protected, create an issued project record, and become immutable. All responses explicitly set `authorityDecisionClaimed` and `authorisationClaimed` to false.
 
 ## Executed verification
 
 - PHP 8.3 syntax checks passed for service, controller, routes, and both focused tests; `node --check app/public/assets/js/shell.js` and `git diff --check` passed.
-- Disposable MariaDB service test: `testEnvironmentalAndHeritageEvidenceRequiresProfessionalDetermination` passed with 13 assertions, including stale-write rejection, missing human confirmation, missing professional authority, snapshot hash, project record, and heritage evidence.
+- Disposable MariaDB service test: `testEnvironmentalAndHeritageEvidenceRequiresProfessionalDetermination` passed with 14 assertions, including stale-write rejection, missing human confirmation, wrong-profession rejection, missing professional authority, snapshot hash, project record, and heritage evidence.
 - Disposable MariaDB isolation test: `testTenantIsolationAndEvidenceGateFailClosed` passed with 2 assertions.
 - Disposable MariaDB HTTP test passed with 12 assertions, including missing-CSRF rejection, authenticated persistence, authority-boundary flags, list/read persistence, and checksum-bearing export.
+- The post-hardening combined service/isolation/HTTP run passed **3 tests, 28 assertions**.
 - Local live database migration advanced from 25 applied / 1 pending to **26 applied / 0 pending**.
 
 ## Chrome DevTools MCP proof
