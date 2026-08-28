@@ -255,6 +255,44 @@ final readonly class CommercialControlService
         });
     }
 
+    /** @return array<string,mixed> */
+    public function recordProviderWebhook(string $providerId, string $rawBody, string $timestampHeader, string $signatureHeader): array
+    {
+        $providerId = $this->id(strtolower($providerId), 'financial_provider_not_found');
+        $provider = $this->providerForWebhook($providerId);
+        if (!(bool)$provider['registered'] || !(bool)$provider['live_configured'] || $provider['status'] !== 'active' || !in_array('webhook_status', $this->decodeList((string)$provider['capabilities']), true)) throw new CommercialControlException('financial_provider_webhook_unavailable');
+        if (preg_match('/\A[0-9]{10}\z/', $timestampHeader) !== 1 || abs(time() - (int)$timestampHeader) > 300) throw new CommercialControlException('financial_provider_webhook_timestamp_invalid');
+        if (preg_match('/\A[a-f0-9]{64}\z/i', $signatureHeader) !== 1) throw new CommercialControlException('financial_provider_webhook_signature_invalid');
+        $environmentKey = 'FINANCE_PROVIDER_'.preg_replace('/[^A-Z0-9]+/', '_', strtoupper((string)$provider['provider_key'])).'_WEBHOOK_SECRET';
+        $secret = getenv($environmentKey); if (!is_string($secret) || strlen($secret) < 32) throw new CommercialControlException('financial_provider_webhook_unavailable');
+        $expected = hash_hmac('sha256', $timestampHeader.'.'.$rawBody, $secret); if (!hash_equals($expected, strtolower($signatureHeader))) throw new CommercialControlException('financial_provider_webhook_signature_invalid');
+        try { $payload = json_decode($rawBody, true, 32, JSON_THROW_ON_ERROR); } catch (Throwable) { throw new CommercialControlException('financial_provider_webhook_payload_invalid'); }
+        if (!is_array($payload)) throw new CommercialControlException('financial_provider_webhook_payload_invalid');
+        $eventId = $this->text($payload['eventId'] ?? null, 180, 'financial_provider_webhook_event_id_required');
+        $eventType = $payload['eventType'] ?? null; if (!is_string($eventType) || !in_array($eventType, ['payment_processing', 'payment_paid', 'payment_failed', 'payment_refunded'], true)) throw new CommercialControlException('financial_provider_webhook_event_type_invalid');
+        $providerReference = $this->text($payload['providerReference'] ?? null, 220, 'financial_provider_webhook_reference_required');
+        $amount = $this->unsignedCents($payload['amountCents'] ?? null, true, 'financial_provider_webhook_amount_invalid');
+        $currency = strtoupper($this->text($payload['currency'] ?? null, 3, 'financial_provider_webhook_currency_invalid')); if (preg_match('/\A[A-Z]{3}\z/', $currency) !== 1) throw new CommercialControlException('financial_provider_webhook_currency_invalid');
+        return $this->transaction(function () use ($provider, $providerId, $eventId, $eventType, $providerReference, $amount, $currency, $rawBody, $signatureHeader): array {
+            $existing = $this->webhookEvent($providerId, $eventId); if ($existing !== null) return $existing + ['duplicate' => true];
+            $release = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,requested_amount_cents,currency,status,provider_paid_cents FROM provider_release_requests WHERE provider_id=UNHEX(:provider) AND provider_reference=:reference FOR UPDATE'); $release->execute(['provider' => $providerId, 'reference' => $providerReference]); $row = $release->fetch();
+            $rejection = null;
+            if (!is_array($row)) $rejection = 'provider_release_reference_not_found';
+            elseif ((int)$row['requested_amount_cents'] !== $amount || !hash_equals((string)$row['currency'], $currency)) $rejection = 'provider_release_amount_currency_mismatch';
+            elseif (!in_array($row['status'], ['submitted_to_provider', 'provider_confirmed_paid', 'failed', 'refunded'], true)) $rejection = 'provider_release_status_invalid';
+            $outcome = $rejection === null ? 'applied' : 'rejected'; $releaseId = is_array($row) ? (string)$row['id'] : null;
+            $payloadSha = hash('sha256', $rawBody); $signatureSha = hash('sha256', strtolower($signatureHeader));
+            $this->pdo->prepare('INSERT INTO provider_webhook_events(id,organisation_id,provider_id,release_request_id,external_event_id,event_type,provider_reference,amount_cents,currency,signature_sha256,payload_sha256,payload,outcome,rejection_reason) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:provider),UNHEX(:release),:event,:type,:reference,:amount,:currency,:signature_sha,:payload_sha,:payload,:outcome,:rejection)')->execute(['id' => Identifier::generate(), 'o' => $provider['organisation_id'], 'provider' => $providerId, 'release' => $releaseId, 'event' => $eventId, 'type' => $eventType, 'reference' => $providerReference, 'amount' => $amount, 'currency' => $currency, 'signature_sha' => $signatureSha, 'payload_sha' => $payloadSha, 'payload' => $rawBody, 'outcome' => $outcome, 'rejection' => $rejection]);
+            if ($rejection === null && is_array($row)) {
+                $status = match ($eventType) { 'payment_processing' => 'submitted_to_provider', 'payment_paid' => 'provider_confirmed_paid', 'payment_failed' => 'failed', 'payment_refunded' => 'refunded' };
+                $paid = $eventType === 'payment_paid' ? $amount : ($eventType === 'payment_processing' ? (int)$row['provider_paid_cents'] : 0);
+                $this->pdo->prepare('UPDATE provider_release_requests SET status=:status,provider_paid_cents=:paid,version=version+1 WHERE id=UNHEX(:id)')->execute(['status' => $status, 'paid' => $paid, 'id' => $row['id']]);
+                (new AuditService($this->pdo))->append((string)$provider['organisation_id'], null, 'finance.provider_webhook_applied', 'provider_release_request', (string)$row['id'], ['providerId' => $providerId, 'externalEventId' => $eventId, 'eventType' => $eventType, 'providerReference' => $providerReference, 'amountCents' => $amount, 'currency' => $currency, 'payloadSha256' => $payloadSha, 'providerPaidCents' => $paid]);
+            }
+            return ['externalEventId' => $eventId, 'eventType' => $eventType, 'providerReference' => $providerReference, 'outcome' => $outcome, 'rejectionReason' => $rejection, 'releaseRequestId' => $releaseId, 'releaseStatus' => $rejection === null ? $status : (is_array($row) ? $row['status'] : null), 'providerPaidCents' => $rejection === null ? $paid : (is_array($row) ? (int)$row['provider_paid_cents'] : 0), 'payloadSha256' => $payloadSha, 'duplicate' => false];
+        });
+    }
+
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function createVariation(string $organisationId, string $userId, string $role, string $baselineId, array $input): array
     {
@@ -356,6 +394,19 @@ final readonly class CommercialControlService
     {
         $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,provider_key,name,provider_type,registered,capabilities,live_configured,configuration_reference,status FROM financial_providers WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
         $statement->execute(['id' => $providerId, 'o' => $organisationId]); $row = $statement->fetch(); if (!is_array($row)) throw new CommercialControlException('financial_provider_not_found'); return $row;
+    }
+
+    /** @return array<string,mixed> */
+    private function providerForWebhook(string $providerId): array
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,LOWER(HEX(organisation_id)) organisation_id,provider_key,registered,capabilities,live_configured,status FROM financial_providers WHERE id=UNHEX(:id)'); $statement->execute(['id' => $providerId]); $row = $statement->fetch(); if (!is_array($row)) throw new CommercialControlException('financial_provider_not_found'); return $row;
+    }
+
+    /** @return array<string,mixed>|null */
+    private function webhookEvent(string $providerId, string $eventId): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT e.external_event_id,e.event_type,e.provider_reference,e.outcome,e.rejection_reason,LOWER(HEX(e.release_request_id)) release_request_id,e.payload_sha256,q.status release_status,q.provider_paid_cents FROM provider_webhook_events e LEFT JOIN provider_release_requests q ON q.id=e.release_request_id WHERE e.provider_id=UNHEX(:provider) AND e.external_event_id=:event'); $statement->execute(['provider' => $providerId, 'event' => $eventId]); $row = $statement->fetch();
+        if (!is_array($row)) return null; return ['externalEventId' => $row['external_event_id'], 'eventType' => $row['event_type'], 'providerReference' => $row['provider_reference'], 'outcome' => $row['outcome'], 'rejectionReason' => $row['rejection_reason'], 'releaseRequestId' => $row['release_request_id'], 'releaseStatus' => $row['release_status'], 'providerPaidCents' => $row['provider_paid_cents'] === null ? 0 : (int)$row['provider_paid_cents'], 'payloadSha256' => $row['payload_sha256']];
     }
 
     /** @return array<string,mixed> */

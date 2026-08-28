@@ -38,6 +38,13 @@ final class FinanceHttpTest extends MariaDbTestCase
         self::assertSame(201, $created->status(), $created->body());
         self::assertFalse($created->json()['data']['liveConfigured']);
         self::assertArrayNotHasKey('secret', $created->json()['data']);
+        $providerId = $created->json()['data']['id'];
+        $webhook = $kernel->handle(Request::json('POST', '/api/v1/webhooks/finance/'.$providerId, [
+            'Content-Type' => 'application/json', 'X-Architex-Provider-Timestamp' => (string)time(),
+            'X-Architex-Provider-Signature' => str_repeat('a', 64),
+        ], '{"eventId":"evt-http","eventType":"payment_paid","providerReference":"none","amountCents":1,"currency":"ZAR"}'));
+        self::assertSame(503, $webhook->status(), $webhook->body());
+        self::assertSame('financial_provider_webhook_unavailable', $webhook->json()['error']['code']);
 
         $noCsrf = $kernel->handle($this->json('POST', '/api/v1/financial-providers', array_diff_key($headers, ['X-CSRF-Token' => true]), [
             'providerKey' => 'forbidden-provider', 'name' => 'Forbidden', 'providerType' => 'payment_provider', 'registered' => true, 'capabilities' => ['release'], 'configurationReference' => null,

@@ -27,6 +27,11 @@ final readonly class FinanceController
     public function registerProvider(Request $request): Response { return $this->write($request, fn(array $body, array $scope): array => $this->service->registerProvider($scope[0], $scope[1], $scope[2], $body), 201); }
     public function createReleaseRequest(Request $request): Response { return $this->write($request, fn(array $body, array $scope): array => $this->service->createReleaseRequest($scope[0], $scope[1], $scope[2], $this->id($request, 'certificateRevisionId', 'commercial_certificate_revision_not_found'), $body), 201); }
     public function approveReleaseRequest(Request $request): Response { return $this->write($request, fn(array $body, array $scope): array => $this->service->approveReleaseRequest($scope[0], $scope[1], $scope[2], $this->id($request, 'releaseRequestId', 'provider_release_request_not_found'), $body), 201); }
+    public function providerWebhook(Request $request): Response
+    {
+        try { return Response::success($this->service->recordProviderWebhook($this->id($request, 'providerId', 'financial_provider_not_found'), $request->body(), (string)($request->header('X-Architex-Provider-Timestamp') ?? ''), (string)($request->header('X-Architex-Provider-Signature') ?? '')), status: 202); }
+        catch (CommercialControlException $exception) { return $this->error($exception); }
+    }
 
     /** @param callable(array{string,string,string}):array<string,mixed> $operation */
     private function read(Request $request, callable $operation): Response
@@ -52,5 +57,5 @@ final readonly class FinanceController
 
     private function id(Request $request, string $name, string $reason): string { $id = $request->attribute($name); if (!is_string($id) || preg_match('/\A[a-f0-9]{32}\z/i', $id) !== 1) throw new CommercialControlException($reason); return strtolower($id); }
     /** @param array<string,mixed> $body */ private function version(array $body): int { $version = $body['expectedVersion'] ?? null; if (!is_int($version) || $version < 1) throw new CommercialControlException('commercial_variation_version_required'); return $version; }
-    private function error(CommercialControlException $exception): Response { $status = match ($exception->reason) { 'commercial_project_not_found','commercial_baseline_not_found','commercial_variation_not_found','commercial_claim_not_found','commercial_certificate_revision_not_found','financial_provider_not_found','provider_release_request_not_found' => 404, 'commercial_permission_denied','commercial_variation_approval_permission_denied','provider_release_approval_permission_denied' => 403, 'commercial_variation_version_conflict','commercial_variation_approval_conflict','provider_release_approval_conflict' => 409, default => 422 }; return Response::error($status, $exception->reason, 'The finance and commercial-control request could not be completed.'); }
+    private function error(CommercialControlException $exception): Response { $status = match ($exception->reason) { 'commercial_project_not_found','commercial_baseline_not_found','commercial_variation_not_found','commercial_claim_not_found','commercial_certificate_revision_not_found','financial_provider_not_found','provider_release_request_not_found' => 404, 'financial_provider_webhook_signature_invalid' => 401, 'financial_provider_webhook_unavailable' => 503, 'commercial_permission_denied','commercial_variation_approval_permission_denied','provider_release_approval_permission_denied' => 403, 'commercial_variation_version_conflict','commercial_variation_approval_conflict','provider_release_approval_conflict' => 409, default => 422 }; return Response::error($status, $exception->reason, 'The finance and commercial-control request could not be completed.'); }
 }

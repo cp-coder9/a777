@@ -66,6 +66,22 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertFalse($workspace['providerBoundary']['fundsHeldByArchitex']);
         self::assertFalse($workspace['providerBoundary']['livePaymentClaimed']);
 
+        $secret = 'test-provider-webhook-secret-with-32-bytes';
+        putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET='.$secret);
+        $this->pdo->prepare("UPDATE financial_providers SET live_configured=1,configuration_reference='test-only-fixture' WHERE id=UNHEX(:id)")->execute(['id' => $provider['id']]);
+        $this->pdo->prepare("UPDATE provider_release_requests SET status='submitted_to_provider',provider_reference='PROV-REL-001' WHERE id=UNHEX(:id)")->execute(['id' => $release['id']]);
+        $timestamp = time();
+        $body = json_encode(['eventId' => 'evt-paid-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 8_550_000, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $signature = hash_hmac('sha256', $timestamp.'.'.$body, $secret);
+        $event = $service->recordProviderWebhook($provider['id'], $body, (string)$timestamp, $signature);
+        self::assertSame('applied', $event['outcome']);
+        self::assertFalse($event['duplicate']);
+        self::assertSame('provider_confirmed_paid', $event['releaseStatus']);
+        self::assertSame(8_550_000, $event['providerPaidCents']);
+        $duplicate = $service->recordProviderWebhook($provider['id'], $body, (string)$timestamp, $signature);
+        self::assertTrue($duplicate['duplicate']);
+        putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET');
+
         $disputedClaim = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
             'claimNumber' => 'REL-002', 'claimedToDateCents' => 12_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
             'evidenceReferences' => ['record:release-evidence-002'], 'disputed' => true, 'humanConfirmed' => true, 'reason' => 'Disputed claim recorded.',
