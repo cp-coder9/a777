@@ -29,6 +29,7 @@ use Architex\Http\Controller\SpecForgeController;
 use Architex\Http\Controller\ModelMetadataController;
 use Architex\Http\Controller\TownPlanningController;
 use Architex\Http\Controller\RegulatoryCaseController;
+use Architex\Http\Controller\SurveyJobController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -73,6 +74,7 @@ use Architex\Platform\SpecForge\SpecForgeService;
 use Architex\Platform\Models\ModelMetadataService;
 use Architex\Platform\Planning\TownPlanningService;
 use Architex\Platform\Environment\RegulatoryCaseService;
+use Architex\Platform\Survey\SurveyJobService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -218,6 +220,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
         (new RegulatoryCaseRoutes(new RegulatoryCaseController(new RegulatoryCaseService($this->pdo)),new PermissionMiddleware(new PermissionService(),'projects.read'),new PermissionMiddleware(new PermissionService(),'projects.write')))->register($router);
+        (new SurveyJobRoutes(new SurveyJobController(new SurveyJobService($this->pdo)),new PermissionMiddleware(new PermissionService(),'projects.read'),new PermissionMiddleware(new PermissionService(),'projects.write')))->register($router);
 
         return new Kernel($router, middleware: [
             new SecurityHeadersMiddleware(),
