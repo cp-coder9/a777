@@ -32,9 +32,14 @@ final class ProcurementFoundationServiceTest extends MariaDbTestCase
         $listing=$service->publishListing($sellerOrganisation,$seller,'owner',$listing['id'],$listing['version'],true,'Reviewed public marketplace facts.');
         self::assertSame('published',$listing['status']);
         self::assertSame('verified',$listing['verificationStatus']);
+        $listingTwo=$service->createListing($sellerOrganisation,$seller,'owner',[
+            'listingType'=>'contractor','name'=>'Alternative Builder','publicSummary'=>'Alternative general building and plumbing capacity.',
+            'disciplinesTrades'=>['general_building','plumbing'],'serviceAreas'=>['Gauteng'],'capacityStatus'=>'available','supervisionRequired'=>false,
+        ]);
+        $listingTwo=$service->publishListing($sellerOrganisation,$seller,'owner',$listingTwo['id'],$listingTwo['version'],true,'Reviewed second public marketplace listing.');
 
         $public=$service->searchMarketplace(['trade'=>'general_building','serviceArea'=>'Gauteng']);
-        self::assertCount(1,$public);
+        self::assertCount(2,$public);
         self::assertArrayNotHasKey('organisationId',$public[0]);
         self::assertArrayNotHasKey('createdBy',$public[0]);
 
@@ -60,7 +65,7 @@ final class ProcurementFoundationServiceTest extends MariaDbTestCase
         self::assertFalse($issued['statutoryThresholdClaimed']);
 
         $matches=$service->matchMarketplace($buyerOrganisation,$buyer,$issued['id']);
-        self::assertCount(1,$matches);
+        self::assertCount(2,$matches);
         self::assertTrue($matches[0]['advisoryOnly']);
         self::assertContains('verified marketplace evidence',$matches[0]['reasons']);
 
@@ -68,8 +73,43 @@ final class ProcurementFoundationServiceTest extends MariaDbTestCase
         self::assertSame('in_app_ready',$invitation['deliveryStatus']);
         self::assertFalse($invitation['emailDeliveryClaimed']);
         self::assertMatchesRegularExpression('/\A[A-Za-z0-9_-]{43}\z/',$invitation['accessToken']);
+        $invitationTwo=$service->invite($buyerOrganisation,$buyer,'owner',$issued['id'],$listingTwo['id'],true);
+        $service->acceptInvitation($invitation['accessToken']);
+        $service->acceptInvitation($invitationTwo['accessToken']);
+        $clarification=$service->submitClarification($invitation['accessToken'],'Confirm whether drainage upgrades are included.',true);
+        self::assertTrue($clarification['material']);
+        $addendum=$service->issueAddendum($buyerOrganisation,$buyer,'owner',$issued['id'],[
+            'title'=>'Addendum 1 · drainage scope','content'=>'Drainage upgrades shown on the controlled tender drawings are included.',
+            'clarificationIds'=>[$clarification['id']],'humanConfirmed'=>true,'reason'=>'Reviewed material response for equal issue to every active bidder.',
+        ]);
+        self::assertTrue($addendum['equalInformationCompliant']);
+        self::assertCount(2,$addendum['distributions']);
+
+        $quote=$service->submitQuote($invitation['accessToken'],[
+            'priceZar'=>2_650_000,'leadTimeWeeks'=>22,'providedReturnables'=>$issued['requiredReturnables'],
+            'exclusions'=>['municipal fees'],'qualifications'=>['subject to final approved drawings'],'conflictDeclared'=>false,'conflictDetail'=>null,
+        ]);
+        self::assertSame(1,$quote['revision']);
+        $quote=$service->submitQuote($invitation['accessToken'],[
+            'priceZar'=>2_620_000,'leadTimeWeeks'=>21,'providedReturnables'=>$issued['requiredReturnables'],
+            'exclusions'=>['municipal fees'],'qualifications'=>['subject to final approved drawings'],'conflictDeclared'=>false,'conflictDetail'=>null,
+        ]);
+        self::assertSame(2,$quote['revision']);
+        $returnables=array_values(array_diff($issued['requiredReturnables'],['tax_clearance']));
+        $service->submitQuote($invitationTwo['accessToken'],[
+            'priceZar'=>2_520_000,'leadTimeWeeks'=>26,'providedReturnables'=>$returnables,
+            'exclusions'=>['drainage upgrade'],'qualifications'=>['30 percent deposit requested'],'conflictDeclared'=>true,'conflictDetail'=>'Director disclosed a prior supplier relationship.',
+        ]);
+        $comparison=$service->compareQuotes($buyerOrganisation,$buyer,$issued['id']);
+        self::assertTrue($comparison['advisoryOnly']);
+        self::assertFalse($comparison['automaticAward']);
+        self::assertCount(2,$comparison['quotes']);
+        self::assertContains('tax_clearance',$comparison['quotes'][1]['missingReturnables']);
+        self::assertContains('drainage upgrade',$comparison['quotes'][1]['exclusions']);
+        self::assertTrue($comparison['quotes'][1]['conflictDeclared']);
         self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE record_type='rfq_package'")->fetchColumn());
-        self::assertGreaterThanOrEqual(3,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'procurement.%'")->fetchColumn());
+        self::assertSame(3,(int)$this->pdo->query("SELECT COUNT(*) FROM procurement_quote_revisions")->fetchColumn());
+        self::assertGreaterThanOrEqual(10,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'procurement.%'")->fetchColumn());
 
         $this->expectException(ProcurementException::class);
         $service->getPackage($sellerOrganisation,$seller,$issued['id']);
