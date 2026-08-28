@@ -32,15 +32,15 @@ Turn the canonical Engineer's Calculation Hub into a real tenant-scoped PHP 8.3 
 
 ## Verification gates
 
-- [ ] Domain tests cover correct results, units, boundary validation, and professional responsibility metadata.
-- [ ] Toolbox tests prove role access, standalone/project operation, failed issue without explicit confirmation, immutable issue hash, exports, history, revision, ProjectRecord, and audit events.
-- [ ] HTTP tests prove authenticated tenant isolation and concrete definitions/routes.
-- [ ] Frontend tests prove the canonical engineering workspace is retained and demo-only save behavior is gone.
-- [ ] Relevant regression suites, PHP syntax, JS syntax, and `git diff --check` pass.
-- [ ] Migration applies to a disposable MariaDB and the live local database has zero pending migrations.
-- [ ] Chrome DevTools proves a project calculation is saved, issued with confirmation, reloaded, exported, and persisted exactly in MariaDB with no browser errors.
-- [ ] Desktop and 390px mobile layouts have no horizontal overflow.
-- [ ] Evidence report records exact commands, IDs, hashes, browser requests, and the local/staging boundary.
+- [x] Domain tests cover correct results, units, boundary validation, and professional responsibility metadata.
+- [x] Toolbox tests prove role access, standalone/project operation, failed issue without explicit confirmation, immutable issue hash, exports, history, revision, ProjectRecord, and audit events.
+- [x] HTTP tests prove authenticated tenant isolation and concrete definitions/routes.
+- [x] Frontend tests prove the canonical engineering workspace is retained and demo-only save behavior is gone.
+- [x] Relevant regression suites, PHP syntax, JS syntax, and `git diff --check` pass.
+- [x] The complete schema applies to disposable MariaDB and the live local database has zero pending migrations (no new migration was required for this slice).
+- [x] Chrome DevTools proves a project calculation is saved, issued with confirmation, reloaded, exported, and persisted exactly in MariaDB with no browser errors.
+- [x] Desktop and 390px mobile layouts have no horizontal overflow.
+- [x] Evidence report records exact commands, IDs, hashes, browser requests, and the local/staging boundary.
 
 ## Explicit exclusions
 
