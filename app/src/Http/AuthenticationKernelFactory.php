@@ -55,6 +55,8 @@ use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
+use Architex\Platform\Compliance\ComplianceCalculatorService;
+use Architex\Platform\Compliance\ComplianceRuleRegistry;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -135,7 +137,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
-        $fees=new FeeCalculatorService($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees))->create();
+        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules)))->create();
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
         (new ProposalRoutes(
             new ProposalController(new ProposalService($this->pdo)),

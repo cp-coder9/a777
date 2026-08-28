@@ -6,6 +6,7 @@ namespace Architex\Platform\Toolbox;
 
 use Architex\Platform\Audit\AuditService;
 use Architex\Platform\Identity\Identifier;
+use Architex\Platform\Inbox\InboxService;
 use Architex\Platform\Project\ProjectContext;
 use Architex\Platform\Project\ProjectPhase;
 use Architex\Platform\Records\ProjectRecordService;
@@ -26,7 +27,7 @@ final readonly class ToolboxEngine
         $assignment=$this->assignment($organisationId,$assignment);
         if($issueImmediately&&$definition->requiresProfessionalConfirmation&&trim((string)$issueReason)==='')throw new ToolException('professional_confirmation_required');
         $id=Identifier::generate();$createdAt=(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s.u\Z');
-        try{$output=($definition->execute)($input,['organisationId'=>$organisationId,'userId'=>$userId,'role'=>$role]);if(!is_array($output))throw new ToolException('invalid_tool_output');}
+        try{$output=($definition->execute)($input,['organisationId'=>$organisationId,'userId'=>$userId,'role'=>$role]);if(!is_array($output))throw new ToolException('invalid_tool_output');if($issueImmediately&&array_key_exists('issueEligible',$output)&&$output['issueEligible']!==true)throw new ToolException('tool_output_not_issue_eligible');}
         catch(Throwable $exception){$this->storeFailure($id,$organisationId,$userId,$role,$definition,$assignment,$input,$exception);throw $exception;}
         $status=$issueImmediately?'issued':'completed';$issuedAt=$issueImmediately?$createdAt:null;
         $snapshot=$issueImmediately?['organisationId'=>$organisationId,'userId'=>$userId,'toolId'=>$definition->id,'toolVersion'=>$definition->version,'role'=>$role,'assignment'=>$assignment,'input'=>$input,'output'=>$output,'issuedAt'=>$issuedAt,'reason'=>trim((string)$issueReason)]:null;
@@ -39,6 +40,10 @@ final readonly class ToolboxEngine
             (new AuditService($this->pdo))->append($organisationId,$userId,'tool_run.'.$status,'tool_run',$id,['toolId'=>$definition->id,'toolVersion'=>$definition->version,'assignment'=>$assignment,'auditHash'=>$hash,'advisoryOnly'=>(bool)($output['advisoryOnly']??false)]);
             if($issueImmediately&&($assignment['mode']??'')==='internal_project'&&in_array('ProjectRecord',$definition->downstreamWriteBack,true)){
                 (new ProjectRecordService($this->pdo))->issue(new ProjectContext($organisationId,$userId,$assignment['projectId'],$role),ProjectPhase::Onboarding,'toolbox','tool_run',$definition->name.' issued result','issued',['toolRunId'=>$id,'toolId'=>$definition->id,'toolVersion'=>$definition->version,'auditHash'=>$hash,'output'=>$output],['required'=>true,'approvedBy'=>$userId]);
+            }
+            if($issueImmediately&&($assignment['mode']??'')==='internal_project'&&in_array('Inbox',$definition->downstreamWriteBack,true)&&is_array($output['actionCards']??null)){
+                $inbox=new InboxService($this->pdo);$context=new ProjectContext($organisationId,$userId,$assignment['projectId'],$role);$priority=($output['verdict']??null)==='fail'?'high':'medium';
+                foreach(array_slice($output['actionCards'],0,50)as$index=>$action)if(is_string($action)&&trim($action)!=='')$inbox->create($context,'compliance_action','Compliance action '.($index+1),trim($action),$priority,['toolRunId'=>$id,'toolId'=>$definition->id,'sourceRuleVersionId'=>$output['sourceRuleVersionId']??null,'verdict'=>$output['verdict']??null]);
             }
             $this->pdo->commit();return$run;
         }catch(Throwable $exception){if($this->pdo->inTransaction())$this->pdo->rollBack();throw $exception;}
