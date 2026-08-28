@@ -22,6 +22,8 @@ final readonly class FileService
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['docx'],
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => ['xlsx'],
         'application/vnd.openxmlformats-officedocument.presentationml.presentation' => ['pptx'],
+        'text/plain' => ['ifc'],
+        'application/octet-stream' => ['ifc'],
     ];
 
     public function __construct(private PDO $pdo, private LocalFileStorage $storage, private int $maximumBytes = 25_000_000) {}
@@ -47,6 +49,9 @@ final readonly class FileService
         $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if (!is_string($mime) || !isset(self::ALLOWED_TYPES[$mime]) || !in_array($extension, self::ALLOWED_TYPES[$mime], true)) {
             throw new FileException('unsafe_file', 'The file type is not allowed.');
+        }
+        if ($extension === 'ifc' && !$this->isIfcExchangeFile($upload->temporaryPath)) {
+            throw new FileException('unsafe_file', 'The IFC exchange-file signature is invalid.');
         }
         $actualSize = filesize($upload->temporaryPath);
         $sha256 = hash_file('sha256', $upload->temporaryPath);
@@ -105,5 +110,16 @@ final readonly class FileService
             throw new FileException('invalid_upload', 'The uploaded filename is invalid.');
         }
         return $name;
+    }
+
+    private function isIfcExchangeFile(string $path): bool
+    {
+        $handle=@fopen($path,'rb');
+        if($handle===false)return false;
+        $prefix=fread($handle,8192);
+        fclose($handle);
+        if(!is_string($prefix))return false;
+        $normalised=strtoupper(str_replace(["\r","\n","\t"],' ',$prefix));
+        return str_starts_with(ltrim($normalised),'ISO-10303-21;')&&str_contains($normalised,'HEADER;')&&str_contains($normalised,'FILE_SCHEMA');
     }
 }

@@ -26,19 +26,19 @@
 - Modify: `app/src/Platform/Files/FileService.php`
 - Test: `app/tests/Integration/Models/ModelMetadataServiceTest.php`
 
-- [ ] Write failing tests for safe IFC source upload, source registration, metadata revision creation, tenant isolation and stale-version rejection.
-- [ ] Store exact source filename, format, schema, source revision, file/SHA provenance and extraction mode.
-- [ ] Accept a bounded canonical fact list for rooms, areas, levels, elements, openings, fire routes, parking, site controls, schedules, notes and title-block metadata.
-- [ ] Derive deterministic category counts, duplicate external identifiers, missing source references and verification gaps.
-- [ ] Reject unsupported native-parsing claims and expose provider availability as false.
+- [x] Write failing tests for safe IFC source upload, source registration, metadata revision creation, tenant isolation and stale-version rejection.
+- [x] Store exact source filename, format, schema, source revision, file/SHA provenance and extraction mode.
+- [x] Accept a bounded canonical fact list for rooms, areas, levels, elements, openings, fire routes, parking, site controls, schedules, notes and title-block metadata.
+- [x] Derive deterministic category counts, duplicate external identifiers, missing source references and verification gaps.
+- [x] Reject unsupported native-parsing claims and expose provider availability as false.
 
 ### Task 2: Professional review and immutable issue
 
-- [ ] Write failing tests for role-scoped approve/reject/flag decisions, required reasons and explicit confirmation.
-- [ ] Store append-only decisions with actor, acting role and timestamp.
-- [ ] Block approval on validation errors and block issue until the selected revision is approved.
-- [ ] Snapshot the exact source, metadata, findings, assumptions, decision and professional confirmation under SHA-256.
-- [ ] Create a ProjectRecord and prove issued revisions reject mutation.
+- [x] Write failing tests for role-scoped approve/reject/flag decisions, required reasons and explicit confirmation.
+- [x] Store append-only decisions with actor, acting role and timestamp.
+- [x] Block approval on validation errors and block issue until the selected revision is approved.
+- [x] Snapshot the exact source, metadata, findings, assumptions, decision and professional confirmation under SHA-256.
+- [x] Create a ProjectRecord and prove issued revisions reject mutation.
 
 ### Task 3: Authenticated API and canonical V1 workspace
 
