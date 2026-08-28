@@ -175,6 +175,69 @@ final readonly class CommercialControlService
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
+    public function registerProvider(string $organisationId, string $userId, string $role, array $input): array
+    {
+        $this->assertMember($organisationId, $userId, $role, ['owner', 'admin']);
+        $key = $this->text($input['providerKey'] ?? null, 100, 'financial_provider_key_required');
+        if (preg_match('/\A[a-z0-9][a-z0-9_-]*\z/', $key) !== 1) throw new CommercialControlException('financial_provider_key_invalid');
+        $name = $this->text($input['name'] ?? null, 220, 'financial_provider_name_required');
+        $type = $input['providerType'] ?? null; if (!is_string($type) || !in_array($type, ['payment_provider', 'escrow_provider', 'trust_account_provider'], true)) throw new CommercialControlException('financial_provider_type_invalid');
+        $registered = $input['registered'] ?? null; if (!is_bool($registered)) throw new CommercialControlException('financial_provider_registration_state_required');
+        $capabilities = $this->providerCapabilities($input['capabilities'] ?? null); $reference = $input['configurationReference'] ?? null;
+        if ($reference !== null) $reference = $this->text($reference, 220, 'financial_provider_configuration_reference_invalid');
+        $id = Identifier::generate();
+        $this->pdo->prepare("INSERT INTO financial_providers(id,organisation_id,provider_key,name,provider_type,registered,capabilities,live_configured,configuration_reference,status,created_by) VALUES(UNHEX(:id),UNHEX(:o),:key,:name,:type,:registered,:capabilities,0,:reference,'active',UNHEX(:user))")->execute(['id' => $id, 'o' => $organisationId, 'key' => $key, 'name' => $name, 'type' => $type, 'registered' => $registered ? 1 : 0, 'capabilities' => $this->json($capabilities), 'reference' => $reference, 'user' => $userId]);
+        (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.provider_registered', 'financial_provider', $id, ['providerKey' => $key, 'providerType' => $type, 'registered' => $registered, 'capabilities' => $capabilities, 'liveConfigured' => false, 'secretsStoredInResponse' => false]);
+        return $this->provider($organisationId, $id);
+    }
+
+    /** @param array<string,mixed> $input @return array<string,mixed> */
+    public function createReleaseRequest(string $organisationId, string $userId, string $role, string $certificateRevisionId, array $input): array
+    {
+        $this->assertMember($organisationId, $userId, $role, ['owner', 'admin']);
+        if (($input['humanConfirmed'] ?? false) !== true) throw new CommercialControlException('provider_release_confirmation_required');
+        $providerId = $this->id($input['providerId'] ?? null, 'financial_provider_not_found'); $provider = $this->providerRow($organisationId, $providerId, false);
+        if (!(bool)$provider['registered'] || $provider['status'] !== 'active' || !in_array('release', $this->decodeList((string)$provider['capabilities']), true)) throw new CommercialControlException('financial_provider_not_eligible');
+        $reason = $this->text($input['reason'] ?? null, 1000, 'provider_release_reason_required');
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(r.id)) revision_id,LOWER(HEX(c.id)) certificate_id,LOWER(HEX(c.baseline_id)) baseline_id,LOWER(HEX(b.project_id)) project_id,c.status,r.net_payable_cents,b.currency,r.snapshot_sha256 FROM commercial_payment_certificate_revisions r JOIN commercial_payment_certificates c ON c.id=r.certificate_id AND c.current_revision_id=r.id JOIN commercial_baselines b ON b.id=c.baseline_id AND b.organisation_id=c.organisation_id WHERE r.id=UNHEX(:revision) AND r.organisation_id=UNHEX(:o) AND r.status='current'");
+        $statement->execute(['revision' => $certificateRevisionId, 'o' => $organisationId]); $certificate = $statement->fetch(); if (!is_array($certificate)) throw new CommercialControlException('commercial_certificate_revision_not_found');
+        $amount = (int)$certificate['net_payable_cents']; if ($amount <= 0) throw new CommercialControlException('provider_release_amount_invalid');
+        $status = $certificate['status'] === 'disputed_locked' ? 'disputed_locked' : ((bool)$provider['live_configured'] ? 'approval_required' : 'provider_configuration_required');
+        return $this->transaction(function () use ($organisationId, $userId, $role, $providerId, $provider, $reason, $certificateRevisionId, $certificate, $amount, $status): array {
+            $id = Identifier::generate();
+            $this->pdo->prepare('INSERT INTO provider_release_requests(id,organisation_id,baseline_id,certificate_revision_id,provider_id,requested_amount_cents,currency,provider_paid_cents,status,reason,version,created_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:baseline),UNHEX(:revision),UNHEX(:provider),:amount,:currency,0,:status,:reason,1,UNHEX(:user))')->execute(['id' => $id, 'o' => $organisationId, 'baseline' => $certificate['baseline_id'], 'revision' => $certificateRevisionId, 'provider' => $providerId, 'amount' => $amount, 'currency' => $certificate['currency'], 'status' => $status, 'reason' => $reason, 'user' => $userId]);
+            $payload = ['releaseRequestId' => $id, 'certificateId' => $certificate['certificate_id'], 'certificateRevisionId' => $certificateRevisionId, 'certificateSnapshotSha256' => $certificate['snapshot_sha256'], 'providerId' => $providerId, 'providerKey' => $provider['provider_key'], 'requestedAmountCents' => $amount, 'providerPaidCents' => 0, 'currency' => $certificate['currency'], 'status' => $status, 'fundsHeldByArchitex' => false, 'automaticRelease' => false];
+            $recordId = (new ProjectRecordService($this->pdo))->issue(new ProjectContext($organisationId, $userId, (string)$certificate['project_id'], $role), ProjectPhase::ConstructionExecution, 'finance_commercial_control', 'provider_release_request', 'Third-party provider release request', 'pending_review', $payload, ['required' => true, 'clientApproved' => false, 'leadProfessionalApproved' => false, 'providerConfigured' => (bool)$provider['live_configured']]);
+            (new InboxService($this->pdo))->create(new ProjectContext($organisationId, $userId, (string)$certificate['project_id'], $role), $status === 'disputed_locked' ? 'finance_release_dispute_locked' : 'finance_provider_configuration_required', $status === 'disputed_locked' ? 'Dispute lock prevents provider release' : 'Configure a registered financial provider', $status === 'disputed_locked' ? 'Resolve the claim dispute before any release workflow can continue.' : 'Approvals may be recorded, but no live release can be represented until a real provider connector is configured and verified.', 'critical', $payload + ['projectRecordId' => $recordId]);
+            (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.provider_release_request_created', 'provider_release_request', $id, $payload + ['projectRecordId' => $recordId]);
+            return $this->releaseRequest($organisationId, $id);
+        });
+    }
+
+    /** @param array<string,mixed> $input @return array<string,mixed> */
+    public function approveReleaseRequest(string $organisationId, string $userId, string $role, string $releaseRequestId, array $input): array
+    {
+        $actualRole = $this->assertMember($organisationId, $userId, $role, ['owner', 'admin', 'member']);
+        if (($input['humanConfirmed'] ?? false) !== true) throw new CommercialControlException('provider_release_approval_confirmation_required');
+        $type = $input['approvalType'] ?? null; if (!is_string($type) || !in_array($type, ['lead_professional', 'client'], true)) throw new CommercialControlException('provider_release_approval_type_invalid');
+        $decision = $input['decision'] ?? null; if (!is_string($decision) || !in_array($decision, ['approved', 'rejected'], true)) throw new CommercialControlException('provider_release_decision_invalid');
+        $reason = $this->text($input['reason'] ?? null, 1000, 'provider_release_decision_reason_required');
+        return $this->transaction(function () use ($organisationId, $userId, $actualRole, $releaseRequestId, $type, $decision, $reason): array {
+            $release = $this->releaseRow($organisationId, $releaseRequestId, true); if (in_array($release['status'], ['submitted_to_provider', 'provider_confirmed_paid', 'failed', 'refunded', 'rejected'], true)) throw new CommercialControlException('provider_release_not_approvable');
+            $this->assertApprovalAuthority($organisationId, $userId, $actualRole, (string)$release['project_id'], $type);
+            try { $this->pdo->prepare('INSERT INTO provider_release_approvals(id,organisation_id,release_request_id,approval_type,decision,reason,decided_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:release),:type,:decision,:reason,UNHEX(:user))')->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'release' => $releaseRequestId, 'type' => $type, 'decision' => $decision, 'reason' => $reason, 'user' => $userId]); }
+            catch (Throwable $exception) { throw new CommercialControlException('provider_release_approval_conflict'); }
+            if ($decision === 'rejected') $status = 'rejected';
+            elseif ($release['certificate_status'] === 'disputed_locked') $status = 'disputed_locked';
+            elseif (!(bool)$release['live_configured']) $status = 'provider_configuration_required';
+            else { $count = $this->pdo->prepare("SELECT COUNT(DISTINCT approval_type) FROM provider_release_approvals WHERE release_request_id=UNHEX(:release) AND decision='approved'"); $count->execute(['release' => $releaseRequestId]); $status = (int)$count->fetchColumn() === 2 ? 'approved_for_provider_request' : 'approval_required'; }
+            $this->pdo->prepare('UPDATE provider_release_requests SET status=:status,version=version+1 WHERE id=UNHEX(:id)')->execute(['status' => $status, 'id' => $releaseRequestId]);
+            (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.provider_release_decided', 'provider_release_request', $releaseRequestId, ['approvalType' => $type, 'decision' => $decision, 'status' => $status, 'automaticRelease' => false, 'fundsHeldByArchitex' => false]);
+            return $this->releaseRequest($organisationId, $releaseRequestId);
+        });
+    }
+
+    /** @param array<string,mixed> $input @return array<string,mixed> */
     public function createVariation(string $organisationId, string $userId, string $role, string $baselineId, array $input): array
     {
         $this->assertMember($organisationId, $userId, $role, ['owner', 'admin', 'member']); $this->baselineRow($organisationId, $baselineId, false);
@@ -271,6 +334,35 @@ final readonly class CommercialControlService
     }
 
     /** @return array<string,mixed> */
+    private function providerRow(string $organisationId, string $providerId, bool $lock): array
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,provider_key,name,provider_type,registered,capabilities,live_configured,configuration_reference,status FROM financial_providers WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
+        $statement->execute(['id' => $providerId, 'o' => $organisationId]); $row = $statement->fetch(); if (!is_array($row)) throw new CommercialControlException('financial_provider_not_found'); return $row;
+    }
+
+    /** @return array<string,mixed> */
+    private function provider(string $organisationId, string $providerId): array
+    {
+        $row = $this->providerRow($organisationId, $providerId, false);
+        return ['id' => $row['id'], 'providerKey' => $row['provider_key'], 'name' => $row['name'], 'providerType' => $row['provider_type'], 'registered' => (bool)$row['registered'], 'capabilities' => $this->decodeList((string)$row['capabilities']), 'liveConfigured' => (bool)$row['live_configured'], 'configurationReference' => $row['configuration_reference'], 'status' => $row['status'], 'fundsHeldByArchitex' => false];
+    }
+
+    /** @return array<string,mixed> */
+    private function releaseRow(string $organisationId, string $releaseRequestId, bool $lock): array
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(q.id)) id,LOWER(HEX(q.baseline_id)) baseline_id,LOWER(HEX(q.certificate_revision_id)) certificate_revision_id,LOWER(HEX(q.provider_id)) provider_id,q.requested_amount_cents,q.currency,q.provider_paid_cents,q.status,q.provider_reference,q.version,LOWER(HEX(b.project_id)) project_id,p.live_configured,c.status certificate_status FROM provider_release_requests q JOIN financial_providers p ON p.id=q.provider_id AND p.organisation_id=q.organisation_id JOIN commercial_baselines b ON b.id=q.baseline_id AND b.organisation_id=q.organisation_id JOIN commercial_payment_certificate_revisions r ON r.id=q.certificate_revision_id JOIN commercial_payment_certificates c ON c.id=r.certificate_id WHERE q.id=UNHEX(:id) AND q.organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
+        $statement->execute(['id' => $releaseRequestId, 'o' => $organisationId]); $row = $statement->fetch(); if (!is_array($row)) throw new CommercialControlException('provider_release_request_not_found'); return $row;
+    }
+
+    /** @return array<string,mixed> */
+    private function releaseRequest(string $organisationId, string $releaseRequestId): array
+    {
+        $row = $this->releaseRow($organisationId, $releaseRequestId, false); $statement = $this->pdo->prepare('SELECT approval_type,decision,reason,LOWER(HEX(decided_by)) decided_by,DATE_FORMAT(decided_at,\'%Y-%m-%dT%H:%i:%s.%fZ\') decided_at FROM provider_release_approvals WHERE release_request_id=UNHEX(:id) ORDER BY decided_at,id'); $statement->execute(['id' => $releaseRequestId]);
+        $approvals = array_map(static fn(array $a): array => ['approvalType' => $a['approval_type'], 'decision' => $a['decision'], 'reason' => $a['reason'], 'decidedBy' => $a['decided_by'], 'decidedAt' => $a['decided_at']], $statement->fetchAll());
+        return ['id' => $row['id'], 'baselineId' => $row['baseline_id'], 'certificateRevisionId' => $row['certificate_revision_id'], 'providerId' => $row['provider_id'], 'requestedAmountCents' => (int)$row['requested_amount_cents'], 'currency' => $row['currency'], 'providerPaidCents' => (int)$row['provider_paid_cents'], 'status' => $row['status'], 'providerReference' => $row['provider_reference'], 'version' => (int)$row['version'], 'approvals' => $approvals, 'fundsHeldByArchitex' => false, 'automaticRelease' => false];
+    }
+
+    /** @return array<string,mixed> */
     private function variationRow(string $organisationId, string $variationId, bool $lock): array
     {
         $statement = $this->pdo->prepare('SELECT LOWER(HEX(v.id)) id,LOWER(HEX(v.baseline_id)) baseline_id,LOWER(HEX(b.project_id)) project_id,v.reference,v.title,v.description,v.amount_cents,v.time_impact_days,v.status,v.version FROM commercial_variations v JOIN commercial_baselines b ON b.id=v.baseline_id AND b.organisation_id=v.organisation_id WHERE v.id=UNHEX(:id) AND v.organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
@@ -308,6 +400,8 @@ final readonly class CommercialControlService
     private function id(mixed $value, string $reason): string { if (!is_string($value) || preg_match('/\A[a-f0-9]{32}\z/', $value) !== 1) throw new CommercialControlException($reason); return $value; }
     private function text(mixed $value, int $max, string $reason): string { if (!is_string($value) || ($value = trim($value)) === '' || mb_strlen($value) > $max) throw new CommercialControlException($reason); return $value; }
     private function unsignedCents(mixed $value, bool $zeroAllowed, string $reason): int { if (!is_int($value) || $value < ($zeroAllowed ? 0 : 1) || $value > 9_000_000_000_000_000) throw new CommercialControlException($reason); return $value; }
+    /** @return list<string> */ private function providerCapabilities(mixed $value): array { $allowed = ['collect', 'escrow_hold', 'release', 'payout', 'webhook_status']; if (!is_array($value) || $value === [] || count($value) > count($allowed)) throw new CommercialControlException('financial_provider_capabilities_invalid'); $result = []; foreach ($value as $capability) { if (!is_string($capability) || !in_array($capability, $allowed, true)) throw new CommercialControlException('financial_provider_capabilities_invalid'); $result[] = $capability; } return array_values(array_unique($result)); }
+    /** @return list<string> */ private function decodeList(string $json): array { $value = json_decode($json, true, 512, JSON_THROW_ON_ERROR); if (!is_array($value)) return []; return array_values(array_filter($value, 'is_string')); }
     /** @return list<string> */ private function references(mixed $value): array { if (!is_array($value) || $value === [] || count($value) > 100) throw new CommercialControlException('commercial_claim_evidence_required'); $result = []; foreach ($value as $reference) { if (!is_string($reference) || ($reference = trim($reference)) === '' || mb_strlen($reference) > 500 || !preg_match('/\A[a-z][a-z0-9_-]*:[^\s]+\z/i', $reference)) throw new CommercialControlException('commercial_claim_evidence_invalid'); $result[] = $reference; } return array_values(array_unique($result)); }
     /** @param array<string,mixed> $value */ private function json(array $value): string { return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); }
     private function now(): string { return gmdate('Y-m-d\TH:i:s.u\Z'); }

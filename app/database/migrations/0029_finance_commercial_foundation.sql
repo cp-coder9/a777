@@ -241,3 +241,65 @@ CREATE TABLE IF NOT EXISTS commercial_retention_ledger (
   FOREIGN KEY (certificate_revision_id) REFERENCES commercial_payment_certificate_revisions(id),
   FOREIGN KEY (created_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS financial_providers (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  provider_key VARCHAR(100) NOT NULL,
+  name VARCHAR(220) NOT NULL,
+  provider_type ENUM('payment_provider','escrow_provider','trust_account_provider') NOT NULL,
+  registered TINYINT(1) NOT NULL DEFAULT 0,
+  capabilities JSON NOT NULL,
+  live_configured TINYINT(1) NOT NULL DEFAULT 0,
+  configuration_reference VARCHAR(220) NULL,
+  status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_financial_provider_key (organisation_id,provider_key),
+  KEY idx_financial_provider_capability (organisation_id,status,registered,live_configured),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS provider_release_requests (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  baseline_id BINARY(16) NOT NULL,
+  certificate_revision_id BINARY(16) NOT NULL,
+  provider_id BINARY(16) NOT NULL,
+  requested_amount_cents BIGINT UNSIGNED NOT NULL,
+  currency CHAR(3) NOT NULL,
+  provider_paid_cents BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  status ENUM('approval_required','provider_configuration_required','approved_for_provider_request','submitted_to_provider','provider_confirmed_paid','failed','refunded','disputed_locked','rejected') NOT NULL,
+  provider_reference VARCHAR(220) NULL,
+  reason VARCHAR(1000) NOT NULL,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_provider_release_certificate (certificate_revision_id),
+  KEY idx_provider_release (organisation_id,baseline_id,status,updated_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (baseline_id) REFERENCES commercial_baselines(id),
+  FOREIGN KEY (certificate_revision_id) REFERENCES commercial_payment_certificate_revisions(id),
+  FOREIGN KEY (provider_id) REFERENCES financial_providers(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS provider_release_approvals (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  release_request_id BINARY(16) NOT NULL,
+  approval_type ENUM('lead_professional','client') NOT NULL,
+  decision ENUM('approved','rejected') NOT NULL,
+  reason VARCHAR(1000) NOT NULL,
+  decided_by BINARY(16) NOT NULL,
+  decided_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_provider_release_approval (release_request_id,approval_type),
+  UNIQUE KEY uq_provider_release_approver (release_request_id,decided_by),
+  KEY idx_provider_release_approval_tenant (organisation_id,release_request_id,decision),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (release_request_id) REFERENCES provider_release_requests(id),
+  FOREIGN KEY (decided_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

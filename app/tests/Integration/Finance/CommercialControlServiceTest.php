@@ -13,6 +13,66 @@ use Architex\Tests\Support\MariaDbTestCase;
 
 final class CommercialControlServiceTest extends MariaDbTestCase
 {
+    public function testReleaseRequestsNeverPretendToMoveMoneyWithoutProviderConfiguration(): void
+    {
+        [$organisationId, $ownerId, $projectId, $appointmentId, $qsId, $leadId] = $this->formallyIssuedAppointment();
+        $service = new CommercialControlService($this->pdo);
+        $baseline = $service->createBaseline($organisationId, $ownerId, 'owner', $projectId, [
+            'appointmentId' => $appointmentId, 'contractSumCents' => 50_000_000, 'currency' => 'ZAR', 'vatIncluded' => true,
+            'contingencyCents' => 0, 'retentionBasisPoints' => 500, 'humanConfirmed' => true, 'reason' => 'Reviewed source.',
+        ]);
+        $schedule = $service->createSchedule($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'title' => 'Release schedule', 'humanConfirmed' => true, 'reason' => 'Reviewed schedule.',
+            'milestones' => [['label' => 'Works', 'amountCents' => 50_000_000, 'dueDate' => '2026-11-01']],
+        ]);
+        $provider = $service->registerProvider($organisationId, $ownerId, 'owner', [
+            'providerKey' => 'registered-provider-pending-contract', 'name' => 'Registered provider candidate',
+            'providerType' => 'escrow_provider', 'registered' => true,
+            'capabilities' => ['escrow_hold', 'release', 'payout', 'webhook_status'],
+            'configurationReference' => null,
+        ]);
+        self::assertFalse($provider['liveConfigured']);
+        self::assertArrayNotHasKey('secret', $provider);
+        self::assertArrayNotHasKey('webhookSecret', $provider);
+
+        $claim = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'claimNumber' => 'REL-001', 'claimedToDateCents' => 10_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
+            'evidenceReferences' => ['record:release-evidence-001'], 'disputed' => false, 'humanConfirmed' => true, 'reason' => 'Reviewed claim.',
+        ]);
+        $certificate = $service->certifyClaim($organisationId, $qsId, 'member', $claim['id'], [
+            'grossCertifiedToDateCents' => 9_000_000, 'otherDeductionsCents' => 0, 'humanConfirmed' => true, 'reason' => 'QS certified.',
+        ]);
+        $release = $service->createReleaseRequest($organisationId, $ownerId, 'owner', $certificate['revisionId'], [
+            'providerId' => $provider['id'], 'humanConfirmed' => true, 'reason' => 'Prepare provider-mediated request only.',
+        ]);
+        self::assertSame(8_550_000, $release['requestedAmountCents']);
+        self::assertSame('provider_configuration_required', $release['status']);
+        self::assertSame(0, $release['providerPaidCents']);
+        self::assertFalse($release['fundsHeldByArchitex']);
+
+        $service->approveReleaseRequest($organisationId, $leadId, 'member', $release['id'], [
+            'approvalType' => 'lead_professional', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Professional approved exact certificate.',
+        ]);
+        $approved = $service->approveReleaseRequest($organisationId, $ownerId, 'owner', $release['id'], [
+            'approvalType' => 'client', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Client approved exact release amount.',
+        ]);
+        self::assertSame('provider_configuration_required', $approved['status']);
+        self::assertCount(2, $approved['approvals']);
+        self::assertNull($approved['providerReference']);
+
+        $disputedClaim = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'claimNumber' => 'REL-002', 'claimedToDateCents' => 12_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
+            'evidenceReferences' => ['record:release-evidence-002'], 'disputed' => true, 'humanConfirmed' => true, 'reason' => 'Disputed claim recorded.',
+        ]);
+        $disputedCertificate = $service->certifyClaim($organisationId, $qsId, 'member', $disputedClaim['id'], [
+            'grossCertifiedToDateCents' => 10_000_000, 'otherDeductionsCents' => 0, 'humanConfirmed' => true, 'reason' => 'Measured amount recorded without clearing dispute.',
+        ]);
+        $locked = $service->createReleaseRequest($organisationId, $ownerId, 'owner', $disputedCertificate['revisionId'], [
+            'providerId' => $provider['id'], 'humanConfirmed' => true, 'reason' => 'Record blocked request for audit.',
+        ]);
+        self::assertSame('disputed_locked', $locked['status']);
+    }
+
     public function testClaimsCertificatesRetentionPreviousPaymentsAndDisputesStaySeparate(): void
     {
         [$organisationId, $ownerId, $projectId, $appointmentId, $qsId] = $this->formallyIssuedAppointment();
