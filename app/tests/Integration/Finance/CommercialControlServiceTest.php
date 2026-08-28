@@ -13,6 +13,66 @@ use Architex\Tests\Support\MariaDbTestCase;
 
 final class CommercialControlServiceTest extends MariaDbTestCase
 {
+    public function testClaimsCertificatesRetentionPreviousPaymentsAndDisputesStaySeparate(): void
+    {
+        [$organisationId, $ownerId, $projectId, $appointmentId, $qsId] = $this->formallyIssuedAppointment();
+        $service = new CommercialControlService($this->pdo);
+        $baseline = $service->createBaseline($organisationId, $ownerId, 'owner', $projectId, [
+            'appointmentId' => $appointmentId, 'contractSumCents' => 100_000_000, 'currency' => 'ZAR',
+            'vatIncluded' => true, 'contingencyCents' => 0, 'retentionBasisPoints' => 1000,
+            'humanConfirmed' => true, 'reason' => 'Reviewed signed source and amount.',
+        ]);
+        $schedule = $service->createSchedule($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'title' => 'Progress schedule', 'humanConfirmed' => true, 'reason' => 'Reviewed milestones.',
+            'milestones' => [
+                ['label' => 'Structure', 'amountCents' => 40_000_000, 'dueDate' => '2026-10-01'],
+                ['label' => 'Completion', 'amountCents' => 60_000_000, 'dueDate' => '2027-03-01'],
+            ],
+        ]);
+        $claimOne = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'claimNumber' => 'PC-001', 'claimedToDateCents' => 20_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
+            'evidenceReferences' => ['record:site-progress-001', 'document:valuation-001'], 'disputed' => false,
+            'humanConfirmed' => true, 'reason' => 'Claimant checked cumulative amount and evidence.',
+        ]);
+        $certificateOne = $service->certifyClaim($organisationId, $qsId, 'member', $claimOne['id'], [
+            'grossCertifiedToDateCents' => 19_000_000, 'otherDeductionsCents' => 0,
+            'humanConfirmed' => true, 'reason' => 'QS measured the evidenced work.',
+        ]);
+        self::assertSame(20_000_000, $certificateOne['claimedToDateCents']);
+        self::assertSame(19_000_000, $certificateOne['grossCertifiedToDateCents']);
+        self::assertSame(1_900_000, $certificateOne['retentionHeldToDateCents']);
+        self::assertSame(0, $certificateOne['previousCertifiedPaymentsCents']);
+        self::assertSame(17_100_000, $certificateOne['netPayableCents']);
+        self::assertSame('approval_required', $certificateOne['status']);
+
+        $claimTwo = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'claimNumber' => 'PC-002', 'claimedToDateCents' => 30_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
+            'evidenceReferences' => ['record:site-progress-002'], 'disputed' => false,
+            'humanConfirmed' => true, 'reason' => 'Second cumulative claim checked.',
+        ]);
+        $certificateTwo = $service->certifyClaim($organisationId, $qsId, 'member', $claimTwo['id'], [
+            'grossCertifiedToDateCents' => 28_000_000, 'otherDeductionsCents' => 0,
+            'humanConfirmed' => true, 'reason' => 'QS measured cumulative work and prior certificate.',
+        ]);
+        self::assertSame(2_800_000, $certificateTwo['retentionHeldToDateCents']);
+        self::assertSame(17_100_000, $certificateTwo['previousCertifiedPaymentsCents']);
+        self::assertSame(8_100_000, $certificateTwo['netPayableCents']);
+        self::assertSame(2_800_000, $service->retentionBalance($organisationId, $ownerId, $baseline['id'])['heldToDateCents']);
+
+        $disputed = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'claimNumber' => 'PC-003', 'claimedToDateCents' => 35_000_000, 'milestoneId' => $schedule['milestones'][1]['id'],
+            'evidenceReferences' => ['record:site-progress-003'], 'disputed' => true,
+            'humanConfirmed' => true, 'reason' => 'Cumulative claim recorded with an unresolved scope dispute.',
+        ]);
+        $locked = $service->certifyClaim($organisationId, $qsId, 'member', $disputed['id'], [
+            'grossCertifiedToDateCents' => 30_000_000, 'otherDeductionsCents' => 0,
+            'humanConfirmed' => true, 'reason' => 'Undisputed measured work recorded; release remains locked.',
+        ]);
+        self::assertSame(5_000_000, $locked['disputedAmountCents']);
+        self::assertSame('disputed_locked', $locked['status']);
+        self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/', $locked['snapshotSha256']);
+    }
+
     public function testBaselineScheduleAndApprovedVariationRemainGovernedAndTenantScoped(): void
     {
         [$organisationId, $ownerId, $projectId, $appointmentId, $qsId, $leadId] = $this->formallyIssuedAppointment();

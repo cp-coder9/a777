@@ -135,3 +135,109 @@ CREATE TABLE IF NOT EXISTS commercial_variation_approvals (
   FOREIGN KEY (variation_id) REFERENCES commercial_variations(id),
   FOREIGN KEY (decided_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commercial_payment_claims (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  baseline_id BINARY(16) NOT NULL,
+  milestone_id BINARY(16) NOT NULL,
+  claim_number VARCHAR(80) NOT NULL,
+  status ENUM('submitted','certified','disputed_locked','withdrawn') NOT NULL DEFAULT 'submitted',
+  current_revision_id BINARY(16) NULL,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  submitted_by BINARY(16) NOT NULL,
+  submitted_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_commercial_claim_number (baseline_id,claim_number),
+  KEY idx_commercial_claim (organisation_id,baseline_id,status,submitted_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (baseline_id) REFERENCES commercial_baselines(id),
+  FOREIGN KEY (milestone_id) REFERENCES commercial_payment_milestones(id),
+  FOREIGN KEY (submitted_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commercial_payment_claim_revisions (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  claim_id BINARY(16) NOT NULL,
+  revision INT UNSIGNED NOT NULL,
+  claimed_to_date_cents BIGINT UNSIGNED NOT NULL,
+  evidence_references JSON NOT NULL,
+  disputed TINYINT(1) NOT NULL DEFAULT 0,
+  snapshot_payload JSON NOT NULL,
+  snapshot_sha256 CHAR(64) NOT NULL,
+  reason VARCHAR(1000) NOT NULL,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_commercial_claim_revision (claim_id,revision),
+  UNIQUE KEY uq_commercial_claim_sha (claim_id,snapshot_sha256),
+  KEY idx_commercial_claim_revision_tenant (organisation_id,claim_id,created_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (claim_id) REFERENCES commercial_payment_claims(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commercial_payment_certificates (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  baseline_id BINARY(16) NOT NULL,
+  claim_id BINARY(16) NOT NULL,
+  current_revision_id BINARY(16) NULL,
+  status ENUM('approval_required','disputed_locked','superseded','voided') NOT NULL,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_commercial_certificate_claim (claim_id),
+  KEY idx_commercial_certificate (organisation_id,baseline_id,status,created_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (baseline_id) REFERENCES commercial_baselines(id),
+  FOREIGN KEY (claim_id) REFERENCES commercial_payment_claims(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commercial_payment_certificate_revisions (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  certificate_id BINARY(16) NOT NULL,
+  revision INT UNSIGNED NOT NULL,
+  status ENUM('current','superseded') NOT NULL DEFAULT 'current',
+  claimed_to_date_cents BIGINT UNSIGNED NOT NULL,
+  gross_certified_to_date_cents BIGINT UNSIGNED NOT NULL,
+  retention_held_to_date_cents BIGINT UNSIGNED NOT NULL,
+  other_deductions_cents BIGINT UNSIGNED NOT NULL,
+  previous_certified_payments_cents BIGINT UNSIGNED NOT NULL,
+  disputed_amount_cents BIGINT UNSIGNED NOT NULL,
+  net_payable_cents BIGINT UNSIGNED NOT NULL,
+  snapshot_payload JSON NOT NULL,
+  snapshot_sha256 CHAR(64) NOT NULL,
+  reason VARCHAR(1000) NOT NULL,
+  certified_by BINARY(16) NOT NULL,
+  certified_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_commercial_certificate_revision (certificate_id,revision),
+  UNIQUE KEY uq_commercial_certificate_sha (certificate_id,snapshot_sha256),
+  KEY idx_commercial_certificate_revision_tenant (organisation_id,certificate_id,status),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (certificate_id) REFERENCES commercial_payment_certificates(id),
+  FOREIGN KEY (certified_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS commercial_retention_ledger (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  baseline_id BINARY(16) NOT NULL,
+  certificate_revision_id BINARY(16) NOT NULL,
+  event_type ENUM('accrual','adjustment','approved_release','provider_confirmed_release') NOT NULL,
+  amount_cents BIGINT NOT NULL,
+  balance_cents BIGINT UNSIGNED NOT NULL,
+  snapshot_payload JSON NOT NULL,
+  snapshot_sha256 CHAR(64) NOT NULL,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_commercial_retention_certificate (certificate_revision_id),
+  KEY idx_commercial_retention_balance (organisation_id,baseline_id,created_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (baseline_id) REFERENCES commercial_baselines(id),
+  FOREIGN KEY (certificate_revision_id) REFERENCES commercial_payment_certificate_revisions(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

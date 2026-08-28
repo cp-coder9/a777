@@ -6,6 +6,7 @@ namespace Architex\Platform\Finance;
 
 use Architex\Platform\Audit\AuditService;
 use Architex\Platform\Identity\Identifier;
+use Architex\Platform\Inbox\InboxService;
 use Architex\Platform\Project\ProjectContext;
 use Architex\Platform\Project\ProjectPhase;
 use Architex\Platform\Records\ProjectRecordService;
@@ -85,7 +86,7 @@ final readonly class CommercialControlService
             if (!$date || $date->format('Y-m-d') !== ($item['dueDate'] ?? null) || ($previousDate !== null && $date < $previousDate)) throw new CommercialControlException('commercial_schedule_due_date_invalid');
             $amount = $this->unsignedCents($item['amountCents'] ?? null, false, 'commercial_schedule_amount_invalid');
             $total += $amount; if ($total > PHP_INT_MAX) throw new CommercialControlException('commercial_schedule_amount_invalid');
-            $milestones[] = ['sequenceNumber' => $index + 1, 'label' => $this->text($item['label'] ?? null, 220, 'commercial_schedule_label_required'), 'amountCents' => $amount, 'dueDate' => $date->format('Y-m-d')];
+            $milestones[] = ['id' => Identifier::generate(), 'sequenceNumber' => $index + 1, 'label' => $this->text($item['label'] ?? null, 220, 'commercial_schedule_label_required'), 'amountCents' => $amount, 'dueDate' => $date->format('Y-m-d')];
             $previousDate = $date;
         }
         if ($total !== (int)$baseline['current_contract_sum_cents']) throw new CommercialControlException('commercial_schedule_total_mismatch');
@@ -95,10 +96,82 @@ final readonly class CommercialControlService
             $this->pdo->prepare("UPDATE commercial_payment_schedules SET status='superseded' WHERE organisation_id=UNHEX(:o) AND baseline_id=UNHEX(:baseline) AND status='issued'")->execute(['o' => $organisationId, 'baseline' => $baselineId]);
             $this->pdo->prepare("INSERT INTO commercial_payment_schedules(id,organisation_id,baseline_id,title,scheduled_total_cents,status,snapshot_payload,snapshot_sha256,reason,created_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:baseline),:title,:total,'issued',:snapshot,:sha,:reason,UNHEX(:user))")->execute(['id' => $id, 'o' => $organisationId, 'baseline' => $baselineId, 'title' => $title, 'total' => $total, 'snapshot' => $json, 'sha' => $sha, 'reason' => $reason, 'user' => $userId]);
             $insert = $this->pdo->prepare('INSERT INTO commercial_payment_milestones(id,organisation_id,schedule_id,sequence_number,label,amount_cents,due_date) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:schedule),:sequence,:label,:amount,:due)');
-            foreach ($milestones as $milestone) $insert->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'schedule' => $id, 'sequence' => $milestone['sequenceNumber'], 'label' => $milestone['label'], 'amount' => $milestone['amountCents'], 'due' => $milestone['dueDate']]);
+            foreach ($milestones as $milestone) $insert->execute(['id' => $milestone['id'], 'o' => $organisationId, 'schedule' => $id, 'sequence' => $milestone['sequenceNumber'], 'label' => $milestone['label'], 'amount' => $milestone['amountCents'], 'due' => $milestone['dueDate']]);
             (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.payment_schedule_issued', 'commercial_payment_schedule', $id, ['baselineId' => $baselineId, 'scheduledTotalCents' => $total, 'snapshotSha256' => $sha]);
             return ['id' => $id, 'baselineId' => $baselineId, 'title' => $title, 'scheduledTotalCents' => $total, 'milestones' => $milestones, 'status' => 'issued', 'snapshotSha256' => $sha];
         });
+    }
+
+    /** @param array<string,mixed> $input @return array<string,mixed> */
+    public function submitClaim(string $organisationId, string $userId, string $role, string $baselineId, array $input): array
+    {
+        $this->assertMember($organisationId, $userId, $role, ['owner', 'admin', 'member']);
+        if (($input['humanConfirmed'] ?? false) !== true) throw new CommercialControlException('commercial_claim_confirmation_required');
+        $baseline = $this->baselineRow($organisationId, $baselineId, false);
+        $claimNumber = $this->text($input['claimNumber'] ?? null, 80, 'commercial_claim_number_required');
+        $claimed = $this->unsignedCents($input['claimedToDateCents'] ?? null, false, 'commercial_claim_amount_invalid');
+        if ($claimed > (int)$baseline['current_contract_sum_cents']) throw new CommercialControlException('commercial_claim_exceeds_contract_sum');
+        $milestoneId = $this->id($input['milestoneId'] ?? null, 'commercial_claim_milestone_required');
+        $milestone = $this->pdo->prepare('SELECT COUNT(*) FROM commercial_payment_milestones m JOIN commercial_payment_schedules s ON s.id=m.schedule_id WHERE m.id=UNHEX(:id) AND m.organisation_id=UNHEX(:o) AND s.baseline_id=UNHEX(:baseline)');
+        $milestone->execute(['id' => $milestoneId, 'o' => $organisationId, 'baseline' => $baselineId]); if ((int)$milestone->fetchColumn() !== 1) throw new CommercialControlException('commercial_claim_milestone_not_found');
+        $evidence = $this->references($input['evidenceReferences'] ?? null); $disputed = $input['disputed'] ?? null;
+        if (!is_bool($disputed)) throw new CommercialControlException('commercial_claim_dispute_state_required');
+        $reason = $this->text($input['reason'] ?? null, 1000, 'commercial_claim_reason_required');
+        return $this->transaction(function () use ($organisationId, $userId, $role, $baselineId, $baseline, $claimNumber, $claimed, $milestoneId, $evidence, $disputed, $reason): array {
+            $id = Identifier::generate(); $revisionId = Identifier::generate(); $status = $disputed ? 'disputed_locked' : 'submitted';
+            $snapshot = ['claimId' => $id, 'baselineId' => $baselineId, 'projectId' => $baseline['project_id'], 'claimNumber' => $claimNumber, 'revision' => 1, 'claimedToDateCents' => $claimed, 'currency' => $baseline['currency'], 'milestoneId' => $milestoneId, 'evidenceReferences' => $evidence, 'disputed' => $disputed, 'status' => $status, 'humanConfirmed' => true, 'submittedBy' => $userId, 'submittedAt' => $this->now()];
+            $json = $this->json($snapshot); $sha = hash('sha256', $json);
+            $this->pdo->prepare("INSERT INTO commercial_payment_claims(id,organisation_id,baseline_id,milestone_id,claim_number,status,current_revision_id,version,submitted_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:baseline),UNHEX(:milestone),:number,:status,UNHEX(:revision),1,UNHEX(:user))")->execute(['id' => $id, 'o' => $organisationId, 'baseline' => $baselineId, 'milestone' => $milestoneId, 'number' => $claimNumber, 'status' => $status, 'revision' => $revisionId, 'user' => $userId]);
+            $this->pdo->prepare('INSERT INTO commercial_payment_claim_revisions(id,organisation_id,claim_id,revision,claimed_to_date_cents,evidence_references,disputed,snapshot_payload,snapshot_sha256,reason,created_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:claim),1,:claimed,:evidence,:disputed,:snapshot,:sha,:reason,UNHEX(:user))')->execute(['id' => $revisionId, 'o' => $organisationId, 'claim' => $id, 'claimed' => $claimed, 'evidence' => $this->json($evidence), 'disputed' => $disputed ? 1 : 0, 'snapshot' => $json, 'sha' => $sha, 'reason' => $reason, 'user' => $userId]);
+            $recordId = (new ProjectRecordService($this->pdo))->issue(new ProjectContext($organisationId, $userId, (string)$baseline['project_id'], $role), ProjectPhase::ConstructionExecution, 'finance_commercial_control', 'claim_submission', 'Payment claim '.$claimNumber, $disputed ? 'pending_review' : 'issued', $snapshot + ['snapshotSha256' => $sha], ['required' => true, 'quantitySurveyorReviewed' => false]);
+            (new InboxService($this->pdo))->create(new ProjectContext($organisationId, $userId, (string)$baseline['project_id'], $role), 'finance_claim_review_required', 'Payment claim '.$claimNumber.' needs QS review', $disputed ? 'This claim includes an unresolved dispute and remains release-locked.' : 'Review the exact cumulative claim and linked evidence.', $disputed ? 'critical' : 'high', ['baselineId' => $baselineId, 'claimId' => $id, 'snapshotSha256' => $sha, 'projectRecordId' => $recordId]);
+            (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.claim_submitted', 'commercial_payment_claim', $id, ['baselineId' => $baselineId, 'claimedToDateCents' => $claimed, 'disputed' => $disputed, 'snapshotSha256' => $sha, 'projectRecordId' => $recordId]);
+            return ['id' => $id, 'baselineId' => $baselineId, 'claimNumber' => $claimNumber, 'revision' => 1, 'claimedToDateCents' => $claimed, 'currency' => $baseline['currency'], 'milestoneId' => $milestoneId, 'evidenceReferences' => $evidence, 'disputed' => $disputed, 'status' => $status, 'snapshotSha256' => $sha];
+        });
+    }
+
+    /** @param array<string,mixed> $input @return array<string,mixed> */
+    public function certifyClaim(string $organisationId, string $userId, string $role, string $claimId, array $input): array
+    {
+        $actualRole = $this->assertMember($organisationId, $userId, $role, ['owner', 'admin', 'member']);
+        if (($input['humanConfirmed'] ?? false) !== true) throw new CommercialControlException('commercial_certificate_confirmation_required');
+        $gross = $this->unsignedCents($input['grossCertifiedToDateCents'] ?? null, true, 'commercial_certificate_gross_invalid');
+        $deductions = $this->unsignedCents($input['otherDeductionsCents'] ?? 0, true, 'commercial_certificate_deductions_invalid');
+        $reason = $this->text($input['reason'] ?? null, 1000, 'commercial_certificate_reason_required');
+        return $this->transaction(function () use ($organisationId, $userId, $actualRole, $claimId, $gross, $deductions, $reason): array {
+            $claim = $this->claimRow($organisationId, $claimId, true); $this->assertApprovalAuthority($organisationId, $userId, $actualRole, (string)$claim['project_id'], 'quantity_surveyor');
+            if ($claim['status'] === 'withdrawn') throw new CommercialControlException('commercial_claim_not_certifiable');
+            $claimed = (int)$claim['claimed_to_date_cents']; if ($gross > $claimed) throw new CommercialControlException('commercial_certificate_exceeds_claim');
+            $prior = $this->pdo->prepare("SELECT COALESCE(SUM(r.net_payable_cents),0) previous_payments,COALESCE(MAX(r.gross_certified_to_date_cents),0) prior_gross,COALESCE(MAX(r.retention_held_to_date_cents),0) prior_retention FROM commercial_payment_certificates c JOIN commercial_payment_certificate_revisions r ON r.id=c.current_revision_id WHERE c.organisation_id=UNHEX(:o) AND c.baseline_id=UNHEX(:baseline) AND c.claim_id<>UNHEX(:claim) AND c.status<>'voided'");
+            $prior->execute(['o' => $organisationId, 'baseline' => $claim['baseline_id'], 'claim' => $claimId]); $totals = $prior->fetch();
+            $previous = (int)$totals['previous_payments']; $priorGross = (int)$totals['prior_gross']; $priorRetention = (int)$totals['prior_retention'];
+            if ($gross < $priorGross) throw new CommercialControlException('commercial_certificate_cumulative_regression');
+            $basisPoints = (int)$claim['retention_basis_points'];
+            $retention = intdiv($gross, 10000) * $basisPoints + intdiv(($gross % 10000) * $basisPoints + 5000, 10000); $net = $gross - $retention - $deductions - $previous;
+            if ($net < 0) throw new CommercialControlException('commercial_certificate_net_negative');
+            $disputedAmount = max(0, $claimed - $gross); $locked = (bool)$claim['disputed']; $status = $locked ? 'disputed_locked' : 'approval_required';
+            $certificate = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,version FROM commercial_payment_certificates WHERE claim_id=UNHEX(:claim) FOR UPDATE'); $certificate->execute(['claim' => $claimId]); $existing = $certificate->fetch();
+            if (is_array($existing)) { $certificateId = (string)$existing['id']; $revisionNumber = (int)$existing['version'] + 1; $this->pdo->prepare("UPDATE commercial_payment_certificate_revisions SET status='superseded' WHERE certificate_id=UNHEX(:certificate) AND status='current'")->execute(['certificate' => $certificateId]); }
+            else { $certificateId = Identifier::generate(); $revisionNumber = 1; $this->pdo->prepare('INSERT INTO commercial_payment_certificates(id,organisation_id,baseline_id,claim_id,status,version,created_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:baseline),UNHEX(:claim),:status,1,UNHEX(:user))')->execute(['id' => $certificateId, 'o' => $organisationId, 'baseline' => $claim['baseline_id'], 'claim' => $claimId, 'status' => $status, 'user' => $userId]); }
+            $revisionId = Identifier::generate(); $snapshot = ['certificateId' => $certificateId, 'certificateRevisionId' => $revisionId, 'revision' => $revisionNumber, 'claimId' => $claimId, 'claimRevisionId' => $claim['claim_revision_id'], 'baselineId' => $claim['baseline_id'], 'claimedToDateCents' => $claimed, 'grossCertifiedToDateCents' => $gross, 'retentionHeldToDateCents' => $retention, 'otherDeductionsCents' => $deductions, 'previousCertifiedPaymentsCents' => $previous, 'disputedAmountCents' => $disputedAmount, 'netPayableCents' => $net, 'currency' => $claim['currency'], 'status' => $status, 'automaticCertification' => false, 'certifiedBy' => $userId, 'certifiedAt' => $this->now()];
+            $json = $this->json($snapshot); $sha = hash('sha256', $json);
+            $this->pdo->prepare("INSERT INTO commercial_payment_certificate_revisions(id,organisation_id,certificate_id,revision,status,claimed_to_date_cents,gross_certified_to_date_cents,retention_held_to_date_cents,other_deductions_cents,previous_certified_payments_cents,disputed_amount_cents,net_payable_cents,snapshot_payload,snapshot_sha256,reason,certified_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:certificate),:revision,'current',:claimed,:gross,:retention,:deductions,:previous,:disputed,:net,:snapshot,:sha,:reason,UNHEX(:user))")->execute(['id' => $revisionId, 'o' => $organisationId, 'certificate' => $certificateId, 'revision' => $revisionNumber, 'claimed' => $claimed, 'gross' => $gross, 'retention' => $retention, 'deductions' => $deductions, 'previous' => $previous, 'disputed' => $disputedAmount, 'net' => $net, 'snapshot' => $json, 'sha' => $sha, 'reason' => $reason, 'user' => $userId]);
+            $this->pdo->prepare('UPDATE commercial_payment_certificates SET current_revision_id=UNHEX(:revision),status=:status,version=:version WHERE id=UNHEX(:id)')->execute(['revision' => $revisionId, 'status' => $status, 'version' => $revisionNumber, 'id' => $certificateId]);
+            $this->pdo->prepare('UPDATE commercial_payment_claims SET status=:status,version=version+1 WHERE id=UNHEX(:id)')->execute(['status' => $locked ? 'disputed_locked' : 'certified', 'id' => $claimId]);
+            $retentionDelta = $retention - $priorRetention; $retentionSnapshot = ['baselineId' => $claim['baseline_id'], 'certificateRevisionId' => $revisionId, 'eventType' => $retentionDelta >= 0 ? 'accrual' : 'adjustment', 'amountCents' => $retentionDelta, 'balanceCents' => $retention, 'createdAt' => $this->now()]; $retentionJson = $this->json($retentionSnapshot);
+            $this->pdo->prepare('INSERT INTO commercial_retention_ledger(id,organisation_id,baseline_id,certificate_revision_id,event_type,amount_cents,balance_cents,snapshot_payload,snapshot_sha256,created_by) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:baseline),UNHEX(:revision),:type,:amount,:balance,:snapshot,:sha,UNHEX(:user))')->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'baseline' => $claim['baseline_id'], 'revision' => $revisionId, 'type' => $retentionDelta >= 0 ? 'accrual' : 'adjustment', 'amount' => $retentionDelta, 'balance' => $retention, 'snapshot' => $retentionJson, 'sha' => hash('sha256', $retentionJson), 'user' => $userId]);
+            $recordId = (new ProjectRecordService($this->pdo))->issue(new ProjectContext($organisationId, $userId, (string)$claim['project_id'], $actualRole), ProjectPhase::ConstructionExecution, 'finance_commercial_control', 'payment_certificate', 'Payment certificate '.$claim['claim_number'], $locked ? 'pending_review' : 'issued', $snapshot + ['snapshotSha256' => $sha], ['required' => true, 'quantitySurveyorCertified' => true, 'releaseApproved' => false]);
+            (new AuditService($this->pdo))->append($organisationId, $userId, 'finance.payment_certificate_issued', 'commercial_payment_certificate', $certificateId, ['claimId' => $claimId, 'certificateRevisionId' => $revisionId, 'snapshotSha256' => $sha, 'status' => $status, 'netPayableCents' => $net, 'providerPaidCents' => 0, 'projectRecordId' => $recordId]);
+            return $snapshot + ['id' => $certificateId, 'revisionId' => $revisionId, 'snapshotSha256' => $sha];
+        });
+    }
+
+    /** @return array{baselineId:string,heldToDateCents:int,currency:string} */
+    public function retentionBalance(string $organisationId, string $userId, string $baselineId): array
+    {
+        $this->assertMember($organisationId, $userId, null, ['owner', 'admin', 'member', 'viewer']); $baseline = $this->baselineRow($organisationId, $baselineId, false);
+        $statement = $this->pdo->prepare('SELECT balance_cents FROM commercial_retention_ledger WHERE organisation_id=UNHEX(:o) AND baseline_id=UNHEX(:baseline) ORDER BY created_at DESC,id DESC LIMIT 1'); $statement->execute(['o' => $organisationId, 'baseline' => $baselineId]); $balance = $statement->fetchColumn();
+        return ['baselineId' => $baselineId, 'heldToDateCents' => $balance === false ? 0 : (int)$balance, 'currency' => (string)$baseline['currency']];
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
@@ -191,6 +264,13 @@ final readonly class CommercialControlService
     }
 
     /** @return array<string,mixed> */
+    private function claimRow(string $organisationId, string $claimId, bool $lock): array
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(c.id)) id,LOWER(HEX(c.baseline_id)) baseline_id,LOWER(HEX(b.project_id)) project_id,c.claim_number,c.status,LOWER(HEX(c.current_revision_id)) claim_revision_id,r.claimed_to_date_cents,r.disputed,b.currency,b.retention_basis_points FROM commercial_payment_claims c JOIN commercial_payment_claim_revisions r ON r.id=c.current_revision_id JOIN commercial_baselines b ON b.id=c.baseline_id AND b.organisation_id=c.organisation_id WHERE c.id=UNHEX(:id) AND c.organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
+        $statement->execute(['id' => $claimId, 'o' => $organisationId]); $row = $statement->fetch(); if (!is_array($row)) throw new CommercialControlException('commercial_claim_not_found'); return $row;
+    }
+
+    /** @return array<string,mixed> */
     private function variationRow(string $organisationId, string $variationId, bool $lock): array
     {
         $statement = $this->pdo->prepare('SELECT LOWER(HEX(v.id)) id,LOWER(HEX(v.baseline_id)) baseline_id,LOWER(HEX(b.project_id)) project_id,v.reference,v.title,v.description,v.amount_cents,v.time_impact_days,v.status,v.version FROM commercial_variations v JOIN commercial_baselines b ON b.id=v.baseline_id AND b.organisation_id=v.organisation_id WHERE v.id=UNHEX(:id) AND v.organisation_id=UNHEX(:o)'.($lock ? ' FOR UPDATE' : ''));
@@ -228,6 +308,7 @@ final readonly class CommercialControlService
     private function id(mixed $value, string $reason): string { if (!is_string($value) || preg_match('/\A[a-f0-9]{32}\z/', $value) !== 1) throw new CommercialControlException($reason); return $value; }
     private function text(mixed $value, int $max, string $reason): string { if (!is_string($value) || ($value = trim($value)) === '' || mb_strlen($value) > $max) throw new CommercialControlException($reason); return $value; }
     private function unsignedCents(mixed $value, bool $zeroAllowed, string $reason): int { if (!is_int($value) || $value < ($zeroAllowed ? 0 : 1) || $value > 9_000_000_000_000_000) throw new CommercialControlException($reason); return $value; }
+    /** @return list<string> */ private function references(mixed $value): array { if (!is_array($value) || $value === [] || count($value) > 100) throw new CommercialControlException('commercial_claim_evidence_required'); $result = []; foreach ($value as $reference) { if (!is_string($reference) || ($reference = trim($reference)) === '' || mb_strlen($reference) > 500 || !preg_match('/\A[a-z][a-z0-9_-]*:[^\s]+\z/i', $reference)) throw new CommercialControlException('commercial_claim_evidence_invalid'); $result[] = $reference; } return array_values(array_unique($result)); }
     /** @param array<string,mixed> $value */ private function json(array $value): string { return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); }
     private function now(): string { return gmdate('Y-m-d\TH:i:s.u\Z'); }
     private function transaction(callable $operation): mixed { $this->pdo->beginTransaction(); try { $result = $operation(); $this->pdo->commit(); return $result; } catch (Throwable $exception) { if ($this->pdo->inTransaction()) $this->pdo->rollBack(); throw $exception; } }
