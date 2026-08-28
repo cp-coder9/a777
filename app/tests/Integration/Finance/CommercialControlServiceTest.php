@@ -81,6 +81,8 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         ]);
         self::assertSame('provider_configuration_required', $retentionApproved['status']);
         self::assertCount(2, $retentionApproved['approvals']);
+        self::assertContains('retention_release', $this->recordTypes($organisationId, $projectId));
+        self::assertContains('finance_retention_release_due', $this->inboxEventTypes($organisationId, $projectId));
 
         $secret = 'test-provider-webhook-secret-with-32-bytes';
         putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET='.$secret);
@@ -163,6 +165,14 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertSame(0, $forecast['providerPaidToDateCents']);
         self::assertSame(72_000_000, $forecast['remainingContractValueCents']);
         self::assertTrue($forecast['advisoryOnly']);
+        self::assertEqualsCanonicalizing(
+            ['commercial_baseline', 'payment_schedule', 'claim_submission', 'payment_certificate', 'cashflow_forecast'],
+            array_values(array_unique(array_intersect(
+                $this->recordTypes($organisationId, $projectId),
+                ['commercial_baseline', 'payment_schedule', 'claim_submission', 'payment_certificate', 'cashflow_forecast'],
+            ))),
+        );
+        self::assertContains('finance_payment_certificate_issued', $this->inboxEventTypes($organisationId, $projectId));
 
         $disputed = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
             'claimNumber' => 'PC-003', 'claimedToDateCents' => 35_000_000, 'milestoneId' => $schedule['milestones'][1]['id'],
@@ -235,6 +245,8 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertSame('approved', $approved['status']);
         self::assertSame(132_500_000, $service->getBaseline($organisationId, $ownerId, $baseline['id'])['currentContractSumCents']);
         self::assertSame(2, $service->getBaseline($organisationId, $ownerId, $baseline['id'])['revision']);
+        self::assertContains('variation_order', $this->recordTypes($organisationId, $projectId));
+        self::assertContains('finance_variation_requires_approval', $this->inboxEventTypes($organisationId, $projectId));
 
         [$otherOrganisation, $otherUser] = $this->tenant('Other practice', 'other-finance');
         $this->expectException(CommercialControlException::class);
@@ -274,6 +286,22 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'member','active')")->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'u' => $userId]);
         $this->pdo->prepare("INSERT INTO project_team_members(id,organisation_id,project_id,user_id,discipline,role_label,verification_grade,status,invited_by,accepted_at) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:p),UNHEX(:u),:discipline,:label,'manually_reviewed','active',UNHEX(:owner),UTC_TIMESTAMP(6))")->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'p' => $projectId, 'u' => $userId, 'discipline' => $discipline, 'label' => $discipline, 'owner' => $ownerId]);
         return $userId;
+    }
+
+    /** @return list<string> */
+    private function recordTypes(string $organisationId, string $projectId): array
+    {
+        $statement = $this->pdo->prepare('SELECT record_type FROM project_records WHERE organisation_id=UNHEX(:organisation) AND project_id=UNHEX(:project) ORDER BY created_at,id');
+        $statement->execute(['organisation' => $organisationId, 'project' => $projectId]);
+        return $statement->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /** @return list<string> */
+    private function inboxEventTypes(string $organisationId, string $projectId): array
+    {
+        $statement = $this->pdo->prepare('SELECT event_type FROM inbox_items WHERE organisation_id=UNHEX(:organisation) AND project_id=UNHEX(:project) ORDER BY created_at,id');
+        $statement->execute(['organisation' => $organisationId, 'project' => $projectId]);
+        return $statement->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     /** @return array{string,string,string} */
