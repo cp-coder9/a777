@@ -25,6 +25,7 @@ final class DocumentReadinessTest extends MariaDbTestCase
         $construction=$service->readiness($organisationId,$ownerId,$projectId)['construction_issue'];$codes=array_column($construction['findings'],'code');
         self::assertFalse($construction['ready']);self::assertContains('SUPERSEDED_CONSTRUCTION_DRAWING',$codes);self::assertContains('NO_CURRENT_CONSTRUCTION_DRAWINGS',$codes);
         self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE module_key='documents' AND record_type='technical_drawings'")->fetchColumn());
+        self::assertSame('for_construction',$this->pdo->query("SELECT JSON_UNQUOTE(JSON_EXTRACT(payload,'$.drawing.issuePurpose')) FROM project_records WHERE module_key='documents' AND record_type='technical_drawings'")->fetchColumn());
         self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM inbox_items WHERE event_type='superseded_construction_drawing'")->fetchColumn());
     }
 
