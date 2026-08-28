@@ -63,6 +63,7 @@ use Architex\Platform\Documents\DocumentService;
 use Architex\Platform\Documents\DocumentTransmittalService;
 use Architex\Platform\Documents\DrawingIntelligenceService;
 use Architex\Platform\Compliance\ComplianceCalculatorService;
+use Architex\Platform\Engineering\EngineeringCalculatorService;
 use Architex\Platform\Compliance\ComplianceRuleRegistry;
 use Architex\Platform\Municipal\MunicipalReadinessService;
 use Architex\Platform\Municipal\MunicipalRequirementRegistry;
@@ -148,7 +149,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
-        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules)))->create();
+        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules),new EngineeringCalculatorService()))->create();
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
         (new ComplianceRoutes(
             new ComplianceController($complianceRules),
