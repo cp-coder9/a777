@@ -20,6 +20,8 @@ final class FinanceCommercialWorkspaceTest extends TestCase
             'disputedAmountCents', 'netPayableCents', 'No automatic release',
             '/cashflow-snapshots', '/retention-release-requests', 'certifiedAwaitingProviderPaymentCents',
             'defectsLiabilityCompleted', 'completionCertificateReference',
+            'installProductionRenderLifecycle', 'productionRenderAll', 'syncProjectSelector(projects, session, inbox)',
+            'name="name" autocomplete="organization"',
         ] as $expected) self::assertStringContainsString($expected, $shell);
         foreach (['payments_escrow', 'valuations', 'contract_admin'] as $tool) {
             self::assertStringContainsString("TOOLS.$tool.status = 'live'", $shell);
