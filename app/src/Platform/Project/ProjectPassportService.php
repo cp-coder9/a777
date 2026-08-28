@@ -61,6 +61,14 @@ final readonly class ProjectPassportService
         return $projects;
     }
 
+    public function effectiveRole(string $organisationId, string $userId, string $projectId): string
+    {
+        $statement = $this->pdo->prepare("SELECT COALESCE((SELECT t.discipline FROM project_team_members t WHERE t.organisation_id=p.organisation_id AND t.project_id=p.id AND t.user_id=UNHEX(:team_user_id) AND t.status='active' ORDER BY t.accepted_at DESC,t.id DESC LIMIT 1),CASE WHEN p.created_by=UNHEX(:creator_user_id) THEN p.lead_professional_role ELSE (SELECT pp.profession FROM professional_profiles pp WHERE pp.organisation_id=p.organisation_id AND pp.user_id=UNHEX(:profile_user_id) ORDER BY pp.updated_at DESC,pp.id DESC LIMIT 1) END) effective_role FROM projects p WHERE p.organisation_id=UNHEX(:organisation_id) AND p.id=UNHEX(:project_id)");
+        $statement->execute(['team_user_id'=>$userId,'creator_user_id'=>$userId,'profile_user_id'=>$userId,'organisation_id'=>$organisationId,'project_id'=>$projectId]);
+        $role = $statement->fetchColumn();
+        return is_string($role) && $role !== '' ? $role : 'client';
+    }
+
     /** @param array<string,mixed> $row @param list<array{recordType:string,priority:string,reason:string}> $missing */
     private function hydrate(array $row, ProjectPhase $phase, array $missing): ProjectPassport
     {

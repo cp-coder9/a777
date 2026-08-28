@@ -39,7 +39,7 @@ final readonly class ProjectController
     {
         $scope = $this->scope($request);
         if ($scope instanceof Response) return $scope;
-        return Response::success(array_map($this->serialize(...), $this->projects->list($scope[0], $scope[1]->userId)));
+        return Response::success(array_map(fn($project):array=>$this->serialize($project,$scope[1]->userId), $this->projects->list($scope[0], $scope[1]->userId)));
     }
 
     public function show(Request $request): Response
@@ -49,7 +49,7 @@ final readonly class ProjectController
         $projectId = $request->attribute('projectId');
         if (!is_string($projectId)) return Response::error(404, 'not_found', 'Project not found.');
         $project = $this->projects->find(new ProjectContext($scope[0], $scope[1]->userId, strtolower($projectId), (string)$request->attribute('role')));
-        return $project === null ? Response::error(404, 'not_found', 'Project not found.') : Response::success($this->serialize($project));
+        return $project === null ? Response::error(404, 'not_found', 'Project not found.') : Response::success($this->serialize($project,$scope[1]->userId));
     }
 
     public function transition(Request $request): Response
@@ -84,8 +84,8 @@ final readonly class ProjectController
     }
 
     /** @return array<string,mixed> */
-    private function serialize(\Architex\Platform\Project\ProjectPassport $project): array
+    private function serialize(\Architex\Platform\Project\ProjectPassport $project, string $userId): array
     {
-        return ['id'=>$project->projectId,'organisationId'=>$project->organisationId,'projectCode'=>$project->projectCode,'name'=>$project->projectName,'clientName'=>$project->clientName,'municipality'=>$project->municipality,'propertyReference'=>$project->propertyReference,'propertyUse'=>$project->propertyUse,'landUseNotes'=>$project->landUseNotes,'leadProfessionalRole'=>$project->leadProfessionalRole,'phase'=>$project->currentPhase->value,'version'=>$project->version,'missingRecords'=>$project->missingRecords,'mayAdvance'=>$project->mayAdvance];
+        return ['id'=>$project->projectId,'organisationId'=>$project->organisationId,'projectCode'=>$project->projectCode,'name'=>$project->projectName,'clientName'=>$project->clientName,'municipality'=>$project->municipality,'propertyReference'=>$project->propertyReference,'propertyUse'=>$project->propertyUse,'landUseNotes'=>$project->landUseNotes,'leadProfessionalRole'=>$project->leadProfessionalRole,'effectiveRole'=>$this->projects->effectiveRole($project->organisationId,$userId,$project->projectId),'phase'=>$project->currentPhase->value,'version'=>$project->version,'missingRecords'=>$project->missingRecords,'mayAdvance'=>$project->mayAdvance];
     }
 }

@@ -683,7 +683,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
     const [projects, inbox, tools] = await Promise.all([api.get('/projects'), api.get('/inbox'), api.get('/tools')]);
     window.__ARCHITEX_SHELL_STATE__ = Object.freeze({ session, projects:Object.freeze(projects), inbox:Object.freeze(inbox), tools:window.ArchitexToolRegistry.reconcile(TOOLS, tools), selectedProjectId:projects[0]?.id || null });
     if (projects[0]) window.ArchitexDatum.apply(project, projects[0]);
-    state.role = projects[0]?.leadProfessionalRole || 'architect';
+    state.role = projects[0]?.effectiveRole || 'client';
     window.setRole = () => showToast('Production access follows your verified organisation role.');
     root.dataset.shellState = projects.length ? 'ready' : 'empty';
     renderAll();
@@ -701,6 +701,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
       const selected = projects.find(item => item.id === selector.value);
       if (!selected) return;
       window.ArchitexDatum.apply(project, selected);
+      state.role = selected.effectiveRole || 'client';
       window.__ARCHITEX_SHELL_STATE__ = Object.freeze({ ...window.__ARCHITEX_SHELL_STATE__, selectedProjectId:selected.id });
       renderAll(); enforceProductionControls(session); syncProjectSelector(projects, session, inbox); markPrototypeSurfaces(inbox);
     }, { once:true });

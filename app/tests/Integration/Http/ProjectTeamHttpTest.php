@@ -29,6 +29,9 @@ final class ProjectTeamHttpTest extends MariaDbTestCase
         self::assertSame(200,$pending->status());self::assertSame($invitation['id'],$pending->json()['data'][0]['id']);
         $accepted=$kernel->handle(Request::json('POST','/api/v1/team-invitations/'.$invitation['id'].'/accept',['Cookie'=>'architex_session='.$candidateSession->token,'X-CSRF-Token'=>$candidateSession->csrfToken]));
         self::assertSame(200,$accepted->status(),json_encode($accepted->json(),JSON_THROW_ON_ERROR));self::assertSame('active',$accepted->json()['data']['status']);
+        $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:organisation_id),UNHEX(:user_id),'member','active')")->execute(['id'=>Identifier::generate(),'organisation_id'=>$organisationId,'user_id'=>$candidateId]);
+        $projects=$kernel->handle(Request::json('GET','/api/v1/projects',['Cookie'=>'architex_session='.$candidateSession->token,'X-Organisation-Id'=>$organisationId]));
+        self::assertSame(200,$projects->status(),json_encode($projects->json(),JSON_THROW_ON_ERROR));self::assertSame('structure',$projects->json()['data'][0]['effectiveRole']);
         $team=$kernel->handle(Request::json('GET','/api/v1/projects/'.$projectId.'/team',['Cookie'=>'architex_session='.$ownerSession->token,'X-Organisation-Id'=>$organisationId]));
         self::assertSame(200,$team->status(),json_encode($team->json(),JSON_THROW_ON_ERROR));self::assertSame('active',$team->json()['data'][0]['status']);
     }
