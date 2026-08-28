@@ -152,8 +152,12 @@ final readonly class Request
     /** @return array<string,mixed> */
     public function jsonBody(): array
     {
+        $topLevel = json_decode($this->body, false, 32, JSON_THROW_ON_ERROR);
+        if (!is_object($topLevel)) {
+            throw new \JsonException('JSON request body must be an object.');
+        }
         $decoded = json_decode($this->body, true, 32, JSON_THROW_ON_ERROR);
-        if (!is_array($decoded) || array_is_list($decoded)) {
+        if (!is_array($decoded)) {
             throw new \JsonException('JSON request body must be an object.');
         }
         return $decoded;

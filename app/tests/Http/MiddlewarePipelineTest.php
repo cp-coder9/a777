@@ -54,6 +54,14 @@ final class MiddlewarePipelineTest extends TestCase
         self::assertSame('user', $changed->attribute('identity'));
     }
 
+    public function testEmptyJsonObjectRemainsAValidObjectPayload(): void
+    {
+        $request = Request::json('POST', '/write', ['Content-Type' => 'application/json'], '{}');
+
+        self::assertSame([], $request->jsonBody());
+        self::assertSame(200, $this->kernel([new JsonRequestMiddleware()])->handle($request)->status());
+    }
+
     public function testSessionAndCsrfMiddlewareRejectInvalidCredentialsAndUnsafeRequests(): void
     {
         $identity = new AuthenticatedIdentity(str_repeat('a', 32), 'owner@example.com', []);

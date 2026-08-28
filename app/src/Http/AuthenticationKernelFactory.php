@@ -18,6 +18,7 @@ use Architex\Http\Controller\TeamController;
 use Architex\Http\Controller\ToolboxController;
 use Architex\Http\Controller\ProposalController;
 use Architex\Http\Controller\AppointmentController;
+use Architex\Http\Controller\MeetingController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -47,6 +48,7 @@ use Architex\Platform\Toolbox\ProductionToolRegistry;
 use Architex\Platform\Toolbox\ToolboxEngine;
 use Architex\Platform\Proposal\ProposalService;
 use Architex\Platform\Appointment\AppointmentService;
+use Architex\Platform\Meeting\MeetingService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -136,6 +138,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new AppointmentRoutes(
             new AppointmentController(new AppointmentService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new MeetingRoutes(
+            new MeetingController(new MeetingService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
