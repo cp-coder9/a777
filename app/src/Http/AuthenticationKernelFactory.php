@@ -23,6 +23,7 @@ use Architex\Http\Controller\CommunicationController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
 use Architex\Http\Controller\ComplianceController;
+use Architex\Http\Controller\MunicipalReadinessController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -58,6 +59,8 @@ use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
 use Architex\Platform\Compliance\ComplianceCalculatorService;
 use Architex\Platform\Compliance\ComplianceRuleRegistry;
+use Architex\Platform\Municipal\MunicipalReadinessService;
+use Architex\Platform\Municipal\MunicipalRequirementRegistry;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -143,6 +146,13 @@ final readonly class AuthenticationKernelFactory
         (new ComplianceRoutes(
             new ComplianceController($complianceRules),
             new PermissionMiddleware(new PermissionService(),'tools.use'),
+            new PermissionMiddleware(new PermissionService(),'verification.review'),
+        ))->register($router);
+        $municipalMatrices=new MunicipalRequirementRegistry($this->pdo);
+        (new MunicipalReadinessRoutes(
+            new MunicipalReadinessController($municipalMatrices,new MunicipalReadinessService($this->pdo,$municipalMatrices)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
             new PermissionMiddleware(new PermissionService(),'verification.review'),
         ))->register($router);
         (new ProposalRoutes(
