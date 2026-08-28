@@ -835,8 +835,8 @@ window.renderMain=function(){if(state.tool==='practice'){q('#main').innerHTML=re
   };
   const mtgRolePriority={
     client:['meetings','project_passport','practice','forms','documents_drawings','payments_escrow','wingman'],
-    architect:['meetings','practice','project_passport','planning','municipal','xa','forms','specforge','bom','wingman'],
-    engineer:['meetings','practice','itp','site_instructions','ncr_manager','xa','documents_drawings','wingman'],
+    architect:['meetings','practice','project_passport','planning','municipal','refuse_calculator','xa','forms','specforge','bom','wingman'],
+    engineer:['meetings','practice','itp','site_instructions','ncr_manager','refuse_calculator','xa','documents_drawings','wingman'],
     quantity_surveyor:['meetings','practice','bom','rfq_marketplace','payments_escrow','valuations','contracts','wingman'],
     town_planner:['meetings','planning','municipal','forms','project_passport','wingman'],
     cpm:['meetings','practice','safety','itp','site_instructions','ncr_manager','snag_manager','wingman'],
@@ -1107,9 +1107,9 @@ body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mo
   const V8_ROLE_FOCUS={client:'decisions, approvals, progress and payments',architect:'design leadership, coordination and compliance',bep:'multidisciplinary technical coordination',engineer:'engineering analysis, evidence, design checks and sign-off boundaries',quantity_surveyor:'cost, quantities, procurement and valuations',town_planner:'land use, authority processes and conditions',land_surveyor:'survey and cadastral records',energy_professional:'energy modelling and XA evidence',fire_engineer:'fire strategy and regulatory review',cpm:'programme, resources, actions and risk',contractor:'site delivery, quality, safety and claims',subcontractor:'assigned work packages and evidence',supplier:'products, RFQs, orders and delivery',site_manager:'daily site execution and records',health_safety:'safety file, HIRA, permits and incidents',developer:'portfolio, budget, decisions and risk',freelancer:'assigned tasks and deliverables',firm_admin:'practice resources, fees and profitability',admin:'organisation access and operations',platform_admin:'platform governance and system health'};
   const V8_ROLE_ACCESS={
     client:['meetings','project_passport','practice','forms','documents_drawings','payments_escrow','planning','municipal','wingman'],
-    architect:['meetings','practice','project_passport','planning','municipal','xa','forms','specforge','bom','documents_drawings','wingman'],
-    bep:['meetings','practice','engineering_calc','planning','municipal','xa','forms','specforge','bom','itp','documents_drawings','wingman'],
-    engineer:['meetings','practice','engineering_calc','itp','site_instructions','ncr_manager','xa','specforge','documents_drawings','forms','wingman'],
+    architect:['meetings','practice','project_passport','planning','municipal','refuse_calculator','xa','forms','specforge','bom','documents_drawings','wingman'],
+    bep:['meetings','practice','engineering_calc','planning','municipal','refuse_calculator','xa','forms','specforge','bom','itp','documents_drawings','wingman'],
+    engineer:['meetings','practice','engineering_calc','itp','site_instructions','ncr_manager','refuse_calculator','xa','specforge','documents_drawings','forms','wingman'],
     quantity_surveyor:['meetings','practice','bom','specforge','rfq_marketplace','supplier_catalog','payments_escrow','valuations','contracts','wingman'],
     town_planner:['meetings','planning','municipal','forms','project_passport','environmental_heritage','wingman'],
     land_surveyor:['meetings','survey_geomatics','project_passport','documents_drawings','planning','wingman'],
@@ -1130,8 +1130,8 @@ body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mo
   const V8_STAGE_MAP={
     Brief:['practice','project_passport','project_explorer','planning','fee_proposal','forms','meetings','wingman'],
     Appoint:['practice','professional_directory','fee_proposal','forms','team_workspace','contracts','meetings','project_passport','wingman'],
-    Design:['practice','engineering_calc','specforge','xa','forms','bom','bim_ifc','documents_drawings','meetings','wingman'],
-    Comply:['planning','municipal','engineering_calc','xa','forms','eia','environmental_heritage','fire_safety','meetings','wingman'],
+    Design:['practice','engineering_calc','specforge','refuse_calculator','xa','forms','bom','bim_ifc','documents_drawings','meetings','wingman'],
+    Comply:['planning','municipal','engineering_calc','refuse_calculator','xa','forms','eia','environmental_heritage','fire_safety','meetings','wingman'],
     Procure:['practice','bom','specforge','rfq_marketplace','supplier_catalog','contracts','meetings','wingman'],
     Build:['practice','engineering_calc','safety','itp','site_instructions','ncr_manager','contractor_compliance','snag_manager','meetings','forms','wingman'],
     Pay:['practice','payments_escrow','valuations','contract_admin','expense_claim','forms','meetings','feedback','wingman'],
