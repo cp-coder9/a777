@@ -9,10 +9,10 @@
 
 ## Delivery sequence
 
-- [ ] Add failing MariaDB integration tests for survey briefs, control points, deliverables, fee separation, professional issue, stale writes, and tenant isolation.
-- [ ] Add authenticated HTTP tests for CSRF, project scope, evidence capture, authority boundaries, and exports.
-- [ ] Add forward-only MariaDB tables for survey jobs, observations/control points, deliverables, and immutable issue snapshots.
-- [ ] Implement PHP services, controllers, routes, permissions, audit events, project records, and JSON/CSV/HTML exports.
-- [ ] Replace the Survey & Geomatics scaffold with a project-aware governed workspace without changing the canonical supplied interface.
-- [ ] Run focused tests, syntax/diff checks, live migration, Chrome end-to-end persistence, fail-closed and success roles, exports, responsive checks, and console/network checks.
-- [ ] Record exact local evidence and keep FTP staging/promotion as separate release gates.
+- [x] Add failing MariaDB integration tests for survey briefs, control points, deliverables, fee separation, professional issue, stale writes, and tenant isolation.
+- [x] Add authenticated HTTP tests for CSRF, project scope, evidence capture, authority boundaries, and exports.
+- [x] Add forward-only MariaDB tables for survey jobs, observations/control points, deliverables, and immutable issue snapshots.
+- [x] Implement PHP services, controllers, routes, permissions, audit events, project records, and JSON/CSV/HTML exports.
+- [x] Replace the Survey & Geomatics scaffold with a project-aware governed workspace without changing the canonical supplied interface.
+- [x] Run focused tests, syntax/diff checks, live migration, Chrome end-to-end persistence, fail-closed and success roles, exports, responsive checks, and console/network checks.
+- [x] Record exact local evidence and keep FTP staging/promotion as separate release gates.
