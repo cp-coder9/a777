@@ -30,6 +30,7 @@ use Architex\Http\Controller\ModelMetadataController;
 use Architex\Http\Controller\TownPlanningController;
 use Architex\Http\Controller\RegulatoryCaseController;
 use Architex\Http\Controller\SurveyJobController;
+use Architex\Http\Controller\ProcurementController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -75,6 +76,8 @@ use Architex\Platform\Models\ModelMetadataService;
 use Architex\Platform\Planning\TownPlanningService;
 use Architex\Platform\Environment\RegulatoryCaseService;
 use Architex\Platform\Survey\SurveyJobService;
+use Architex\Platform\Procurement\ProcurementScopeClassifier;
+use Architex\Platform\Procurement\ProcurementService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -221,6 +224,12 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new RegulatoryCaseRoutes(new RegulatoryCaseController(new RegulatoryCaseService($this->pdo)),new PermissionMiddleware(new PermissionService(),'projects.read'),new PermissionMiddleware(new PermissionService(),'projects.write')))->register($router);
         (new SurveyJobRoutes(new SurveyJobController(new SurveyJobService($this->pdo)),new PermissionMiddleware(new PermissionService(),'projects.read'),new PermissionMiddleware(new PermissionService(),'projects.write')))->register($router);
+        (new ProcurementRoutes(
+            new ProcurementController(new ProcurementService($this->pdo,new ProcurementScopeClassifier())),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new RateLimitMiddleware($limiter,'procurement_invitation',60,3_600,$remoteKey),
+        ))->register($router);
 
         return new Kernel($router, middleware: [
             new SecurityHeadersMiddleware(),
