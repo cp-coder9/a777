@@ -21,6 +21,13 @@ final readonly class ModelMetadataService
 
     public function __construct(private PDO $pdo){}
 
+    /** @return list<array<string,mixed>> */
+    public function list(string$organisationId,string$userId,string$projectId):array
+    {
+        $this->member($organisationId,$userId);$projectId=$this->id($projectId,'model_project_not_found');$this->project($organisationId,$projectId);
+        $statement=$this->pdo->prepare('SELECT LOWER(HEX(id)) id FROM model_sources WHERE organisation_id=UNHEX(:organisation) AND project_id=UNHEX(:project) ORDER BY created_at DESC,id DESC LIMIT 100');$statement->execute(['organisation'=>$organisationId,'project'=>$projectId]);$items=[];foreach($statement->fetchAll(PDO::FETCH_COLUMN)as$id)$items[]=$this->get($organisationId,$userId,(string)$id);return$items;
+    }
+
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function createSource(string$organisationId,string$userId,string$membershipRole,array$input):array
     {

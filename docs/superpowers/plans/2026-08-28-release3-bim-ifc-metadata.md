@@ -51,10 +51,10 @@
 - Test: `app/tests/Integration/Http/ModelMetadataHttpTest.php`
 - Test: `app/tests/Frontend/ModelMetadataWorkspaceTest.php`
 
-- [ ] Add failing API and frontend contracts first.
-- [ ] Expose source, revision, decision and issue commands with session, CSRF, tenant and permission enforcement.
-- [ ] Render real loading, empty, error, validation, review and issued states inside the canonical project workspace.
-- [ ] Label native BIM parsing and external-provider functionality honestly and visibly.
+- [x] Add failing API and frontend contracts first.
+- [x] Expose source, revision, decision and issue commands with session, CSRF, tenant and permission enforcement.
+- [x] Render real loading, empty, error, validation, review and issued states inside the canonical project workspace.
+- [x] Label native BIM parsing and external-provider functionality honestly and visibly.
 
 ### Task 4: Local evidence
 
