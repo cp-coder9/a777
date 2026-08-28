@@ -21,7 +21,7 @@ use RecursiveIteratorIterator;
 final class BackupRestoreTest extends MariaDbTestCase
 {
     private string $workRoot;
-    private string $targetDatabase = 'architex_task10_badc0ffe_test';
+    private string $targetDatabase = 'architex_task12_f00dbabe_test';
 
     protected function setUp(): void
     {
@@ -67,6 +67,7 @@ final class BackupRestoreTest extends MariaDbTestCase
         self::assertSame(1, $report->fileCount);
         $target = ConnectionFactory::create(AppConfig::fromEnvironment($this->targetEnvironment()));
         self::assertSame(1, (int)$target->query('SELECT COUNT(*) FROM stored_files')->fetchColumn());
+        self::assertSame(1, (int)$target->query('SELECT active_slot FROM project_team_members')->fetchColumn());
         $download = (new FileService($target, new LocalFileStorage($this->workRoot . '/restored-files')))->download($organisation, $user, $stored->id);
         self::assertSame("%PDF-1.4\nbackup-evidence\n%%EOF", $download->contents);
     }
@@ -87,6 +88,7 @@ final class BackupRestoreTest extends MariaDbTestCase
         $this->pdo->prepare("INSERT INTO organisations(id,name,slug,status) VALUES(UNHEX(:id),'Backup Practice','backup-practice','active')")->execute(['id'=>$organisation]);
         $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:organisation),UNHEX(:user),'owner','active')")->execute(['id'=>Identifier::generate(),'organisation'=>$organisation,'user'=>$user]);
         $this->pdo->prepare("INSERT INTO projects(id,organisation_id,project_code,project_name,client_name,municipality,property_reference,property_use,land_use_notes,lead_professional_role,created_by) VALUES(UNHEX(:id),UNHEX(:organisation),'BACKUP-1','Backup Project','Client','City','Erf 1','Office','','architect',UNHEX(:user))")->execute(['id'=>$project,'organisation'=>$organisation,'user'=>$user]);
+        $this->pdo->prepare("INSERT INTO project_team_members(id,organisation_id,project_id,user_id,discipline,role_label,verification_grade,status,invited_by,accepted_at) VALUES(UNHEX(:id),UNHEX(:organisation),UNHEX(:project),UNHEX(:user),'architect','Project architect','manually_reviewed','active',UNHEX(:invited_by),UTC_TIMESTAMP(6))")->execute(['id'=>Identifier::generate(),'organisation'=>$organisation,'project'=>$project,'user'=>$user,'invited_by'=>$user]);
         return [$organisation,$user,$project];
     }
 }

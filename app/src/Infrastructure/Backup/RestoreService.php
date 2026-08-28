@@ -65,6 +65,7 @@ final readonly class RestoreService
                 foreach ($currentTables as $table) $pdo->exec('DELETE FROM `' . $table . '`');
                 foreach ($manifest['database']['tables'] as $table => $definition) {
                     if (!is_string($table) || preg_match('/\A[a-z][a-z0-9_]*\z/', $table) !== 1 || !is_array($definition) || !is_string($definition['entry'] ?? null)) throw new RuntimeException('A backup table definition is invalid.');
+                    $generatedColumns = array_fill_keys($this->generatedColumns($pdo, $table), true);
                     $stream = $zip->getStream($definition['entry']);
                     if (!is_resource($stream)) throw new RuntimeException('A backup table entry is unavailable.');
                     $tableRows = 0;
@@ -74,6 +75,9 @@ final readonly class RestoreService
                             if (!is_array($encoded) || $encoded === []) throw new RuntimeException('A backup table row is invalid.');
                             $columns = array_keys($encoded);
                             foreach ($columns as $column) if (preg_match('/\A[a-z][a-z0-9_]*\z/', $column) !== 1) throw new RuntimeException('A backup column name is invalid.');
+                            $encoded = array_diff_key($encoded, $generatedColumns);
+                            if ($encoded === []) throw new RuntimeException('A backup table row has no restorable columns.');
+                            $columns = array_keys($encoded);
                             $sql = 'INSERT INTO `' . $table . '` (`' . implode('`,`', $columns) . '`) VALUES (:' . implode(',:', $columns) . ')';
                             $statement = $pdo->prepare($sql);
                             foreach ($encoded as $column => $value) $this->bindValue($statement, $column, $value);
@@ -101,6 +105,14 @@ final readonly class RestoreService
             $this->removeTree($fileRoot);
             throw $exception;
         }
+    }
+
+    /** @return list<string> */
+    private function generatedColumns(PDO $pdo, string $table): array
+    {
+        $statement = $pdo->prepare("SELECT column_name FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=:table AND is_generated='ALWAYS' ORDER BY ordinal_position");
+        $statement->execute(['table' => $table]);
+        return array_values(array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)));
     }
 
     /** @param array<string,mixed> $manifest */
