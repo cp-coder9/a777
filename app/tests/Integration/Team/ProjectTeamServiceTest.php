@@ -30,7 +30,9 @@ final class ProjectTeamServiceTest extends MariaDbTestCase
         self::assertSame('active',$accepted['status']);
         self::assertSame($projectId,$accepted['projectId']);
         self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM audit_events')->fetchColumn());
-        self::assertSame(['structure'],array_column($service->list($organisationId,$projectId,$ownerId),'discipline'));
+        $team=$service->list($organisationId,$projectId,$ownerId);
+        self::assertSame(['structure'],array_column($team,'discipline'));
+        self::assertFalse($team[0]['communicationEligible']);
         self::assertSame([],$service->pendingForUser($professionalId));
     }
 
