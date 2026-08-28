@@ -22,6 +22,7 @@ use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
+use Architex\Http\Controller\DocumentEvidenceController;
 use Architex\Http\Controller\ComplianceController;
 use Architex\Http\Controller\MunicipalReadinessController;
 use Architex\Http\Middleware\CsrfMiddleware;
@@ -57,6 +58,8 @@ use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
+use Architex\Platform\Documents\DocumentTransmittalService;
+use Architex\Platform\Documents\DrawingIntelligenceService;
 use Architex\Platform\Compliance\ComplianceCalculatorService;
 use Architex\Platform\Compliance\ComplianceRuleRegistry;
 use Architex\Platform\Municipal\MunicipalReadinessService;
@@ -182,6 +185,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new DocumentRoutes(
             new DocumentController(new DocumentService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new DocumentEvidenceRoutes(
+            new DocumentEvidenceController(new DocumentTransmittalService($this->pdo), new DrawingIntelligenceService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

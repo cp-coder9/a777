@@ -50,10 +50,10 @@
 - Test: `app/tests/Integration/Http/DocumentEvidenceHttpTest.php`
 - Test: `app/tests/Frontend/DocumentEvidenceWorkspaceTest.php`
 
-- [ ] Add failing authenticated API and frontend contracts first.
-- [ ] Expose transmittal create/list/show/issue and intelligence candidate create/list/review operations.
-- [ ] Add native sections to Documents & Drawings with explicit provider and delivery boundaries.
-- [ ] Verify escaping, revision eligibility, responsive behavior and reload persistence.
+- [x] Add failing authenticated API and frontend contracts first.
+- [x] Expose transmittal create/list/show/issue and intelligence candidate create/list/review operations.
+- [x] Add native sections to Documents & Drawings with explicit provider and delivery boundaries.
+- [ ] Verify escaping, revision eligibility, responsive behavior and reload persistence. (Static contracts green; live browser and reload gate pending.)
 
 ### Task 4: Local release evidence
 
