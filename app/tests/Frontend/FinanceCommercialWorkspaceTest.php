@@ -18,6 +18,8 @@ final class FinanceCommercialWorkspaceTest extends TestCase
             '/certificates', '/financial-providers', '/release-requests', 'provider_configuration_required',
             'grossCertifiedToDateCents', 'retentionHeldToDateCents', 'previousCertifiedPaymentsCents',
             'disputedAmountCents', 'netPayableCents', 'No automatic release',
+            '/cashflow-snapshots', '/retention-release-requests', 'certifiedAwaitingProviderPaymentCents',
+            'defectsLiabilityCompleted', 'completionCertificateReference',
         ] as $expected) self::assertStringContainsString($expected, $shell);
         foreach (['payments_escrow', 'valuations', 'contract_admin'] as $tool) {
             self::assertStringContainsString("TOOLS.$tool.status = 'live'", $shell);

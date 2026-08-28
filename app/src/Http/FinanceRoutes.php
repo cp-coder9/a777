@@ -22,6 +22,9 @@ final readonly class FinanceRoutes
         $router->post('/api/v1/commercial-baselines/{baselineId}/claims', fn(Request $request): Response => $this->write->process($request, $this->controller->submitClaim(...)));
         $router->post('/api/v1/commercial-claims/{claimId}/certificates', fn(Request $request): Response => $this->write->process($request, $this->controller->certifyClaim(...)));
         $router->get('/api/v1/commercial-baselines/{baselineId}/retention', fn(Request $request): Response => $this->read->process($request, $this->controller->retention(...)));
+        $router->post('/api/v1/commercial-baselines/{baselineId}/cashflow-snapshots', fn(Request $request): Response => $this->write->process($request, $this->controller->createCashflow(...)));
+        $router->post('/api/v1/commercial-baselines/{baselineId}/retention-release-requests', fn(Request $request): Response => $this->write->process($request, $this->controller->createRetentionRelease(...)));
+        $router->post('/api/v1/retention-release-requests/{retentionReleaseId}/approvals', fn(Request $request): Response => $this->write->process($request, $this->controller->approveRetentionRelease(...)));
         $router->post('/api/v1/financial-providers', fn(Request $request): Response => $this->write->process($request, $this->controller->registerProvider(...)));
         $router->post('/api/v1/payment-certificates/{certificateRevisionId}/release-requests', fn(Request $request): Response => $this->write->process($request, $this->controller->createReleaseRequest(...)));
         $router->post('/api/v1/provider-release-requests/{releaseRequestId}/approvals', fn(Request $request): Response => $this->write->process($request, $this->controller->approveReleaseRequest(...)));

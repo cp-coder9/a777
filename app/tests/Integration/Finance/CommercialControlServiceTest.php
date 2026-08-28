@@ -66,6 +66,22 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertFalse($workspace['providerBoundary']['fundsHeldByArchitex']);
         self::assertFalse($workspace['providerBoundary']['livePaymentClaimed']);
 
+        $retentionRelease = $service->createRetentionReleaseRequest($organisationId, $ownerId, 'owner', $baseline['id'], [
+            'providerId' => $provider['id'], 'requestedAmountCents' => 450_000,
+            'defectsLiabilityCompleted' => true, 'completionCertificateReference' => 'record:practical-completion-001',
+            'humanConfirmed' => true, 'reason' => 'Client recorded due retention for separate approvals.',
+        ]);
+        self::assertSame('provider_configuration_required', $retentionRelease['status']);
+        self::assertSame(450_000, $retentionRelease['requestedAmountCents']);
+        $service->approveRetentionRelease($organisationId, $leadId, 'member', $retentionRelease['id'], [
+            'approvalType' => 'lead_professional', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Lead professional verified completion evidence.',
+        ]);
+        $retentionApproved = $service->approveRetentionRelease($organisationId, $ownerId, 'owner', $retentionRelease['id'], [
+            'approvalType' => 'client', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Client approved the exact retention amount.',
+        ]);
+        self::assertSame('provider_configuration_required', $retentionApproved['status']);
+        self::assertCount(2, $retentionApproved['approvals']);
+
         $secret = 'test-provider-webhook-secret-with-32-bytes';
         putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET='.$secret);
         $this->pdo->prepare("UPDATE financial_providers SET live_configured=1,configuration_reference='test-only-fixture' WHERE id=UNHEX(:id)")->execute(['id' => $provider['id']]);
@@ -140,6 +156,13 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertSame(17_100_000, $certificateTwo['previousCertifiedPaymentsCents']);
         self::assertSame(8_100_000, $certificateTwo['netPayableCents']);
         self::assertSame(2_800_000, $service->retentionBalance($organisationId, $ownerId, $baseline['id'])['heldToDateCents']);
+        $forecast = $service->createCashflowSnapshot($organisationId, $ownerId, 'owner', $baseline['id'], true, 'Project team reviewed the current schedule and certificate facts.');
+        self::assertSame(100_000_000, $forecast['scheduledTotalCents']);
+        self::assertSame(28_000_000, $forecast['grossCertifiedToDateCents']);
+        self::assertSame(2_800_000, $forecast['retentionHeldToDateCents']);
+        self::assertSame(0, $forecast['providerPaidToDateCents']);
+        self::assertSame(72_000_000, $forecast['remainingContractValueCents']);
+        self::assertTrue($forecast['advisoryOnly']);
 
         $disputed = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
             'claimNumber' => 'PC-003', 'claimedToDateCents' => 35_000_000, 'milestoneId' => $schedule['milestones'][1]['id'],
