@@ -1,0 +1,67 @@
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS form_templates (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NULL,
+  template_key VARCHAR(100) NOT NULL,
+  name VARCHAR(220) NOT NULL,
+  category VARCHAR(80) NOT NULL,
+  version VARCHAR(30) NOT NULL,
+  status ENUM('draft','verified','retired') NOT NULL DEFAULT 'draft',
+  field_schema JSON NOT NULL,
+  limitations VARCHAR(1000) NOT NULL,
+  verified_by BINARY(16) NULL,
+  verified_at DATETIME(6) NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_form_template_scope_version (organisation_id,template_key,version),
+  KEY idx_form_template_library (status,category,name),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (verified_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS form_drafts (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  project_id BINARY(16) NOT NULL,
+  template_id BINARY(16) NOT NULL,
+  parent_draft_id BINARY(16) NULL,
+  title VARCHAR(220) NOT NULL,
+  revision INT UNSIGNED NOT NULL,
+  status ENUM('draft','review_required','approved','issued','superseded') NOT NULL DEFAULT 'draft',
+  values_json JSON NOT NULL,
+  auto_fill_snapshot JSON NOT NULL,
+  revision_reason VARCHAR(500) NULL,
+  review_reason VARCHAR(500) NULL,
+  approved_by BINARY(16) NULL,
+  approved_at DATETIME(6) NULL,
+  approval_reason VARCHAR(500) NULL,
+  issued_by BINARY(16) NULL,
+  issued_at DATETIME(6) NULL,
+  issue_reason VARCHAR(500) NULL,
+  audit_hash CHAR(64) NULL,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  KEY idx_form_drafts_project (organisation_id,project_id,status,created_at),
+  KEY idx_form_drafts_parent (parent_draft_id,revision),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (template_id) REFERENCES form_templates(id),
+  FOREIGN KEY (parent_draft_id) REFERENCES form_drafts(id),
+  FOREIGN KEY (approved_by) REFERENCES users(id),
+  FOREIGN KEY (issued_by) REFERENCES users(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS form_exports (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  form_draft_id BINARY(16) NOT NULL,
+  format ENUM('html','json') NOT NULL,
+  content MEDIUMTEXT NOT NULL,
+  checksum CHAR(64) NOT NULL,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_form_export_format (form_draft_id,format),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (form_draft_id) REFERENCES form_drafts(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

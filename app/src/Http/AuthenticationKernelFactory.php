@@ -20,6 +20,7 @@ use Architex\Http\Controller\ProposalController;
 use Architex\Http\Controller\AppointmentController;
 use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
+use Architex\Http\Controller\FormController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -51,6 +52,7 @@ use Architex\Platform\Proposal\ProposalService;
 use Architex\Platform\Appointment\AppointmentService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
+use Architex\Platform\Forms\FormService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -150,6 +152,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new CommunicationRoutes(
             new CommunicationController(new ProjectCommunicationService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new FormRoutes(
+            new FormController(new FormService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
