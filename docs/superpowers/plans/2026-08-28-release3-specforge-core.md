@@ -24,17 +24,17 @@
 - Create: `app/src/Platform/SpecForge/SpecForgeService.php`
 - Test: `app/tests/Integration/SpecForge/SpecForgeServiceTest.php`
 
-- [ ] Write failing tests for workspace creation, sections, items, tenant isolation and stale-version rejection.
-- [ ] Persist exact product/specification fields, source revision, cost allowance, estimate and lead time.
-- [ ] Derive budget, long-lead, client-decision and approval findings from current MariaDB records.
+- [x] Write failing tests for workspace creation, sections, items, tenant isolation and stale-version rejection.
+- [x] Persist exact product/specification fields, source revision, cost allowance, estimate and lead time.
+- [x] Derive budget, long-lead, client-decision and approval findings from current MariaDB records.
 
 ### Task 2: Review and immutable issue
 
-- [ ] Write failing tests for role-scoped decisions, rejection reasons and professional confirmation.
-- [ ] Store append-only approve/reject/flag decisions with actor, role and timestamp.
-- [ ] Block issue while required client decisions or unapproved items remain.
-- [ ] Snapshot the exact issued specification under SHA-256 and create controlled document/ProjectRecord/audit evidence.
-- [ ] Prove issued records reject mutation and external delivery remains false.
+- [x] Write failing tests for role-scoped decisions, rejection reasons and professional confirmation.
+- [x] Store append-only approve/reject/flag decisions with actor, role and timestamp.
+- [x] Block issue while required client decisions or unapproved items remain.
+- [x] Snapshot the exact issued specification under SHA-256 and create controlled document/ProjectRecord/audit evidence.
+- [x] Prove issued records reject mutation and external delivery remains false.
 
 ### Task 3: Authenticated API and canonical V1 workspace
 
