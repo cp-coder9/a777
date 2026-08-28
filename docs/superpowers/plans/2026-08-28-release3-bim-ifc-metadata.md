@@ -61,8 +61,8 @@
 **Files:**
 - Create: `docs/evidence/2026-08-28-release3-bim-ifc-metadata.md`
 
-- [ ] Run focused and applicable regression suites against the disposable MariaDB database.
-- [ ] Apply migration only to the bounded live development database after tests pass.
-- [ ] Use persistent Chrome DevTools to upload/register a source, create metadata, review and issue it, then prove reload persistence and responsive layout.
-- [ ] Correlate browser output with MariaDB source hash, issued snapshot SHA-256, ProjectRecord and audit evidence.
-- [ ] Keep local proof separate from shared-hosting staged-release certification.
+- [x] Run focused and applicable regression suites against the disposable MariaDB database.
+- [x] Apply migration only to the bounded live development database after tests pass.
+- [x] Use persistent Chrome DevTools to upload/register a source, create metadata, review and issue it, then prove reload persistence and responsive layout.
+- [x] Correlate browser output with MariaDB source hash, issued snapshot SHA-256, ProjectRecord and audit evidence.
+- [x] Keep local proof separate from shared-hosting staged-release certification.
