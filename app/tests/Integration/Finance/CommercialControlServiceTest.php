@@ -49,6 +49,7 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertSame('provider_configuration_required', $release['status']);
         self::assertSame(0, $release['providerPaidCents']);
         self::assertFalse($release['fundsHeldByArchitex']);
+        self::assertContains('escrow_release_request', $this->recordTypes($organisationId, $projectId));
 
         $service->approveReleaseRequest($organisationId, $leadId, 'member', $release['id'], [
             'approvalType' => 'lead_professional', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Professional approved exact certificate.',
@@ -91,6 +92,28 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         $timestamp = time();
         $body = json_encode(['eventId' => 'evt-paid-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 8_550_000, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $signature = hash_hmac('sha256', $timestamp.'.'.$body, $secret);
+
+        try {
+            $service->recordProviderWebhook($provider['id'], $body, (string)($timestamp - 301), $signature);
+            self::fail('Stale provider events must fail closed.');
+        } catch (CommercialControlException $exception) {
+            self::assertSame('financial_provider_webhook_timestamp_invalid', $exception->reason);
+        }
+        try {
+            $service->recordProviderWebhook($provider['id'], $body, (string)$timestamp, str_repeat('0', 64));
+            self::fail('Incorrect provider signatures must fail closed.');
+        } catch (CommercialControlException $exception) {
+            self::assertSame('financial_provider_webhook_signature_invalid', $exception->reason);
+        }
+
+        $mismatchBody = json_encode(['eventId' => 'evt-mismatch-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 1, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $mismatchSignature = hash_hmac('sha256', $timestamp.'.'.$mismatchBody, $secret);
+        $mismatch = $service->recordProviderWebhook($provider['id'], $mismatchBody, (string)$timestamp, $mismatchSignature);
+        self::assertSame('rejected', $mismatch['outcome']);
+        self::assertSame('provider_release_amount_currency_mismatch', $mismatch['rejectionReason']);
+        self::assertSame('submitted_to_provider', $mismatch['releaseStatus']);
+        self::assertSame(0, $mismatch['providerPaidCents']);
+
         $event = $service->recordProviderWebhook($provider['id'], $body, (string)$timestamp, $signature);
         self::assertSame('applied', $event['outcome']);
         self::assertFalse($event['duplicate']);
