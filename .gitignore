@@ -13,6 +13,7 @@
 /app/storage/tmp/
 /app/storage/evidence/
 /app/storage/files/
+/app/storage/backups/
 /coverage/
 /dist/
 /node_modules/
