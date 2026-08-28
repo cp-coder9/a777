@@ -51,10 +51,10 @@
 - Modify: `app/src/Http/AuthenticationKernelFactory.php`
 - Test: `app/tests/Integration/Http/MunicipalReadinessHttpTest.php`
 
-- [ ] Write the failing owner/member authenticated workflow through the real kernel.
-- [ ] Expose matrix listing/creation/verification and project assessment create/list/show/approve endpoints.
-- [ ] Enforce CSRF, permissions, tenant boundary, role boundary, source state and input validation.
-- [ ] Return the existing API envelope and stable failure reasons.
+- [x] Write the failing owner/member authenticated workflow through the real kernel.
+- [x] Expose matrix listing/creation/verification and project assessment create/list/show/approve endpoints.
+- [x] Enforce CSRF, permissions, tenant boundary, role boundary, source state and input validation.
+- [x] Return the existing API envelope and stable failure reasons.
 
 ### Task 4: Canonical V1 readiness dashboard
 
@@ -63,18 +63,18 @@
 - Modify: `app/public/assets/css/architex-v1.css`
 - Test: `app/tests/Frontend/MunicipalReadinessWorkspaceTest.php`
 
-- [ ] Write the failing frontend contract before the workspace implementation.
-- [ ] Build the native V1 dashboard with complexity inputs, matrix governance, overall/category scores, blockers, team routing, excluded disciplines, missing documents, evidence pack, sign-offs and next-best actions.
-- [ ] Keep human approval and no-statutory-approval boundaries visible.
-- [ ] Verify escaping, reload persistence and responsive behavior.
+- [x] Write the failing frontend contract before the workspace implementation.
+- [x] Build the native V1 dashboard with complexity inputs, matrix governance, overall/category scores, blockers, team routing, excluded disciplines, missing documents, evidence pack, sign-offs and next-best actions.
+- [x] Keep human approval and no-statutory-approval boundaries visible.
+- [x] Verify escaping, reload persistence and responsive behavior.
 
 ### Task 5: Local release evidence
 
 **Files:**
 - Create: `docs/evidence/2026-08-28-release3-municipal-submission-readiness.md`
 
-- [ ] Run schema, service, HTTP, frontend, security and applicable regression suites.
-- [ ] Apply migration to the bounded live development database and prove counts.
-- [ ] Use persistent Chrome DevTools to create and reload a real assessment, inspect all required/excluded team decisions, and verify responsive layout and clean console.
-- [ ] Read MariaDB directly for source checksum, assessment checksum, category scores, evidence, inbox deduplication, ProjectRecord and audit events.
-- [ ] State local proof separately from shared-hosting staging certification.
+- [x] Run schema, service, HTTP, frontend, security and applicable regression suites.
+- [x] Apply migration to the bounded live development database and prove counts.
+- [x] Use persistent Chrome DevTools to create and reload a real assessment, inspect all required/excluded team decisions, and verify responsive layout and clean console.
+- [x] Read MariaDB directly for source checksum, assessment checksum, category scores, evidence, inbox deduplication, ProjectRecord and audit events.
+- [x] State local proof separately from shared-hosting staging certification.
