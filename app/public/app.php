@@ -397,6 +397,10 @@ function invokeToolAction(action){
  try{
   if(action.kind==="top"){w.scrollTo({top:0,behavior:"smooth"});return}
   if(action.kind==="call"){
+   if(state.tool==='engineering_calc'&&action.fn==='showCalc'&&typeof action.arg==='string'){
+    const escaped=typeof CSS!=='undefined'&&typeof CSS.escape==='function'?CSS.escape(action.arg):action.arg.replace(/[^a-z0-9_-]/gi,'');
+    const target=d.querySelector(`.sb-item[onclick*="'${escaped}'"]`);if(target){target.click();return}
+   }
    const fn=w[action.fn];if(typeof fn==="function"){action.arg===undefined?fn():fn(action.arg);return}
   }
   if(action.kind==="hs"){
