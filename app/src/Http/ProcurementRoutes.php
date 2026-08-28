@@ -13,9 +13,12 @@ final readonly class ProcurementRoutes
     public function register(Router$router):void
     {
         $router->get('/api/v1/marketplace/listings',$this->controller->marketplace(...));
+        $router->get('/api/v1/marketplace/listings/mine',fn(Request$r):Response=>$this->read->process($r,$this->controller->myListings(...)));
         $router->post('/api/v1/marketplace/listings',fn(Request$r):Response=>$this->write->process($r,$this->controller->createListing(...)));
         $router->post('/api/v1/marketplace/listings/{listingId}/publish',fn(Request$r):Response=>$this->write->process($r,$this->controller->publishListing(...)));
         $router->post('/api/v1/projects/{projectId}/procurement-packages',fn(Request$r):Response=>$this->write->process($r,$this->controller->createPackage(...)));
+        $router->get('/api/v1/projects/{projectId}/procurement-packages',fn(Request$r):Response=>$this->read->process($r,$this->controller->packages(...)));
+        $router->get('/api/v1/procurement-packages/{packageId}/workspace',fn(Request$r):Response=>$this->read->process($r,$this->controller->workspace(...)));
         $router->get('/api/v1/procurement-packages/{packageId}',fn(Request$r):Response=>$this->read->process($r,$this->controller->showPackage(...)));
         $router->post('/api/v1/procurement-packages/{packageId}/issue',fn(Request$r):Response=>$this->write->process($r,$this->controller->issuePackage(...)));
         $router->post('/api/v1/procurement-packages/{packageId}/matches',fn(Request$r):Response=>$this->write->process($r,$this->controller->matches(...)));
