@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Architex\Tests\Integration\SiteExecution;
 
 use Architex\Platform\Identity\Identifier;
+use Architex\Platform\SiteExecution\SiteExecutionException;
 use Architex\Platform\SiteExecution\SiteExecutionService;
 use Architex\Tests\Support\MariaDbTestCase;
 
@@ -129,6 +130,95 @@ final class SiteExecutionServiceTest extends MariaDbTestCase
         self::assertContains('site_execution.payment_blocker_created', $this->values('audit_events', 'action', $organisationId, null));
     }
 
+    public function testStateMachinesAuthorityAndTenantBoundariesFailClosed(): void
+    {
+        [$organisationId, $ownerId, $projectId] = $this->tenant('Field State', 'field-state');
+        [$otherOrganisationId, $otherOwnerId, $otherProjectId] = $this->tenant('Other Field State', 'other-field-state');
+        $memberId = $this->member($organisationId, 'unverified-contractor@example.test');
+        $service = new SiteExecutionService($this->pdo);
+
+        $rfi = $service->createRfi($organisationId, $ownerId, 'owner', $projectId, [
+            'subject' => 'Past due RFI', 'question' => 'Confirm detail.', 'discipline' => 'structural',
+            'linkedDocumentIds' => [], 'dueAt' => '2026-08-01T12:00:00+00:00', 'humanConfirmed' => true,
+        ]);
+        self::assertSame(1, $service->markOverdueRfis($organisationId, $ownerId, $projectId, '2026-08-29T12:00:00+00:00'));
+        self::assertSame('overdue', $service->workspace($organisationId, $ownerId, $projectId)['rfis'][0]['status']);
+        $service->respondRfi($organisationId, $ownerId, 'owner', $rfi['id'], ['answer' => 'Use detail S-12.', 'requiresInstruction' => false, 'humanConfirmed' => true]);
+        self::assertSame('closed', $service->closeRfi($organisationId, $ownerId, 'owner', $rfi['id'], ['humanConfirmed' => true, 'reason' => 'Originator confirmed answer.'])['status']);
+
+        $instruction = $service->createSiteInstruction($organisationId, $ownerId, 'owner', $projectId, [
+            'title' => 'Controlled instruction', 'instruction' => 'Install per S-12.', 'costImpact' => 'none', 'timeImpact' => 'none',
+        ]);
+        try {
+            $service->issueSiteInstruction($organisationId, $memberId, 'member', $instruction['id'], ['humanConfirmed' => true, 'reason' => 'Unauthorised issue attempt.']);
+            self::fail('A general member must not issue a formal instruction.');
+        } catch (SiteExecutionException $exception) {
+            self::assertSame('site_professional_authority_required', $exception->reason);
+        }
+        $service->issueSiteInstruction($organisationId, $ownerId, 'owner', $instruction['id'], ['humanConfirmed' => true, 'reason' => 'Principal agent reviewed exact instruction.']);
+        $replacement = $service->supersedeSiteInstruction($organisationId, $ownerId, 'owner', $instruction['id'], [
+            'title' => 'Controlled instruction Rev 2', 'instruction' => 'Install per S-12 Rev 2.',
+            'costImpact' => 'possible', 'timeImpact' => 'none', 'humanConfirmed' => true,
+            'reason' => 'Revision issued instead of mutating the original.',
+        ]);
+        $instructions = $service->workspace($organisationId, $ownerId, $projectId)['siteInstructions'];
+        self::assertSame('superseded', $instructions[0]['status']);
+        self::assertSame('issued', $replacement['status']);
+        self::assertSame($instruction['id'], $replacement['supersedesId']);
+
+        $evidenceLog = $service->createDailyLog($organisationId, $ownerId, 'owner', $projectId, [
+            'logDate' => '2026-08-28', 'weather' => 'Clear', 'labour' => [], 'plant' => [], 'deliveries' => [],
+            'visitors' => [], 'delays' => [], 'safetyNotes' => [], 'humanConfirmed' => true,
+        ]);
+        $evidence = $service->captureEvidence($organisationId, $ownerId, 'owner', $projectId, [
+            'dailyLogId' => $evidenceLog['id'], 'evidenceType' => 'photo', 'title' => 'Quality evidence',
+            'capturedAt' => '2026-08-28T12:00:00+00:00', 'popiaClassification' => 'restricted', 'humanConfirmed' => true,
+        ]);
+        $ncr = $service->createNcr($organisationId, $ownerId, 'owner', $projectId, [
+            'title' => 'NCR verification', 'description' => 'Non-conforming work.', 'severity' => 'critical',
+            'responsibleParty' => 'Contractor', 'evidenceIds' => [$evidence['id']], 'blocksPayment' => true, 'humanConfirmed' => true,
+        ]);
+        $blocker = $service->createPaymentBlocker($organisationId, $ownerId, 'owner', $projectId, [
+            'sourceType' => 'ncr', 'sourceObjectId' => $ncr['id'], 'reason' => 'NCR remains open.',
+            'severity' => 'critical', 'humanConfirmed' => true,
+        ]);
+        $service->submitNcrCorrectiveAction($organisationId, $ownerId, 'owner', $ncr['id'], [
+            'correctiveAction' => 'Remove and replace.', 'evidenceIds' => [$evidence['id']], 'humanConfirmed' => true,
+        ]);
+        self::assertSame('verified_closed', $service->decideNcr($organisationId, $ownerId, 'owner', $ncr['id'], ['decision' => 'verified_closed', 'humanConfirmed' => true, 'reason' => 'Professional verified replacement.'])['status']);
+        self::assertSame('cleared', $service->clearPaymentBlocker($organisationId, $ownerId, 'owner', $blocker['id'], ['humanConfirmed' => true, 'reason' => 'Source NCR verified closed.'])['status']);
+
+        $snag = $service->createSnag($organisationId, $ownerId, 'owner', $projectId, [
+            'location' => 'Room 1', 'description' => 'Paint defect', 'priority' => 'medium', 'responsibleParty' => 'Contractor',
+            'dueAt' => '2026-09-02T12:00:00+00:00', 'evidenceIds' => [$evidence['id']], 'blocksPayment' => false, 'humanConfirmed' => true,
+        ]);
+        $service->allocateSnag($organisationId, $ownerId, 'owner', $snag['id'], ['humanConfirmed' => true]);
+        $service->markSnagReady($organisationId, $ownerId, 'owner', $snag['id'], ['evidenceIds' => [$evidence['id']], 'humanConfirmed' => true]);
+        self::assertSame('closed', $service->decideSnag($organisationId, $ownerId, 'owner', $snag['id'], ['decision' => 'closed', 'humanConfirmed' => true, 'reason' => 'Reinspection passed.'])['status']);
+
+        $inspection = $service->createInspection($organisationId, $ownerId, 'owner', $projectId, [
+            'inspectionType' => 'quality', 'findings' => [], 'checklist' => [['item' => 'Finish', 'outcome' => 'pass']],
+            'followUps' => [], 'signOffRequired' => true,
+        ]);
+        self::assertSame('issued', $service->issueInspection($organisationId, $ownerId, 'owner', $inspection['id'], ['professionalSupervisorId' => $ownerId, 'humanConfirmed' => true])['status']);
+        self::assertSame('closed', $service->closeInspection($organisationId, $ownerId, 'owner', $inspection['id'], ['humanConfirmed' => true, 'reason' => 'All internal checks completed.'])['status']);
+
+        $warning = $service->createDelayWarning($organisationId, $ownerId, 'owner', $projectId, [
+            'cause' => 'materials', 'description' => 'Late delivery.', 'noticeDeadline' => '2026-08-30T12:00:00+00:00',
+            'likelyProgrammeImpactDays' => 1, 'humanConfirmed' => true,
+        ]);
+        self::assertSame('under_review', $service->transitionDelayWarning($organisationId, $ownerId, 'owner', $warning['id'], ['status' => 'under_review', 'humanConfirmed' => true, 'reason' => 'Notice evidence under review.'])['status']);
+        self::assertSame('closed', $service->transitionDelayWarning($organisationId, $ownerId, 'owner', $warning['id'], ['status' => 'closed', 'humanConfirmed' => true, 'reason' => 'Warning reviewed without entitlement decision.'])['status']);
+
+        try {
+            $service->workspace($otherOrganisationId, $otherOwnerId, $projectId);
+            self::fail('Cross-tenant project access must fail closed.');
+        } catch (SiteExecutionException $exception) {
+            self::assertSame('site_project_not_found', $exception->reason);
+        }
+        self::assertNotSame($projectId, $otherProjectId);
+    }
+
     /** @return array{string,string,string} */
     private function tenant(string $name, string $prefix): array
     {
@@ -138,6 +228,14 @@ final class SiteExecutionServiceTest extends MariaDbTestCase
         $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'owner','active')")->execute(['id' => Identifier::generate(), 'o' => $organisation, 'u' => $user]);
         $this->pdo->prepare("INSERT INTO projects(id,organisation_id,project_code,project_name,client_name,municipality,property_reference,property_use,land_use_notes,lead_professional_role,current_phase,created_by) VALUES(UNHEX(:p),UNHEX(:o),:code,:name,'Client','Johannesburg','Erf 1','Residential','','architect','construction_execution',UNHEX(:u))")->execute(['p' => $project, 'o' => $organisation, 'u' => $user, 'code' => strtoupper(substr($prefix, 0, 8)), 'name' => $name.' Project']);
         return [$organisation, $user, $project];
+    }
+
+    private function member(string $organisationId, string $email): string
+    {
+        $user = Identifier::generate();
+        $this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),:email,'hash','active',UTC_TIMESTAMP(6))")->execute(['id' => $user, 'email' => $email]);
+        $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'member','active')")->execute(['id' => Identifier::generate(), 'o' => $organisationId, 'u' => $user]);
+        return $user;
     }
 
     /** @return list<string> */
