@@ -1,0 +1,5 @@
+<?php
+declare(strict_types=1);
+namespace Architex\Http;
+use Architex\Http\Controller\RegulatoryCaseController;use Architex\Http\Middleware\PermissionMiddleware;
+final readonly class RegulatoryCaseRoutes{public function __construct(private RegulatoryCaseController$c,private PermissionMiddleware$read,private PermissionMiddleware$write){}public function register(Router$r):void{$r->get('/api/v1/projects/{projectId}/regulatory-cases',fn(Request$q):Response=>$this->read->process($q,$this->c->index(...)));$r->post('/api/v1/projects/{projectId}/regulatory-cases',fn(Request$q):Response=>$this->write->process($q,$this->c->create(...)));$r->get('/api/v1/regulatory-cases/{caseId}',fn(Request$q):Response=>$this->read->process($q,$this->c->show(...)));$r->post('/api/v1/regulatory-cases/{caseId}/evidence',fn(Request$q):Response=>$this->write->process($q,$this->c->evidence(...)));$r->post('/api/v1/regulatory-cases/{caseId}/determine',fn(Request$q):Response=>$this->write->process($q,$this->c->determine(...)));$r->get('/api/v1/regulatory-cases/{caseId}/exports/{format}',fn(Request$q):Response=>$this->read->process($q,$this->c->export(...)));}}
