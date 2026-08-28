@@ -34,10 +34,10 @@
 - Create: `app/src/Platform/Documents/DrawingIntelligenceService.php`
 - Test: `app/tests/Integration/Documents/DrawingIntelligenceServiceTest.php`
 
-- [ ] Write failing tests for the complete output shape, provenance, nullable confidence, findings and exact human review.
-- [ ] Accept human-entered candidates now and reserve explicit future-provider provenance states.
-- [ ] Never infer or auto-apply title-block, classification, discipline, revision or issue-purpose metadata.
-- [ ] Persist accept/reject reason, reviewer, checksum, ProjectRecord and audit evidence.
+- [x] Write failing tests for the complete output shape, provenance, nullable confidence, findings and exact human review.
+- [x] Accept human-entered candidates now and reserve explicit future-provider provenance states.
+- [x] Never infer or auto-apply title-block, classification, discipline, revision or issue-purpose metadata.
+- [x] Persist accept/reject reason, reviewer, checksum, ProjectRecord and audit evidence.
 
 ### Task 3: Authenticated API and canonical V1 workspace
 
