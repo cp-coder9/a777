@@ -47,10 +47,10 @@
 - Test: `app/tests/Integration/Http/SpecForgeHttpTest.php`
 - Test: `app/tests/Frontend/SpecForgeWorkspaceTest.php`
 
-- [ ] Add failing API and frontend contracts first.
-- [ ] Expose project workspace, section, item, decision and issue commands with CSRF/session/permission enforcement.
-- [ ] Render real empty/loading/error states and persisted canonical SpecForge views.
-- [ ] Label unavailable provider and Release 4 actions honestly.
+- [x] Add failing API and frontend contracts first.
+- [x] Expose project workspace, section, item, decision and issue commands with CSRF/session/permission enforcement.
+- [x] Render real empty/loading/error states and persisted canonical SpecForge views.
+- [x] Label unavailable provider and Release 4 actions honestly.
 
 ### Task 4: Local evidence
 

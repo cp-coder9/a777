@@ -25,6 +25,7 @@ use Architex\Http\Controller\DocumentController;
 use Architex\Http\Controller\DocumentEvidenceController;
 use Architex\Http\Controller\ComplianceController;
 use Architex\Http\Controller\MunicipalReadinessController;
+use Architex\Http\Controller\SpecForgeController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -64,6 +65,7 @@ use Architex\Platform\Compliance\ComplianceCalculatorService;
 use Architex\Platform\Compliance\ComplianceRuleRegistry;
 use Architex\Platform\Municipal\MunicipalReadinessService;
 use Architex\Platform\Municipal\MunicipalRequirementRegistry;
+use Architex\Platform\SpecForge\SpecForgeService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -190,6 +192,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new DocumentEvidenceRoutes(
             new DocumentEvidenceController(new DocumentTransmittalService($this->pdo), new DrawingIntelligenceService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new SpecForgeRoutes(
+            new SpecForgeController(new SpecForgeService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
