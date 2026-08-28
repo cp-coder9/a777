@@ -59,6 +59,12 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertSame('provider_configuration_required', $approved['status']);
         self::assertCount(2, $approved['approvals']);
         self::assertNull($approved['providerReference']);
+        $workspace = $service->workspace($organisationId, $ownerId, $projectId);
+        self::assertSame($baseline['id'], $workspace['baseline']['id']);
+        self::assertCount(1, $workspace['providers']);
+        self::assertCount(1, $workspace['releaseRequests']);
+        self::assertFalse($workspace['providerBoundary']['fundsHeldByArchitex']);
+        self::assertFalse($workspace['providerBoundary']['livePaymentClaimed']);
 
         $disputedClaim = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
             'claimNumber' => 'REL-002', 'claimedToDateCents' => 12_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],

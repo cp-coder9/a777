@@ -31,6 +31,7 @@ use Architex\Http\Controller\TownPlanningController;
 use Architex\Http\Controller\RegulatoryCaseController;
 use Architex\Http\Controller\SurveyJobController;
 use Architex\Http\Controller\ProcurementController;
+use Architex\Http\Controller\FinanceController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -60,6 +61,7 @@ use Architex\Platform\Toolbox\ProductionToolRegistry;
 use Architex\Platform\Toolbox\ToolboxEngine;
 use Architex\Platform\Proposal\ProposalService;
 use Architex\Platform\Appointment\AppointmentService;
+use Architex\Platform\Finance\CommercialControlService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Forms\FormService;
@@ -229,6 +231,11 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new RateLimitMiddleware($limiter,'procurement_invitation',60,3_600,$remoteKey),
+        ))->register($router);
+        (new FinanceRoutes(
+            new FinanceController(new CommercialControlService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
 
         return new Kernel($router, middleware: [
