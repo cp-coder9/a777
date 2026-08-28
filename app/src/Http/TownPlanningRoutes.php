@@ -19,5 +19,6 @@ final readonly class TownPlanningRoutes
         $router->get('/api/v1/planning-applications/{applicationId}',fn(Request$r):Response=>$this->read->process($r,$this->controller->show(...)));
         $router->post('/api/v1/planning-applications/{applicationId}/entries',fn(Request$r):Response=>$this->write->process($r,$this->controller->entry(...)));
         $router->post('/api/v1/planning-applications/{applicationId}/submit',fn(Request$r):Response=>$this->write->process($r,$this->controller->submit(...)));
+        $router->post('/api/v1/planning-applications/{applicationId}/stages',fn(Request$r):Response=>$this->write->process($r,$this->controller->advance(...)));
     }
 }
