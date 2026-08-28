@@ -11,15 +11,15 @@
 
 ## Delivery sequence
 
-- [ ] Add migration `0028` for tenant-owned marketplace listings, procurement packages, immutable package revisions, matches, invitations and high-entropy access tokens, clarifications, addenda/distributions, quote revisions/returnables, comparisons, award recommendations, dual approvals and appointment placeholders.
-- [ ] Add failing MariaDB integration tests for tenant isolation, public-safe marketplace search, verification/supervision flags, method/type classification, package completeness, advisory matching and conflict disclosure.
-- [ ] Implement the procurement service for draft packages, controlled issue snapshots, marketplace matching and auditable bidder invitations without delivery-provider claims.
-- [ ] Add failing tests and implement token-scoped bidder questions and quote revisions, deadline/late-submission evidence, exact returnables, exclusions, qualifications and conflict declarations.
-- [ ] Enforce material-addendum equal distribution and immutable distribution evidence; never mutate an issued package or prior quote revision.
-- [ ] Add deterministic comparison snapshots covering price, lead time, completeness, exclusions, qualifications, risk and conflicts without hiding raw bidder facts.
-- [ ] Add award recommendation, separate client/professional approval gates and an appointment placeholder/ProjectRecord only after both approvals.
-- [ ] Route ProjectRecords, inbox actions, audit events and human-gated next-best actions for each material procurement event.
-- [ ] Add authenticated PHP API routes plus narrowly scoped external invitation-token routes, CSRF/rate-limit controls and generic failure responses.
-- [ ] Replace the RFQ Marketplace scaffold with project-aware listing, package, bidder, clarification, comparison and approval views while preserving the canonical shell.
-- [ ] Verify focused and regression suites, PHP/JS syntax, migration/backup/restore compatibility, Chrome end-to-end flows across organisation and bidder contexts, reload persistence, exports, responsive layout, console/network health and direct MariaDB evidence.
-- [ ] Record exact local evidence and keep FTP staging, SMTP, remote MariaDB, TLS/domain/docroot, cron and production promotion as separate release gates.
+- [x] Add migration `0028` for tenant-owned marketplace listings, procurement packages, immutable package revisions, matches, invitations and high-entropy access tokens, clarifications, addenda/distributions, quote revisions/returnables, comparisons, award recommendations, dual approvals and appointment placeholders.
+- [x] Add failing MariaDB integration tests for tenant isolation, public-safe marketplace search, verification/supervision flags, method/type classification, package completeness, advisory matching and conflict disclosure.
+- [x] Implement the procurement service for draft packages, controlled issue snapshots, marketplace matching and auditable bidder invitations without delivery-provider claims.
+- [x] Add failing tests and implement token-scoped bidder questions and quote revisions, deadline/late-submission evidence, exact returnables, exclusions, qualifications and conflict declarations.
+- [x] Enforce material-addendum equal distribution and immutable distribution evidence; never mutate an issued package or prior quote revision.
+- [x] Add deterministic comparison snapshots covering price, lead time, completeness, exclusions, qualifications, risk and conflicts without hiding raw bidder facts.
+- [x] Add award recommendation, separate client/professional approval gates and an appointment placeholder/ProjectRecord only after both approvals.
+- [x] Route ProjectRecords, inbox actions, audit events and human-gated next-best actions for each material procurement event.
+- [x] Add authenticated PHP API routes plus narrowly scoped external invitation-token routes, CSRF/rate-limit controls and generic failure responses.
+- [x] Replace the RFQ Marketplace scaffold with project-aware listing, package, bidder, clarification, comparison and approval views while preserving the canonical shell.
+- [x] Verify focused and regression suites, PHP/JS syntax, local migration compatibility, Chrome end-to-end flows across organisation and bidder contexts, reload persistence, responsive desktop layout, console/network health and direct MariaDB evidence. Full backup/restore and release regression remain aggregate certification gates.
+- [x] Record exact local evidence and keep FTP staging, SMTP, remote MariaDB, TLS/domain/docroot, cron and production promotion as separate release gates.
