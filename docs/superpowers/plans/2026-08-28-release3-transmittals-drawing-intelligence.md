@@ -23,9 +23,9 @@
 - Create: `app/src/Platform/Documents/DocumentTransmittalService.php`
 - Test: `app/tests/Integration/Documents/DocumentTransmittalServiceTest.php`
 
-- [ ] Write failing tests for draft creation, exact revision selection, eligibility, issue confirmation, SHA-256 snapshot and immutability.
-- [ ] Persist project-scoped transmittals and item links with deduplicated codes.
-- [ ] Create issued ProjectRecord, audit event and recipient-role inbox evidence without claiming delivery.
+- [x] Write failing tests for draft creation, exact revision selection, eligibility, issue confirmation, SHA-256 snapshot and immutability.
+- [x] Persist project-scoped transmittals and item links with deduplicated codes.
+- [x] Create issued ProjectRecord, audit event and recipient-role inbox evidence without claiming delivery.
 - [ ] Prove cross-tenant and post-issue mutation attempts fail closed.
 
 ### Task 2: Provider-honest drawing-intelligence candidates
