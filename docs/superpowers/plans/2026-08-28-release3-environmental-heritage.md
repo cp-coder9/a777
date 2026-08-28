@@ -9,10 +9,10 @@
 
 ## Delivery sequence
 
-- [ ] Add failing MariaDB integration tests for environmental and heritage case evidence, professional determination, snapshot integrity, stale writes, and tenant isolation.
-- [ ] Add authenticated HTTP tests for CSRF, project scoping, evidence capture, and authority boundaries.
-- [ ] Add forward-only MariaDB tables for cases, evidence registers, decisions, and immutable determinations.
-- [ ] Implement PHP services, controllers, routes, permissions, audit events, project records, and evidence exports.
-- [ ] Replace both Environmental & Heritage and EIA scaffolds with one project-aware governed workspace while keeping their distinct navigation intent.
-- [ ] Run focused tests, syntax/diff checks, live migration, Chrome end-to-end persistence, exports, responsive checks, and console/network checks.
-- [ ] Record exact evidence and keep FTP staging/promotion as separate release gates.
+- [x] Add failing MariaDB integration tests for environmental and heritage case evidence, professional determination, snapshot integrity, stale writes, and tenant isolation.
+- [x] Add authenticated HTTP tests for CSRF, project scoping, evidence capture, and authority boundaries.
+- [x] Add forward-only MariaDB tables for cases, evidence registers, decisions, and immutable determinations.
+- [x] Implement PHP services, controllers, routes, permissions, audit events, project records, and evidence exports.
+- [x] Replace both Environmental & Heritage and EIA scaffolds with one project-aware governed workspace while keeping their distinct navigation intent.
+- [x] Run focused tests, syntax/diff checks, live migration, Chrome end-to-end persistence, exports, responsive checks, and console/network checks.
+- [x] Record exact evidence and keep FTP staging/promotion as separate release gates.
