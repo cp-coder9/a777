@@ -18,10 +18,11 @@ final class MunicipalRequirementRegistryTest extends MariaDbTestCase
 
         $seed = $registry->ensureImplementationSeed($organisationId,$ownerId,'owner','City of Johannesburg');
         self::assertSame('city-of-johannesburg',$seed['municipalityKey']);
-        self::assertSame('implementation-seed-v0.1',$seed['version']);
+        self::assertSame('implementation-seed-v0.2',$seed['version']);
         self::assertSame('review_required',$seed['status']);
         self::assertFalse($seed['assessmentApprovalEligible']);
         self::assertCount(8,$seed['requirements']);
+        self::assertContains('refuse_precheck',array_column($seed['requirements'][3]['items'],'id'));
         self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/',$seed['payloadSha256']);
         self::assertSame($seed['id'],$registry->ensureImplementationSeed($organisationId,$ownerId,'owner','City of Johannesburg')['id']);
 

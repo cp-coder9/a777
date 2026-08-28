@@ -62,16 +62,19 @@ final class MunicipalReadinessServiceTest extends MariaDbTestCase
         [$organisationId,$ownerId,$projectId] = $this->seedProject('LOW','Tshwane');
         [$otherOrganisationId,$otherOwnerId] = $this->seedProject('OTHER','Tshwane');
         $registry=new MunicipalRequirementRegistry($this->pdo);$matrix=$registry->ensureImplementationSeed($organisationId,$ownerId,'owner','Tshwane');$service=new MunicipalReadinessService($this->pdo,$registry);
-        $assessment=$service->assess($organisationId,$ownerId,'owner',$projectId,$matrix['id'],[
+        $facts=[
             'occupancyType'=>'single_residential','changesLoadBearing'=>false,'changesDrainageOrStormwater'=>false,'publicAccessOrAssembly'=>false,
             'envelopeEnergyImpact'=>false,'zoningKnown'=>true,'coverageOrParkingRisk'=>false,'boundaryOrServitudeUnclear'=>false,
             'heritagePotential'=>false,'environmentalSensitivity'=>false,'trafficImpact'=>false,'estimatedConstructionValueZar'=>500000,
             'nbrAdvisoryReviewed'=>true,'availableSupportingDocuments'=>['title_deed','sg_diagram'],'professionalSignoffs'=>['lead_professional'],'clientAuthorityConfirmed'=>true,
-        ]);
+        ];$assessment=$service->assess($organisationId,$ownerId,'owner',$projectId,$matrix['id'],$facts);
         self::assertSame('low',$assessment['complexity']['level']);self::assertSame([],$assessment['complexity']['triggers']);
+        $refuse=array_values(array_filter($assessment['checks'],static fn(array$check):bool=>$check['id']==='refuse_precheck'));self::assertCount(1,$refuse);self::assertSame('missing',$refuse[0]['status']);self::assertSame('Compliance ToolRuns + human review',$refuse[0]['evidenceSource']);
         $required=array_column(array_filter($assessment['professionalRouting'],static fn(array$r):bool=>$r['status']==='required'),'discipline');
         self::assertSame(['client','lead_professional','architect','municipal_coordinator'],$required);
         self::assertContains('structural_engineer',array_column(array_filter($assessment['professionalRouting'],static fn(array$r):bool=>$r['status']==='not_currently_required'),'discipline'));
+        $this->pdo->prepare("INSERT INTO tool_runs(id,organisation_id,user_id,tool_id,tool_version,executed_role,assignment_mode,project_id,status,input_payload,output_payload,snapshot_payload,audit_hash,audit_reason,issued_at) VALUES(UNHEX(:id),UNHEX(:organisation),UNHEX(:user),'refuse_area_calculator','1.0.0','owner','internal_project',UNHEX(:project),'issued','{}',:output,'{}',:hash,'Reviewed refuse evidence.',UTC_TIMESTAMP(6))")->execute(['id'=>Identifier::generate(),'organisation'=>$organisationId,'user'=>$ownerId,'project'=>$projectId,'output'=>json_encode(['sourceStatus'=>'verified','professionalAuthority'=>['profileProfession'=>'architect'],'municipalApproval'=>false],JSON_THROW_ON_ERROR),'hash'=>str_repeat('a',64)]);
+        $withRefuse=$service->assess($organisationId,$ownerId,'owner',$projectId,$matrix['id'],$facts);$refuse=array_values(array_filter($withRefuse['checks'],static fn(array$check):bool=>$check['id']==='refuse_precheck'));self::assertSame('complete',$refuse[0]['status']);
         try{$service->get($otherOrganisationId,$otherOwnerId,$assessment['id']);self::fail('Cross-tenant assessment read must fail.');}catch(MunicipalReadinessException){self::assertTrue(true);}
     }
 

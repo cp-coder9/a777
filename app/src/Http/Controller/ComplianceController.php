@@ -16,7 +16,7 @@ final readonly class ComplianceController
     public function __construct(private ComplianceRuleRegistry$rules) {}
 
     public function list(Request$request):Response{$scope=$this->scope($request);return$scope instanceof Response?$scope:Response::success($this->rules->list($scope[0]));}
-    public function seed(Request$request):Response{return$this->write($request,fn(array$body,array$scope):Response=>Response::success($this->rules->ensureImplementationSeed($scope[0],$scope[1],$scope[2]),status:201));}
+    public function seed(Request$request):Response{return$this->write($request,function(array$body,array$scope):Response{$ruleKey=$body['ruleKey']??'sans_10400_xa';if(!is_string($ruleKey))throw new ComplianceException('invalid_rule_key');$seed=match($ruleKey){'sans_10400_xa'=>$this->rules->ensureImplementationSeed($scope[0],$scope[1],$scope[2]),'municipal_refuse'=>$this->rules->ensureRefuseImplementationSeed($scope[0],$scope[1],$scope[2]),default=>throw new ComplianceException('invalid_rule_key')};return Response::success($seed,status:201);});}
     public function create(Request$request):Response{return$this->write($request,fn(array$body,array$scope):Response=>Response::success($this->rules->createVersion($scope[0],$scope[1],$scope[2],$body),status:201));}
     public function verify(Request$request):Response{return$this->write($request,fn(array$body,array$scope):Response=>Response::success($this->rules->verify($scope[0],$scope[1],$scope[2],$this->id($request),($body['humanConfirmed']??false)===true,is_string($body['verificationReason']??null)?$body['verificationReason']:'')));}
 

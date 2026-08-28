@@ -64,6 +64,31 @@ final class ComplianceRuleRegistryTest extends MariaDbTestCase
         self::assertNotSame($ownerId,$otherOwnerId);
     }
 
+    public function testRefuseSeedIsDistinctValidatedAndNeverDirectlyVerifiable(): void
+    {
+        [$organisationId,$ownerId]=$this->seedTenant('refuse');$registry=new ComplianceRuleRegistry($this->pdo);
+        $seed=$registry->ensureRefuseImplementationSeed($organisationId,$ownerId,'owner');
+        self::assertSame('municipal_refuse',$seed['ruleKey']);
+        self::assertSame('implementation-seed-v0.1',$seed['version']);
+        self::assertSame('review_required',$seed['status']);
+        self::assertFalse($seed['issueEligible']);
+        self::assertArrayHasKey('residential_dwelling',$seed['rules']['generationRates']);
+        self::assertArrayHasKey('standard_1100l',$seed['rules']['bins']);
+
+        $candidate=$registry->createVersion($organisationId,$ownerId,'owner',[
+            'ruleKey'=>'municipal_refuse','version'=>'municipal-reviewed-test-1',
+            'sourceReference'=>'Disposable test transcription of an official municipal source',
+            'effectiveDate'=>'2026-08-28','rules'=>$seed['rules'],
+        ]);
+        self::assertSame('verified',$registry->verify($organisationId,$ownerId,'owner',$candidate['id'],true,'Exact disposable source transcription reviewed.')['status']);
+        try{$registry->verify($organisationId,$ownerId,'owner',$seed['id'],true,'Must remain blocked.');self::fail('A refuse implementation seed must never be verifiable.');}
+        catch(ComplianceException$exception){self::assertSame('implementation_seed_not_verifiable',$exception->reason);}
+
+        $invalid=$seed['rules'];unset($invalid['bins']);
+        try{$registry->createVersion($organisationId,$ownerId,'owner',['ruleKey'=>'municipal_refuse','version'=>'invalid-1','sourceReference'=>'Invalid test','effectiveDate'=>'2026-08-28','rules'=>$invalid]);self::fail('Incomplete refuse rules must fail closed.');}
+        catch(ComplianceException$exception){self::assertSame('invalid_rule_payload',$exception->reason);}
+    }
+
     /** @return array{string,string,string} */
     private function seedTenant(string $suffix='primary'): array
     {

@@ -20,6 +20,7 @@ final readonly class ComplianceCalculatorService
             'r_value_thermal_calculator'=>$this->assemblies($project,$input['assemblies']??null,$rules),
             'sans_forms_checklist_builder'=>$this->forms($project,$input,$rules),
             'drawing_compliance_precheck'=>$this->drawings($project,$input['sheets']??null),
+            'refuse_area_calculator'=>$this->refuse($project,$input,$rules),
             default=>throw new ComplianceException('unknown_compliance_tool'),
         };
         return$result+['sourceRuleVersionId'=>$source['id'],'sourceVersion'=>$source['version'],'sourceStatus'=>$source['status'],'sourceReference'=>$source['sourceReference'],'sourceEffectiveDate'=>$source['effectiveDate'],'sourcePayloadSha256'=>$source['payloadSha256'],'issueEligible'=>$source['issueEligible'],'professionalSignoffRequired'=>true,'municipalApproval'=>false,'advisoryOnly'=>true];
@@ -75,6 +76,20 @@ final readonly class ComplianceCalculatorService
         return['tool'=>'drawing_compliance_precheck','title'=>'Drawing Compliance Metadata Pre-check','project'=>$project,'verdict'=>$verdict,'summary'=>[count($results).' drawing sheets checked',count($actions).' human-review findings'],'actionCards'=>$actions,'results'=>$results,'limitations'=>'Pre-check only. No dimensions inferred, no drawing content parsed, and no missing evidence invented. Professional review required.'];
     }
 
+    /** @param array<string,mixed> $project @param array<string,mixed> $input @param array<string,mixed> $rules @return array<string,mixed> */
+    private function refuse(array $project,array $input,array $rules): array
+    {
+        $use=$input['occupancyUse']??null;$binType=$input['binType']??null;$rates=$rules['generationRates']??null;$bins=$rules['bins']??null;$required=$rules['requiredFacilities']??null;
+        if(!is_string($use)||!is_array($rates)||!is_array($rates[$use]??null)||!is_string($binType)||!is_array($bins)||!is_array($bins[$binType]??null)||!is_array($required))throw new ComplianceException('invalid_refuse_input');
+        $rate=$rates[$use];$bin=$bins[$binType];$quantity=$this->positive($input['quantity']??null,'invalid_refuse_input');$days=$this->integer($input['collectionIntervalDays']??null,1,7,'invalid_refuse_input');$contingency=$this->range($input['contingencyPercent']??null,0,100,'invalid_refuse_input');$proposed=$this->positive($input['proposedStorageAreaM2']??null,'invalid_refuse_input');
+        $facilities=$input['facilities']??null;if(!is_array($facilities))throw new ComplianceException('invalid_refuse_input');$assumptions=$this->text($input['assumptions']??null,1000,'invalid_refuse_input');
+        $litresPerUnit=$this->positive($rate['litresPerUnitPerDay']??null,'invalid_rule_payload');$capacity=$this->positive($bin['capacityLitres']??null,'invalid_rule_payload');$footprint=$this->positive($bin['footprintM2']??null,'invalid_rule_payload');$circulation=$this->range($rules['circulationAllowancePercent']??null,0,200,'invalid_rule_payload');
+        $base=$this->round($quantity*$litresPerUnit*$days);$design=$this->round($base*(1+$contingency/100));$count=(int)ceil($design/$capacity);$net=$this->round($count*$footprint);$area=$this->round($net*(1+$circulation/100));$surplus=$this->round($proposed-$area);$actions=[];
+        if($surplus<0)$actions[]='Increase the proposed refuse storage area by at least '.$this->number(abs($surplus)).' m2.';
+        $facilityResults=[];foreach($required as$key=>$label){if(!array_key_exists($key,$facilities)||!is_bool($facilities[$key]))throw new ComplianceException('invalid_refuse_input');$present=$facilities[$key];$facilityResults[]=['id'=>$key,'label'=>$label,'recorded'=>$present,'verdict'=>$present?'pass':'fail'];if(!$present)$actions[]='Confirm and record a '.$label.'.';}
+        return['tool'=>'refuse_area_calculator','title'=>'Municipal Refuse Storage Pre-check','project'=>$project,'verdict'=>$actions===[]?'pass':'fail','summary'=>[$this->number($design).' litres design storage volume',$count.' × '.$bin['label'].' required',$this->number($area).' m2 minimum calculated storage area',count($actions).' action findings'],'actionCards'=>$actions,'calculation'=>['occupancyUse'=>$use,'occupancyLabel'=>$rate['label'],'quantity'=>$quantity,'rateUnit'=>$rate['unit'],'litresPerUnitPerDay'=>$litresPerUnit,'collectionIntervalDays'=>$days,'contingencyPercent'=>$contingency,'baseVolumeLitres'=>$base,'designVolumeLitres'=>$design,'binType'=>$binType,'binCapacityLitres'=>$capacity,'requiredBinCount'=>$count,'binFootprintM2'=>$footprint,'netBinAreaM2'=>$net,'circulationAllowancePercent'=>$circulation,'requiredStorageAreaM2'=>$area,'proposedStorageAreaM2'=>$proposed,'areaSurplusM2'=>$surplus],'facilities'=>$facilityResults,'assumptions'=>$assumptions,'professionalRoleRequired'=>'architect_or_civil_engineer','limitations'=>'Advisory pre-check using the selected versioned rule source and human-entered assumptions. Confirm collection service, vehicle access, fire, health, drainage and municipality-specific requirements. This is not municipal approval.'];
+    }
+
     /** @return array<string,mixed> */
     private function project(mixed$raw): array{if(!is_array($raw))throw new ComplianceException('invalid_compliance_project');$type=$raw['buildingType']??null;if(!in_array($type,['residential','commercial','public'],true))throw new ComplianceException('invalid_compliance_project');return['projectName'=>$this->text($raw['projectName']??null,180,'invalid_compliance_project'),'reference'=>$this->text($raw['reference']??null,100,'invalid_compliance_project'),'climateZone'=>$this->integer($raw['climateZone']??null,1,6,'invalid_compliance_project'),'buildingType'=>$type,'storeys'=>$this->integer($raw['storeys']??null,1,100,'invalid_compliance_project'),'floorArea'=>$this->positive($raw['floorArea']??null,'invalid_compliance_project')];}
     /** @param array<string,mixed> $rules @return array<string,mixed> */
@@ -91,4 +106,5 @@ final readonly class ComplianceCalculatorService
     private function integer(mixed$value,int$min,int$max,string$error): int{if(filter_var($value,FILTER_VALIDATE_INT)===false||(int)$value<$min||(int)$value>$max)throw new ComplianceException($error);return(int)$value;}
     private function boolean(mixed$value): bool{if(!is_bool($value))throw new ComplianceException('invalid_drawing_sheet');return$value;}
     private function round(float$value): float{return round($value,2);}
+    private function number(float$value): string{return rtrim(rtrim(number_format($value,2,'.',''),'0'),'.');}
 }

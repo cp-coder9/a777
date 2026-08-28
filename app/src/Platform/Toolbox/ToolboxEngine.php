@@ -119,6 +119,8 @@ final readonly class ToolboxEngine
             'quantity_surveyor'=>[['quantity_surveyor'],['professional_registration']],
             'quantity_surveyor_or_responsible_contractor'=>[['quantity_surveyor','responsible_contractor','contractor'],['professional_registration','contractor_supplier_compliance']],
             'responsible_contractor'=>[['responsible_contractor','contractor'],['contractor_supplier_compliance']],
+            'architect'=>[['architect'],['professional_registration']],
+            'architect_or_civil_engineer'=>[['architect','civil_engineer','engineer'],['professional_registration']],
             default=>throw new ToolException('professional_authority_not_verified'),
         };
         $profile=$this->pdo->prepare('SELECT profession FROM professional_profiles WHERE organisation_id=UNHEX(:organisation_id) AND user_id=UNHEX(:user_id)');$profile->execute(['organisation_id'=>$organisationId,'user_id'=>$userId]);$profession=$profile->fetchColumn();$normalised=is_string($profession)?trim((string)preg_replace('/[^a-z0-9]+/','_',strtolower($profession)),'_'):'';if(!in_array($normalised,$professions,true))throw new ToolException('professional_authority_not_verified');

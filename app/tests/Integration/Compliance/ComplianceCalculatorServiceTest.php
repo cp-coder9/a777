@@ -59,6 +59,34 @@ final class ComplianceCalculatorServiceTest extends MariaDbTestCase
         ]as$operation){try{$operation();self::fail('Invalid compliance input should fail closed.');}catch(ComplianceException){self::assertTrue(true);}}
     }
 
+    public function testRefuseCalculatorProducesSourceBoundCapacityAreaAndFacilityEvidence(): void
+    {
+        [$organisationId,$ownerId]=$this->seedTenant();$registry=new ComplianceRuleRegistry($this->pdo);$source=$registry->ensureRefuseImplementationSeed($organisationId,$ownerId,'owner');$service=new ComplianceCalculatorService($registry);
+        $input=['project'=>['projectName'=>'Refuse Court','reference'=>'REF-1','climateZone'=>4,'buildingType'=>'residential','storeys'=>3,'floorArea'=>1800],
+            'occupancyUse'=>'residential_dwelling','quantity'=>12,'collectionIntervalDays'=>7,'contingencyPercent'=>10,'binType'=>'standard_1100l','proposedStorageAreaM2'=>13,
+            'facilities'=>['collectionVehicleAccess'=>true,'washdownWater'=>true,'drainage'=>true,'ventilation'=>true,'wasteSeparation'=>true],
+            'assumptions'=>'Twelve dwellings; municipal service frequency requires confirmation.'];
+        $result=$service->calculate($organisationId,$source['id'],'refuse_area_calculator',$input);
+        self::assertSame('pass',$result['verdict']);
+        self::assertSame(10080.0,$result['calculation']['baseVolumeLitres']);
+        self::assertSame(11088.0,$result['calculation']['designVolumeLitres']);
+        self::assertSame(11,$result['calculation']['requiredBinCount']);
+        self::assertSame(12.38,$result['calculation']['requiredStorageAreaM2']);
+        self::assertSame(0.62,$result['calculation']['areaSurplusM2']);
+        self::assertSame([],$result['actionCards']);
+        self::assertSame('architect_or_civil_engineer',$result['professionalRoleRequired']);
+        self::assertSame($source['payloadSha256'],$result['sourcePayloadSha256']);
+        self::assertFalse($result['issueEligible']);self::assertFalse($result['municipalApproval']);self::assertTrue($result['advisoryOnly']);
+
+        $input['proposedStorageAreaM2']=10;$input['facilities']['drainage']=false;
+        $failed=$service->calculate($organisationId,$source['id'],'refuse_area_calculator',$input);
+        self::assertSame('fail',$failed['verdict']);
+        self::assertContains('Increase the proposed refuse storage area by at least 2.38 m2.',$failed['actionCards']);
+        self::assertContains('Confirm and record a compliant drainage arrangement.',$failed['actionCards']);
+
+        foreach([0,8]as$days){$input['collectionIntervalDays']=$days;try{$service->calculate($organisationId,$source['id'],'refuse_area_calculator',$input);self::fail('Unsupported collection interval must fail closed.');}catch(ComplianceException$exception){self::assertSame('invalid_refuse_input',$exception->reason);}}
+    }
+
     /** @return array{string,string} */
     private function seedTenant():array
     {

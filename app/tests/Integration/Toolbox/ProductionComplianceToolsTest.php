@@ -15,7 +15,7 @@ use Architex\Tests\Support\MariaDbTestCase;
 
 final class ProductionComplianceToolsTest extends MariaDbTestCase
 {
-    public function testRegistersFourToolsBlocksSeedIssueAndIssuesVerifiedEvidence(): void
+    public function testRegistersFiveToolsBlocksSeedIssueAndIssuesVerifiedEvidence(): void
     {
         [$organisationId,$ownerId,$projectId]=$this->seedTenant();$rules=new ComplianceRuleRegistry($this->pdo);$seed=$rules->ensureImplementationSeed($organisationId,$ownerId,'owner');$calculators=new ComplianceCalculatorService($rules);$registry=(new ProductionToolRegistry(new FeeCalculatorService($this->pdo),$calculators))->create();$engine=new ToolboxEngine($this->pdo,$registry);
         foreach([
@@ -23,6 +23,7 @@ final class ProductionComplianceToolsTest extends MariaDbTestCase
             'r_value_thermal_calculator'=>'/toolbox/standalone/r-value-thermal-calculator',
             'sans_forms_checklist_builder'=>'/toolbox/standalone/sans-forms-checklist-builder',
             'drawing_compliance_precheck'=>'/toolbox/standalone/drawing-compliance-precheck',
+            'refuse_area_calculator'=>'/toolbox/standalone/refuse-area-calculator',
         ]as$id=>$route)self::assertSame($route,$registry->required($id)->route);
 
         $input=$this->fenestrationInput($seed['id']);$completed=$engine->run($organisationId,$ownerId,'owner','fenestration_xa_calculator',$input,['mode'=>'none'],false);
