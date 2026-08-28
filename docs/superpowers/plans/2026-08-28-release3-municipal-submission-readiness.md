@@ -26,10 +26,10 @@
 - Create: `app/src/Platform/Municipal/MunicipalRequirementRegistry.php`
 - Test: `app/tests/Integration/Municipal/MunicipalRequirementRegistryTest.php`
 
-- [ ] Write a failing MariaDB test for tenant scope, review-required seed, immutable versions, verification and role enforcement.
-- [ ] Add versioned municipal matrices with municipality key, source reference, effective date, payload checksum, status and reviewer evidence.
-- [ ] Add immutable readiness assessments and professional review records.
-- [ ] Prove old versions and assessment snapshots cannot be mutated or silently replaced.
+- [x] Write a failing MariaDB test for tenant scope, review-required seed, immutable versions, verification and role enforcement.
+- [x] Add versioned municipal matrices with municipality key, source reference, effective date, payload checksum, status and reviewer evidence.
+- [x] Add immutable readiness assessments and professional review records.
+- [x] Prove old versions and assessment snapshots cannot be mutated or silently replaced.
 
 ### Task 2: Whole-team readiness engine
 
@@ -37,11 +37,11 @@
 - Create: `app/src/Platform/Municipal/MunicipalReadinessService.php`
 - Test: `app/tests/Integration/Municipal/MunicipalReadinessServiceTest.php`
 
-- [ ] Write failing tests for low/high complexity, required/optional/excluded disciplines, all eight readiness categories and source status.
-- [ ] Read the project passport, latest appointment, active team, controlled documents, ProjectRecords and compliance ToolRuns from MariaDB.
-- [ ] Calculate category and overall scores, explicit blockers, confidence, assumptions, missing documents and human sign-offs.
-- [ ] Assemble a checksum-bound evidence pack, recommendations, audit event and only the triggered role inbox tasks.
-- [ ] Fail closed on professional-review approval unless the matrix is verified and explicit human confirmation is supplied.
+- [x] Write failing tests for low/high complexity, required/optional/excluded disciplines, all eight readiness categories and source status.
+- [x] Read the project passport, active team, controlled documents, ProjectRecords and compliance ToolRuns from MariaDB.
+- [x] Calculate category and overall scores, explicit blockers, confidence, assumptions, missing documents and human sign-offs.
+- [x] Assemble a checksum-bound evidence pack, recommendations, audit event and only the triggered role inbox tasks.
+- [x] Fail closed on professional-review approval unless the matrix is verified and explicit human confirmation is supplied.
 
 ### Task 3: Authenticated municipal API
 
