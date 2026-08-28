@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Architex OS is a governed built-environment operating system for project, professional, document and commercial workflows.">
 <title>Architex OS — Datum UI Integrated Prototype v7 · Meetings</title>
 <link rel="stylesheet" href="assets/css/architex-v1.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2319b7b0%22/%3E%3C/svg%3E">
@@ -103,7 +104,7 @@ function icon(name,size=24){let shape=iconShapes[name]||iconShapes.document;retu
 function toneStyle(t){return `--tone:${tones[t]||"var(--teal)"}`}
 
 function renderGlobalMenu(){
- q("#globalMenu").innerHTML=globalItems.map(i=>`<button class="os-item ${state.global===i.id?"active":""}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label}"><span class="icon-wrap">${icon(i.icon,24)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join("");
+ q("#globalMenu").innerHTML=globalItems.map(i=>`<button class="os-item ${state.global===i.id?"active":""}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label} ${i.meta}"><span class="icon-wrap">${icon(i.icon,24)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join("");
 }
 function toggleRail(){state.rail=!state.rail;q("#app").classList.toggle("rail-expanded",state.rail)}
 function toggleNavigator(){q("#app").classList.toggle("nav-closed")}
@@ -487,7 +488,7 @@ function iconForTab(tab,fallback){
 }
 
 function renderGlobalMenu(){
- q('#globalMenu').innerHTML=globalItems.map(i=>`<button class="os-item ${state.global===i.id?'active':''}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label}" data-tooltip="${i.label}" title="${i.label}"><span class="icon-wrap">${icon(i.icon,25)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join('');
+ q('#globalMenu').innerHTML=globalItems.map(i=>`<button class="os-item ${state.global===i.id?'active':''}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label} ${i.meta}" data-tooltip="${i.label}" title="${i.label}"><span class="icon-wrap">${icon(i.icon,25)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join('');
 }
 function toggleNavigator(){q('#app').classList.toggle('nav-compact');renderTopbar()}
 function openGlobal(id){state.global=id;state.toolTab=0;if(id==='projects'){state.mode='project';state.tool=null}else if(id==='tools'){state.mode='standalone';state.tool=null}else if(id==='feedback'){state.mode='standalone';state.tool='feedback'}else{state.tool=null}renderAll()}
@@ -1241,7 +1242,7 @@ body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mo
   window.toggleGodMode=function(force){const on=typeof force==='boolean'?force:!state.godMode;state.godMode=on;if(on){state.global='god';state.mode='standalone';state.tool=null}else if(state.global==='god'){state.global='projects';state.mode='project';state.tool=null}renderAll();showToast(on?'God Mode enabled — full ecosystem exploration unlocked.':'God Mode off — returned to role-focused experience.')};
   function installGodToggle(){const top=q('.topbar');if(!top)return;let b=q('#godModeToggle');if(!b){b=document.createElement('button');b.id='godModeToggle';b.className='god-toggle';b.onclick=()=>toggleGodMode();const anchor=q('#wingmanTop');top.insertBefore(b,anchor)}b.classList.toggle('active',state.godMode);b.innerHTML=`${icon('god_mode',18)}<span>God Mode</span><small>${state.godMode?'On':'Explore'}</small>`;b.title=state.godMode?'Exit God Mode':'Explore the entire Architex ecosystem';document.body.classList.toggle('god-mode',state.godMode)}
 
-  window.renderGlobalMenu=function(){const items=[...globalItems,...(state.godMode?[{id:'god',label:'God Mode Explorer',icon:'god_mode',tone:'lavender',meta:'ALL'}]:[])];q('#globalMenu').innerHTML=items.map(i=>`<button class="os-item ${state.global===i.id?'active':''}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label}" title="${i.label}"><span class="icon-wrap">${icon(i.icon,25)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join('')};
+  window.renderGlobalMenu=function(){const items=[...globalItems,...(state.godMode?[{id:'god',label:'God Mode Explorer',icon:'god_mode',tone:'lavender',meta:'ALL'}]:[])];q('#globalMenu').innerHTML=items.map(i=>`<button class="os-item ${state.global===i.id?'active':''}" style="${toneStyle(i.tone)}" onclick="openGlobal('${i.id}')" aria-label="${i.label} ${i.meta}" title="${i.label}"><span class="icon-wrap">${icon(i.icon,25)}</span><span class="os-label">${i.label}</span><span class="os-meta">${i.meta}</span></button>`).join('')};
   window.openGlobal=function(id){if(id==='god'){if(!state.godMode)state.godMode=true;state.global='god';state.mode='standalone';state.tool=null;state.toolTab=0;renderAll();return}v8old.openGlobal(id)};
 
   function allToolGroups(mode){const groups={};Object.entries(TOOLS).forEach(([id,t])=>(groups[t.group]??=[]).push([id,t]));return Object.entries(groups).map(([g,a])=>`<div class="nav-section"><div class="nav-heading">${g}</div>${a.map(([id,t])=>`<button class="nav-row" style="${toneStyle(t.tone)}" onclick="openTool('${id}','${mode}')" title="${t.name}"><span class="nav-icon">${icon(t.icon,21)}</span><span class="nav-label">${t.name}</span>${t.status==='scaffold'?'<span class="badge">Scaffold</span>':''}</button>`).join('')}</div>`).join('')}
