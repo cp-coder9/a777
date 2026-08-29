@@ -59,6 +59,40 @@ final class ComplianceCalculatorServiceTest extends MariaDbTestCase
         ]as$operation){try{$operation();self::fail('Invalid compliance input should fail closed.');}catch(ComplianceException){self::assertTrue(true);}}
     }
 
+    public function testFenCalcXaAggregatesRoomsStoreysChecksAndOrientationWarnings(): void
+    {
+        [$organisationId,$ownerId]=$this->seedTenant();$registry=new ComplianceRuleRegistry($this->pdo);$source=$registry->ensureImplementationSeed($organisationId,$ownerId,'owner');$service=new ComplianceCalculatorService($registry);
+        self::assertSame('implementation-seed-v0.2',$source['version']);
+        $project=['projectName'=>'FenCalc House','reference'=>'FC-2026','address'=>'1 Evidence Street','sansEdition'=>'2021','sansNCheck'=>true,'climateZone'=>4,'buildingType'=>'residential','storeys'=>2,'floorArea'=>200];
+        $result=$service->calculate($organisationId,$source['id'],'fenestration_xa_calculator',['project'=>$project,'elements'=>[
+            ['id'=>'W01','elementType'=>'fenestration','storey'=>1,'room'=>'Living','roomUse'=>'habitable','roomFloorArea'=>50,'orientation'=>'N','frameType'=>'thermal','glassArea'=>10,'openableArea'=>4,'wallArea'=>100,'uValue'=>2.1,'shgc'=>0.4,'shadingFactor'=>0.3,'description'=>'Living north window'],
+            ['id'=>'W02','elementType'=>'curtain_wall','storey'=>1,'room'=>'Living','roomUse'=>'habitable','roomFloorArea'=>50,'orientation'=>'E','frameType'=>'thermal','glassArea'=>2,'openableArea'=>0.5,'wallArea'=>20,'uValue'=>2.2,'shgc'=>0.5,'shadingFactor'=>0.7,'description'=>'Living east curtain wall'],
+            ['id'=>'W03','elementType'=>'doors','storey'=>2,'room'=>'Bedroom','roomUse'=>'habitable','roomFloorArea'=>50,'orientation'=>'W','frameType'=>'alu','glassArea'=>20,'openableArea'=>1,'wallArea'=>50,'uValue'=>3.2,'shgc'=>0.6,'shadingFactor'=>0.1,'description'=>'Bedroom west glazed door'],
+        ]]);
+        self::assertSame('fail',$result['verdict']);
+        self::assertSame(16.0,$result['overallGlazingPercent']);
+        self::assertSame(68.75,$result['orientationDistribution']['eastWestPercent']);
+        self::assertSame('warning',$result['orientationDistribution']['status']);
+        self::assertSame('pass',$result['results'][0]['checks']['sansNLighting']['status']);
+        self::assertSame('pass',$result['results'][0]['checks']['sansNVentilation']['status']);
+        self::assertSame('fail',$result['results'][2]['checks']['sansNVentilation']['status']);
+        self::assertSame('fail',$result['results'][2]['checks']['uValue']['status']);
+        self::assertSame('fail',$result['results'][2]['checks']['adjustedShgc']['status']);
+        self::assertSame(12.0,$result['roomSummaries']['1|Living']['glazedArea']);
+        self::assertSame(4.5,$result['roomSummaries']['1|Living']['openableArea']);
+        self::assertSame(2,$result['byStorey']['1']['total']);
+        self::assertSame(32.0,$result['summaryMetrics']['totalGlazedArea']);
+        self::assertArrayHasKey('uValuePassPercent',$result['summaryMetrics']);
+        self::assertTrue($result['nCheckEnabled']);
+        self::assertSame('2021',$result['project']['sansEdition']);
+        self::assertSame('1 Evidence Street',$result['project']['address']);
+        self::assertStringContainsString('human-entered',$result['limitations']);
+
+        $project['storeys']=11;
+        try{$service->calculate($organisationId,$source['id'],'fenestration_xa_calculator',['project'=>$project,'elements'=>[['id'=>'W1','elementType'=>'skylight','storey'=>1,'room'=>'Room','roomUse'=>'habitable','roomFloorArea'=>20,'orientation'=>'HORIZONTAL','frameType'=>'timber','glassArea'=>2,'openableArea'=>1,'wallArea'=>20,'uValue'=>2,'shgc'=>0.4,'shadingFactor'=>0,'description'=>'Roof light']]]);self::fail('FenCalc must enforce its 1-10 storey contract.');}
+        catch(ComplianceException$exception){self::assertSame('invalid_fenestration_storeys',$exception->reason);}
+    }
+
     public function testRefuseCalculatorProducesSourceBoundCapacityAreaAndFacilityEvidence(): void
     {
         [$organisationId,$ownerId]=$this->seedTenant();$registry=new ComplianceRuleRegistry($this->pdo);$source=$registry->ensureRefuseImplementationSeed($organisationId,$ownerId,'owner');$service=new ComplianceCalculatorService($registry);

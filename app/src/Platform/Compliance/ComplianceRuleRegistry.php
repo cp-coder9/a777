@@ -19,8 +19,8 @@ final readonly class ComplianceRuleRegistry
     {
         $this->assertGovernor($organisationId,$userId,$role);
         $rules=$this->seedRules();$json=$this->json($rules);$id=Identifier::generate();
-        $this->pdo->prepare("INSERT IGNORE INTO compliance_rule_versions(id,organisation_id,rule_key,version,status,source_reference,effective_date,rules_payload,payload_sha256,created_by) VALUES(UNHEX(:id),UNHEX(:organisation_id),'sans_10400_xa','implementation-seed-v0.1','review_required','Supplied implementation seed values; official or licensed source review required','2026-06-21',:rules,:sha256,UNHEX(:user_id))")->execute(['id'=>$id,'organisation_id'=>$organisationId,'rules'=>$json,'sha256'=>hash('sha256',$json),'user_id'=>$userId]);
-        $statement=$this->pdo->prepare("SELECT LOWER(HEX(id)) FROM compliance_rule_versions WHERE organisation_id=UNHEX(:organisation_id) AND rule_key='sans_10400_xa' AND version='implementation-seed-v0.1'");$statement->execute(['organisation_id'=>$organisationId]);$stored=$statement->fetchColumn();
+        $this->pdo->prepare("INSERT IGNORE INTO compliance_rule_versions(id,organisation_id,rule_key,version,status,source_reference,effective_date,rules_payload,payload_sha256,created_by) VALUES(UNHEX(:id),UNHEX(:organisation_id),'sans_10400_xa','implementation-seed-v0.2','review_required','Supplied Pack 16 implementation seed values; official or licensed source review required','2026-08-29',:rules,:sha256,UNHEX(:user_id))")->execute(['id'=>$id,'organisation_id'=>$organisationId,'rules'=>$json,'sha256'=>hash('sha256',$json),'user_id'=>$userId]);
+        $statement=$this->pdo->prepare("SELECT LOWER(HEX(id)) FROM compliance_rule_versions WHERE organisation_id=UNHEX(:organisation_id) AND rule_key='sans_10400_xa' AND version='implementation-seed-v0.2'");$statement->execute(['organisation_id'=>$organisationId]);$stored=$statement->fetchColumn();
         if(!is_string($stored))throw new ComplianceException('compliance_seed_failed');
         return$this->get($organisationId,$stored);
     }
@@ -113,6 +113,7 @@ final readonly class ComplianceRuleRegistry
         if($ruleKey!=='sans_10400_xa')throw new ComplianceException('invalid_rule_key');
         $zones=$rules['climateZones']??null;if(!is_array($zones)||count($zones)!==6)throw new ComplianceException('invalid_rule_payload');
         foreach(range(1,6)as$zone){$item=$zones[(string)$zone]??$zones[$zone]??null;if(!is_array($item)||!is_array($item['uLimit']??null)||!is_array($item['shgc']??null)||!is_array($item['minR']??null))throw new ComplianceException('invalid_rule_payload');}
+        $minimums=$rules['sansNMinimums']??null;$orientation=$rules['orientationWarningPercent']??null;if(!is_array($minimums)||array_diff(['habitable','bathroom','kitchen','garage','stair','public'],array_keys($minimums))!==[]||!is_numeric($orientation)||(float)$orientation<=0||(float)$orientation>100)throw new ComplianceException('invalid_rule_payload');foreach($minimums as$item)if(!is_array($item)||!is_numeric($item['lightingRatio']??null)||!is_numeric($item['ventilationRatio']??null)||(float)$item['lightingRatio']<0||(float)$item['ventilationRatio']<0)throw new ComplianceException('invalid_rule_payload');
         if(!is_array($rules['materials']??null)||!is_array($rules['forms']??null))throw new ComplianceException('invalid_rule_payload');
     }
 
@@ -138,6 +139,10 @@ final readonly class ComplianceRuleRegistry
             '4'=>['name'=>'Central Interior','uLimit'=>['alu'=>3.0,'thermal'=>2.3,'timber'=>3.0],'shgc'=>['n'=>0.50,'s'=>0.55,'ew'=>0.20],'maxGlazingPercent'=>0.15,'minR'=>['roof'=>3.7,'wall'=>2.2,'floor'=>1.3]],
             '5'=>['name'=>'High Altitude','uLimit'=>['alu'=>3.0,'thermal'=>2.3,'timber'=>3.0],'shgc'=>['n'=>0.60,'s'=>0.65,'ew'=>0.20],'maxGlazingPercent'=>0.15,'minR'=>['roof'=>3.7,'wall'=>2.2,'floor'=>1.3]],
             '6'=>['name'=>'Hot Interior','uLimit'=>['alu'=>5.7,'thermal'=>5.7,'timber'=>5.7],'shgc'=>['n'=>0.50,'s'=>0.55,'ew'=>0.20],'maxGlazingPercent'=>0.20,'minR'=>['roof'=>3.7,'wall'=>1.9,'floor'=>1.0]],
+        ],'orientationWarningPercent'=>40,'sansNMinimums'=>[
+            'habitable'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],'bathroom'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],
+            'kitchen'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],'garage'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],
+            'stair'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],'public'=>['lightingRatio'=>0.10,'ventilationRatio'=>0.05],
         ],'materials'=>['brick'=>['conductivity'=>0.77],'concrete'=>['conductivity'=>1.4],'plaster'=>['conductivity'=>0.72],'gypsum'=>['conductivity'=>0.25],'glasswool'=>['conductivity'=>0.04],'polyiso'=>['conductivity'=>0.026],'xps'=>['conductivity'=>0.034],'air-cavity'=>['rValue'=>0.18],'roof-tile'=>['rValue'=>0.02],'ceiling-board'=>['conductivity'=>0.21]],'forms'=>[
             ['id'=>'A1','name'=>'Application for Approval checklist','parts'=>['A'],'evidence'=>['owner details','property description','plans','professional details']],
             ['id'=>'A19','name'=>'Competent Person appointment/undertaking','parts'=>['A'],'evidence'=>['competent person details','discipline','signature','registration reference']],

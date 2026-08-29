@@ -18,7 +18,7 @@ final class ComplianceRuleRegistryTest extends MariaDbTestCase
 
         $seed = $registry->ensureImplementationSeed($organisationId,$ownerId,'owner');
         self::assertSame('sans_10400_xa',$seed['ruleKey']);
-        self::assertSame('implementation-seed-v0.1',$seed['version']);
+        self::assertSame('implementation-seed-v0.2',$seed['version']);
         self::assertSame('review_required',$seed['status']);
         self::assertFalse($seed['issueEligible']);
         self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/',$seed['payloadSha256']);
