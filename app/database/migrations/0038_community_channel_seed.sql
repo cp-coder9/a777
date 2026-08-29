@@ -1,0 +1,20 @@
+-- architex:migration-mode=dml
+INSERT IGNORE INTO community_channels(id,label,description,sort_order) VALUES
+('general_built_environment','Built environment community','Cross-disciplinary questions and collaboration.',10),
+('role-architects','Architects','Architecture practice and peer coordination.',20),
+('role-candidate-architects','Candidate architects','Candidate support, mentorship and practical experience.',30),
+('role-quantity-surveyors','Quantity surveyors','Cost planning, measurement and commercial practice.',40),
+('role-engineers','Engineers','Engineering coordination and technical questions.',50),
+('role-town-planners','Town planners','Land-use, planning and municipal process.',60),
+('role-land-surveyors','Land surveyors','Cadastral, site and survey coordination.',70),
+('role-contractors','Contractors','Construction delivery and site coordination.',80),
+('role-subcontractors','Subcontractors','Subcontractor and specialist delivery.',90),
+('role-suppliers','Suppliers','Product, material and supplier discussions.',100),
+('role-clients-developers','Clients and developers','Client, developer and project-owner discussions.',110),
+('regulations-sans','Regulations and SANS','Illustrative regulatory and standards discussion.',120),
+('municipal-process','Municipal process','Submission and municipal process peer support.',130),
+('cpd-learning','CPD and learning','Learning, CPD and professional development.',140),
+('jobs-opportunities','Jobs and opportunities','Job tickets, collaboration and opportunities.',150),
+('products-materials','Products and materials','Product and material questions and recommendations.',160),
+('site-issues','Site issues','Informal site issue discussion before formal workflow conversion.',170),
+('announcements','Announcements','Moderated community notices.',180);

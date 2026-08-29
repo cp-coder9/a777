@@ -1,0 +1,13 @@
+{
+  "name": "Architex Community",
+  "short_name": "Architex",
+  "description": "Role-aware built-environment community messaging.",
+  "start_url": "/community-app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f7",
+  "theme_color": "#116b67",
+  "icons": [
+    {"src": "/assets/icons/community.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

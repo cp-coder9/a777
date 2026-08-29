@@ -24,6 +24,12 @@ final class Router
     }
 
     /** @param callable(Request):Response $handler */
+    public function put(string $path, callable $handler): void
+    {
+        $this->add('PUT', $path, $handler);
+    }
+
+    /** @param callable(Request):Response $handler */
     public function delete(string $path, callable $handler): void
     {
         $this->add('DELETE', $path, $handler);

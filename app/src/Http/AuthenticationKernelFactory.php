@@ -20,6 +20,7 @@ use Architex\Http\Controller\ProposalController;
 use Architex\Http\Controller\AppointmentController;
 use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
+use Architex\Http\Controller\CommunityController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
 use Architex\Http\Controller\DocumentEvidenceController;
@@ -78,6 +79,7 @@ use Architex\Platform\Agent\AgentOrchestrationService;
 use Architex\Platform\Analytics\AnalyticsReportingService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
+use Architex\Platform\Community\CommunityMessagingService;
 use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
 use Architex\Platform\Documents\DocumentTransmittalService;
@@ -223,6 +225,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new CommunicationRoutes(
             new CommunicationController(new ProjectCommunicationService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
+        (new CommunityRoutes(
+            new CommunityController(new CommunityMessagingService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);

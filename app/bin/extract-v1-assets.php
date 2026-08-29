@@ -30,21 +30,33 @@ foreach ([$public, $assets, $assets . '/css', $assets . '/js'] as $directory) {
     }
 }
 $sourceHash = hash('sha256', $html);
+$existingRegistry = is_file($assets . '/tool-registry.json') ? json_decode((string) file_get_contents($assets . '/tool-registry.json'), true) : [];
+$existingStatuses = [];
+foreach (is_array($existingRegistry['tools'] ?? null) ? $existingRegistry['tools'] : [] as $existingTool) {
+    if (is_string($existingTool['id'] ?? null) && is_string($existingTool['status'] ?? null)) $existingStatuses[$existingTool['id']] = $existingTool['status'];
+}
 $registry = [];
 $live = 0;
 foreach ($tools as $id => $tool) {
-    $status = ($tool['status'] ?? '') === 'live' ? 'prototype_live' : 'scaffold';
-    if ($status === 'prototype_live') $live++;
+    $sourceIsLive = ($tool['status'] ?? '') === 'live';
+    $status = $sourceIsLive ? (($existingStatuses[$id] ?? null) === 'live' ? 'live' : 'prototype_live') : 'scaffold';
+    if ($sourceIsLive) $live++;
     $registry[] = ['id' => $id, 'name' => $tool['name'] ?? $id, 'status' => $status, 'group' => $tool['group'] ?? '', 'stage' => $tool['stage'] ?? ''];
 }
 $manifest = ['source'=>'v1.html','sourceSha256'=>$sourceHash,'toolCount'=>count($registry),'prototypeLiveCount'=>$live,'scaffoldCount'=>count($registry)-$live];
-$generated = preg_replace('/<style>.*?<\/style>/s', '<link rel="stylesheet" href="assets/css/architex-v1.css">', $html, 1);
+$generated = preg_replace('/<style>.*?<\/style>/s', '<link rel="stylesheet" href="/assets/css/architex-v1.css">' . "\n" . '<link rel="stylesheet" href="/assets/css/community.css">', $html, 1);
 if (!is_string($generated)) throw new RuntimeException('Unable to generate shell.');
-$headAssets = '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%2319b7b0%22/%3E%3C/svg%3E">';
+$headAssets = '<link rel="icon" href="/assets/icons/community.svg">' . "\n" . '<link rel="manifest" href="/community.webmanifest">' . "\n" . '<meta name="theme-color" content="#116b67">';
 $generated = str_replace('</head>', $headAssets . "\n</head>", $generated);
-$scripts = '<script src="assets/js/api-client.js"></script><script src="assets/js/project-datum.js"></script><script src="assets/js/tool-registry.js"></script><script src="assets/js/shell.js"></script>';
+$generated = str_replace('<select class="project-select">', '<select class="project-select" name="projectSelector" aria-label="Active project">', $generated);
+$generated = str_replace('<textarea id="feedbackText"', '<textarea id="feedbackText" name="feedback" aria-label="Feedback description"', $generated);
+$scripts = '<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script>';
 $generated = str_replace('</body>', $scripts . "\n</body>", $generated);
-file_put_contents($assets . '/css/architex-v1.css', "/* canonical-source-sha256: {$sourceHash} */\n" . trim($styleMatch[1]) . "\n");
+$existingCss = is_file($assets . '/css/architex-v1.css') ? (string) file_get_contents($assets . '/css/architex-v1.css') : '';
+$extensionMarker = '/* Release 2 project-team workspace */';
+$extensionOffset = strpos($existingCss, $extensionMarker);
+$productionExtensions = $extensionOffset === false ? '' : "\n" . substr($existingCss, $extensionOffset);
+file_put_contents($assets . '/css/architex-v1.css', "/* canonical-source-sha256: {$sourceHash} */\n" . trim($styleMatch[1]) . "\n" . $productionExtensions);
 file_put_contents($assets . '/tool-registry.json', json_encode(['tools'=>$registry], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
 file_put_contents($assets . '/v1-manifest.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
 file_put_contents($public . '/app.php', $generated);

@@ -17,6 +17,13 @@ final class V1ExtractionTest extends TestCase
             self::assertStringContainsString($selector, $html);
         }
         self::assertStringContainsString('name="viewport" content="width=device-width, initial-scale=1.0"', $html);
+        self::assertStringContainsString('name="projectSelector" aria-label="Active project"', $html);
+        self::assertStringContainsString('name="feedback" aria-label="Feedback description"', $html);
+        self::assertStringContainsString('href="/assets/css/community.css"', $html);
+        $css = file_get_contents($root . '/app/public/assets/css/architex-v1.css');
+        self::assertIsString($css);
+        self::assertStringContainsString('/* Release 2 project-team workspace */', $css);
+        self::assertStringContainsString('/* Release 13 standalone tool tiles */', $css);
         $registry = json_decode((string) file_get_contents($root . '/app/public/assets/tool-registry.json'), true, flags: JSON_THROW_ON_ERROR);
         self::assertCount(45, $registry['tools']);
         self::assertContains('project_passport', array_column($registry['tools'], 'id'));

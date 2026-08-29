@@ -18,7 +18,7 @@
 
 ### Task 1: Source registry and deterministic review engine
 
-**Files:** Create `app/database/migrations/0038_drawing_compliance_intelligence.sql`, `app/src/Platform/DrawingCompliance/DrawingComplianceService.php`, `app/src/Platform/DrawingCompliance/DrawingComplianceException.php`; test `app/tests/Unit/DrawingCompliance/DrawingComplianceServiceTest.php` and `app/tests/Integration/DrawingCompliance/DrawingCompliancePersistenceTest.php`.
+**Files:** Create the next immutable migration after Release 15 (`0042_drawing_compliance_intelligence.sql` at execution time), `app/src/Platform/DrawingCompliance/DrawingComplianceService.php`, `app/src/Platform/DrawingCompliance/DrawingComplianceException.php`; test `app/tests/Unit/DrawingCompliance/DrawingComplianceServiceTest.php` and `app/tests/Integration/DrawingCompliance/DrawingCompliancePersistenceTest.php`.
 
 - [ ] Write failing tests for source status, Part K boundary-wall pass/watch/fail/needs-input, occupancy, package completeness, internal references, SPLUMA triggers and no-go wording.
 - [ ] Run red tests, implement validated deterministic evaluation and source-versioned MariaDB snapshots, then rerun green.
@@ -52,6 +52,6 @@
 **Files:** Create `docs/evidence/2026-08-29-release16-drawing-compliance-intelligence.md` and screenshots.
 
 - [ ] Run focused/connected suites against only the disposable database.
-- [ ] Apply migration 0038 to local development and verify snapshot/write-back/audit hashes.
+- [ ] Apply the Release 16 migration to local development and verify snapshot/write-back/audit hashes.
 - [ ] Prove standalone and project-aware flows in persistent Chrome, responsive geometry, Lighthouse and clean console.
 - [ ] Recheck canonical SHA-256, stage only release files, and commit.

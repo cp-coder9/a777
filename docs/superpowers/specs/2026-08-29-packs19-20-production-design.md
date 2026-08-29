@@ -6,7 +6,7 @@ Implement the packs as two dependency-ordered releases on the existing PHP 8.3/M
 
 ## Pack 19 architecture
 
-`CommunityMessagingService` owns profile preferences, server-side audience resolution, rate limits, moderation, thread/reply visibility, reports, notifications and explicit draft conversion. MariaDB snapshots every resolved recipient so later profile changes cannot rewrite historical visibility. Selected-role posts to at most three cohorts may publish immediately; whole-community, admin-notice-by-non-admin and wider cohort posts remain pending until an owner/admin moderator approves them. The same authenticated APIs drive an embedded Community Hub and `/community-app` mobile shell. Community-to-workflow conversion creates an audited draft requiring final review and never sends, awards, instructs, appoints or pays automatically.
+`CommunityMessagingService` owns profile preferences, server-side audience resolution, rate limits, moderation, thread/reply visibility, reports, notifications and explicit draft conversion. MariaDB snapshots every resolved recipient so later profile changes cannot rewrite historical visibility. Selected-role posts to at most three cohorts may publish immediately; whole-community, admin-notice and wider cohort posts remain pending until an explicitly allowlisted platform moderator approves them. Organisation owner/admin roles alone never grant platform-wide moderation. The same authenticated APIs drive an embedded Community Hub and `/community-app` mobile shell. Community-to-workflow conversion creates an audited draft requiring final review and never sends, awards, instructs, appoints or pays automatically.
 
 ## Pack 20 architecture
 
@@ -16,9 +16,9 @@ Implement the packs as two dependency-ordered releases on the existing PHP 8.3/M
 
 - Authentication and organisation context come from the existing kernel; every write is CSRF-protected by the current middleware.
 - Cross-organisation community visibility is explicit and opt-in. The server computes recipients from active users, active organisations, active memberships and community preferences; clients never submit recipient IDs.
-- Community replies require author, snapshotted recipient or moderator visibility. Reports and moderation actions are append-only audited events.
+- Community replies require author, snapshotted recipient or allowlisted platform-moderator visibility. Reports and moderation actions are append-only audited events.
 - Drawing-compliance records remain organisation/project scoped. Inputs are validated, JSON is bounded, and all evidence snapshots receive SHA-256 hashes.
-- Inbox items may be platform-level for community notifications by allowing a nullable project ID; existing project notifications remain unchanged.
+- Community notification delivery uses its own user-scoped outbox and digest surface; existing project-bound Inbox rows remain unchanged.
 
 ## Verification
 
