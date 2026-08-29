@@ -90,6 +90,18 @@ Inspected screenshots:
 - `docs/evidence/screenshots/release17-pack21-demo-reset.png`
 - `docs/evidence/screenshots/release17-pack21-immediate-login.png`
 - `docs/evidence/screenshots/release17-pack21-immediate-login-mobile.png`
+- `docs/evidence/screenshots/release17-pack21-packaged-candidate.png`
+
+## Immutable local FTP candidate
+
+- Candidate: `dist/architex-release-staged-20260829-8717e6d`
+- Exact source commit: `8717e6dc9c00ae7f41e93fc2bccc2f06dd4ec900`
+- Manifest verification: 315 files, passed before and after adding host-owned empty storage directories.
+- FTP ZIP: `dist/architex-release-staged-20260829-8717e6d.zip`
+- ZIP SHA-256: `B5F89922C6924CE5D6C87AC103B01CDA1829DD860A8099B26C01E2658D027222`
+- ZIP expansion: `dist/ftp-redownload-verification-8717e6d`; independent manifest verification passed for 315 files.
+- Packaged runtime: `http://127.0.0.1:8794/demo`; authenticated Generation 2 Architect lens, 10 cards, exactly one V1 shell owner per region and zero horizontal overflow at desktop width.
+- Packaged session, projects, inbox, tools, ensure, state, projects and learning requests all returned HTTP 200.
 
 ## Readiness and release boundary
 
