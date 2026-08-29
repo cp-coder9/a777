@@ -71,7 +71,7 @@ const globalItems=[
  {id:"command",label:"OS Command Centre",icon:"dashboard",tone:"core",meta:"Home"},
  {id:"projects",label:"Project Space",icon:"projects",tone:"core",meta:"Datum"},
  {id:"tools",label:"Workspace Tools",icon:"tools",tone:"lavender",meta:String(Object.keys(TOOLS).length)},
- {id:"inbox",label:"Inbox & Collaboration",icon:"inbox",tone:"coral",meta:"7"},
+ {id:"inbox",label:"Mobile Decision Centre",icon:"action_centre",tone:"coral",meta:"LIVE"},
  {id:"documents",label:"Documents",icon:"document",tone:"core",meta:"128"},
  {id:"finance",label:"Finance & Payments",icon:"finance",tone:"amber",meta:"4"},
  {id:'cpd',label:'CPD Learning Hub',icon:'cpd_learning',tone:'cobalt',meta:'CPD'},

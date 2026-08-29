@@ -1,0 +1,27 @@
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS deployment_release_gates (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  environment VARCHAR(40) NOT NULL,
+  repo_branch VARCHAR(160) NOT NULL,
+  repo_commit CHAR(40) NOT NULL,
+  deployed_branch VARCHAR(160) NOT NULL,
+  deployed_commit CHAR(40) NOT NULL,
+  build_timestamp DATETIME(6) NOT NULL,
+  api_mode VARCHAR(100) NOT NULL,
+  api_health_ok BOOLEAN NOT NULL,
+  database_ready BOOLEAN NOT NULL,
+  migrations_ready BOOLEAN NOT NULL,
+  mail_ready BOOLEAN NOT NULL,
+  route_smoke JSON NOT NULL,
+  dependency_vulnerability_count INT UNSIGNED NOT NULL DEFAULT 0,
+  status ENUM('pass','warn','fail') NOT NULL,
+  checks JSON NOT NULL,
+  summary VARCHAR(1000) NOT NULL,
+  human_confirmed BOOLEAN NOT NULL,
+  created_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  KEY idx_release_gate_org_environment (organisation_id,environment,created_at),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (created_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

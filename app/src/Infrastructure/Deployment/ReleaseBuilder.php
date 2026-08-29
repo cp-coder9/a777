@@ -57,7 +57,9 @@ final readonly class ReleaseBuilder
             copy($source . '/composer.lock', $staging . '/composer.lock');
             ($this->dependencyInstaller)($staging);
             if (!is_file($staging . '/vendor/autoload.php')) throw new RuntimeException('Production dependencies were not installed.');
-            file_put_contents($staging . '/release.json', json_encode(['format'=>'architex-release-v1','version'=>$version,'php'=>'8.3','sourceCommit'=>$this->commit($source)], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+            $sourceCommit=$this->commit($source);$builtAt=(new \DateTimeImmutable())->format(DATE_ATOM);$branch=$this->branch($source);
+            file_put_contents($staging . '/release.json', json_encode(['format'=>'architex-release-v1','version'=>$version,'php'=>'8.3','sourceCommit'=>$sourceCommit,'branch'=>$branch,'builtAt'=>$builtAt,'apiMode'=>'php-shared-hosting'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+            file_put_contents($staging . '/public/build-info.json', json_encode(['format'=>'architex-build-info-v1','version'=>$version,'branch'=>$branch,'sourceCommit'=>$sourceCommit,'builtAt'=>$builtAt,'php'=>'8.3','apiMode'=>'php-shared-hosting'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
             $files = $this->manifestFiles($staging);
             file_put_contents($staging . '/release-manifest.json', json_encode(['format'=>'architex-release-manifest-v1','version'=>$version,'files'=>$files], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
             $report = (new ReleaseVerifier())->verify($staging);
@@ -147,6 +149,11 @@ final readonly class ReleaseBuilder
             $value = is_file($ref) ? trim((string)file_get_contents($ref)) : '';
         }
         return preg_match('/\A[a-f0-9]{40}\z/', $value) === 1 ? $value : null;
+    }
+
+    private function branch(string$source):string
+    {
+        $head=$source.'/.git/HEAD';if(!is_file($head))return'unknown';$value=trim((string)file_get_contents($head));return str_starts_with($value,'ref: refs/heads/')?substr($value,16):'detached';
     }
 
     private function removeTree(string $path): void

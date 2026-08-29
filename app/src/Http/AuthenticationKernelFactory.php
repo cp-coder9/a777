@@ -42,6 +42,8 @@ use Architex\Http\Controller\TrustComplianceController;
 use Architex\Http\Controller\AgentOrchestrationController;
 use Architex\Http\Controller\AnalyticsReportingController;
 use Architex\Http\Controller\CPDController;
+use Architex\Http\Controller\OperatingSystemController;
+use Architex\Http\Controller\BuildInfoController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -82,6 +84,9 @@ use Architex\Platform\Trust\TrustComplianceService;
 use Architex\Platform\Agent\AgentOrchestrationService;
 use Architex\Platform\Analytics\AnalyticsReportingService;
 use Architex\Platform\CPD\CPDAssessmentService;
+use Architex\Platform\OperatingSystem\ApiCapabilityService;
+use Architex\Platform\OperatingSystem\DeploymentReleaseGateService;
+use Architex\Platform\OperatingSystem\ProductOperatingSystemService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
@@ -140,6 +145,7 @@ final readonly class AuthenticationKernelFactory
 
         $router = new Router();
         $router->get('/api/v1/health', new HealthController());
+        $router->get('/api/v1/build-info', new BuildInfoController(dirname(__DIR__,2).'/release.json'));
         if ($this->readinessController !== null) {
             $router->get('/api/v1/readiness', $this->readinessController);
         }
@@ -159,6 +165,12 @@ final readonly class AuthenticationKernelFactory
             new InboxController(new InboxService($this->pdo)),
             new ToolRegistryController(dirname(__DIR__, 2) . '/public/assets/tool-registry.json'),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
+        ))->register($router);
+        (new OperatingSystemRoutes(
+            new OperatingSystemController(new ProductOperatingSystemService($this->pdo),new ApiCapabilityService(),new DeploymentReleaseGateService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new PermissionMiddleware(new PermissionService(),'organisation.manage'),
         ))->register($router);
         (new FileRoutes(
             new FileController(new FileService($this->pdo, new LocalFileStorage($this->fileStorageRoot ?? dirname(__DIR__, 2) . '/storage/files'))),
