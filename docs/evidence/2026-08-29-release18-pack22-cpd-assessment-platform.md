@@ -49,6 +49,7 @@ Reports and inspected screenshots:
 - `docs/evidence/release18-pack22-cpd-final/report.json`
 - `docs/evidence/release18-pack22-cpd-final-desktop.png`
 - `docs/evidence/release18-pack22-cpd-mobile.png`
+- `docs/evidence/release18-pack22-packaged-candidate.png`
 
 ## Release boundary
 
