@@ -20,6 +20,10 @@ final class V1ExtractionTest extends TestCase
         self::assertStringContainsString('name="projectSelector" aria-label="Active project"', $html);
         self::assertStringContainsString('name="feedback" aria-label="Feedback description"', $html);
         self::assertStringContainsString('href="/assets/css/community.css"', $html);
+        self::assertStringContainsString('href="/assets/css/demo-sandbox.css"', $html);
+        self::assertStringContainsString('src="/assets/js/demo-sandbox.js"', $html);
+        self::assertStringContainsString('TOOLS.drawing_compliance_navigator=', $html);
+        self::assertStringContainsString("'planning','municipal','drawing_compliance_navigator','xa'", $html);
         $css = file_get_contents($root . '/app/public/assets/css/architex-v1.css');
         self::assertIsString($css);
         self::assertStringContainsString('/* Release 2 project-team workspace */', $css);

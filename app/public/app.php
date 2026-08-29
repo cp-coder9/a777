@@ -7,6 +7,7 @@
 <title>Architex OS — Datum UI Integrated Prototype v7 · Meetings</title>
 <link rel="stylesheet" href="/assets/css/architex-v1.css">
 <link rel="stylesheet" href="/assets/css/community.css">
+<link rel="stylesheet" href="/assets/css/demo-sandbox.css">
 <link rel="icon" href="/assets/icons/community.svg">
 <link rel="manifest" href="/community.webmanifest">
 <meta name="theme-color" content="#116b67">
@@ -1259,6 +1260,6 @@ body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mo
 })();
 </script>
 
-<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script>
+<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script><script src="/assets/js/demo-sandbox.js"></script>
 </body>
 </html>
