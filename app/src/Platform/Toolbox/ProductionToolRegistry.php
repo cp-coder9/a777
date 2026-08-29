@@ -7,7 +7,7 @@ use Architex\Platform\Engineering\EngineeringCalculatorService;
 use Architex\Platform\Fees\FeeCalculatorService;
 final readonly class ProductionToolRegistry
 {
-    public function __construct(private FeeCalculatorService $fees,private ?ComplianceCalculatorService $compliance=null,private ?EngineeringCalculatorService $engineering=null,private ?StandaloneUtilityService $standalone=null){}
+    public function __construct(private FeeCalculatorService $fees,private ?ComplianceCalculatorService $compliance=null,private ?EngineeringCalculatorService $engineering=null,private ?StandaloneUtilityService $standalone=null,private ?StandaloneRecordToolService $records=null){}
     public function create():ToolDefinitionRegistry{$registry=new ToolDefinitionRegistry();$registry->register(new ToolDefinition('professional_fee_calculator','Professional Fee Calculator','1.0.0',['owner','admin','member'],'professional-fees','/toolbox/standalone/professional-fee-calculator',['fees','proposal','professional'],['definitionId'=>'id','projectValue'=>'money'],['totalInclVat'=>'money','classification'=>'string'],true,false,true,['ProjectRecord','AuditTrail'],function(array $input,array $context):array{$id=$input['definitionId']??null;if(!is_string($id))throw new ToolException('invalid_tool_input');return$this->fees->calculate($context['organisationId'],$context['userId'],$id,$input);}));
         if($this->compliance!==null){foreach([
             ['fenestration_xa_calculator','Fenestration XA Calculator','/toolbox/standalone/fenestration-xa-calculator',['fenestration','xa','compliance'],['project'=>'object','elements'=>'array']],
@@ -30,5 +30,6 @@ final readonly class ProductionToolRegistry
             ['boq_takeoff','BoQ / BoM Takeoff Tool','estimating','/toolbox/standalone/boq-takeoff',['boq','bom','takeoff'],['title'=>'string','currency'=>'enum','contingencyPercent'=>'percentage','items'=>'array'],['subtotalCents'=>'money','totalCents'=>'money','items'=>'array']],
             ['site_diary_entry','Site Diary Standalone Entry','site_management','/toolbox/standalone/site-diary-entry',['site','diary','field'],['date'=>'date','location'=>'string','weather'=>'string','activities'=>'array','labourCount'=>'integer','plantCount'=>'integer','deliveries'=>'array','delays'=>'array'],['date'=>'date','activityCount'=>'integer','deliveryCount'=>'integer','delayCount'=>'integer']],
         ]as[$id,$name,$category,$route,$tags,$input,$output])$registry->register(new ToolDefinition($id,$name,'1.0.0',['owner','admin','member'],$category,$route,$tags,$input,$output,false,false,true,['AuditTrail'],fn(array$data):array=>$this->standalone->calculate($id,$data)));}
+        if($this->records!==null)foreach($this->records->definitions()as$id=>$definition)$registry->register(new ToolDefinition($id,$definition['name'],'1.0.0',['owner','admin','member'],$definition['category'],$definition['route'],$definition['tags'],$definition['inputSchema'],$definition['outputSchema'],false,false,true,['AuditTrail'],fn(array$data):array=>$this->records->calculate($id,$data)));
         return$registry;}
 }
