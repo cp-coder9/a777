@@ -15,8 +15,8 @@
 - [x] Add migration `0032` for practical completion, closeout defects, occupation-readiness checks, versioned handover packs/documents, final-account readiness, defects-liability periods/reports and recommendations.
 - [x] Add failing connected MariaDB tests for upstream blockers, authority, issue immutability, client acceptance, handover completeness, statutory disclaimers, final-account/retention separation and defects-liability recall/closeout.
 - [x] Implement transactional services that emit ProjectRecords, inbox events, audit events and advisory recommendations.
-- [ ] Add authenticated project-scoped PHP routes with CSRF, tenant isolation and professional-authority gates.
-- [ ] Add a project-aware Close-out workspace for readiness, handover evidence, occupation checks, final account and defects-liability tracking.
+- [x] Add authenticated project-scoped PHP routes with CSRF, tenant isolation and professional-authority gates.
+- [x] Add a project-aware Close-out workspace for readiness, handover evidence, occupation checks, final account and defects-liability tracking.
 - [ ] Run focused PHP/frontend tests, syntax checks, migration and backup/restore regression; apply `0032` to the persistent local MariaDB.
 - [ ] Verify authenticated create/transition/reload flows, responsive layout, accessibility, console/network health and direct MariaDB evidence in the persistent Chrome DevTools page.
 - [ ] Record Release 7 local evidence while keeping shared-host staging and production promotion as separate gates.

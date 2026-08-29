@@ -33,6 +33,7 @@ use Architex\Http\Controller\SurveyJobController;
 use Architex\Http\Controller\ProcurementController;
 use Architex\Http\Controller\FinanceController;
 use Architex\Http\Controller\SiteExecutionController;
+use Architex\Http\Controller\CloseoutController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -64,6 +65,7 @@ use Architex\Platform\Proposal\ProposalService;
 use Architex\Platform\Appointment\AppointmentService;
 use Architex\Platform\Finance\CommercialControlService;
 use Architex\Platform\SiteExecution\SiteExecutionService;
+use Architex\Platform\Closeout\CloseoutService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Forms\FormService;
@@ -242,6 +244,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new SiteExecutionRoutes(
             new SiteExecutionController(new SiteExecutionService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new CloseoutRoutes(
+            new CloseoutController(new CloseoutService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
