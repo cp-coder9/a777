@@ -59,6 +59,11 @@ final class MigrationRunnerTest extends TestCase
         );
         self::assertSame('0001_platform_spine', $this->pdo->query('SELECT version FROM schema_migrations')->fetchColumn());
         self::assertSame(5, (int) $this->pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('schema_migrations','legal_notices','idempotency_keys','scheduled_jobs','tool_definitions') AND engine='InnoDB' AND table_collation='utf8mb4_unicode_ci'")->fetchColumn());
+        foreach (['demo_sandboxes', 'demo_personas', 'demo_project_role_assignments', 'demo_seed_items', 'demo_sandbox_events'] as $table) {
+            $statement = $this->pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=:table_name');
+            $statement->execute(['table_name' => $table]);
+            self::assertSame(1, (int) $statement->fetchColumn(), $table . ' was not migrated.');
+        }
         self::assertStringContainsString('json_valid', strtolower((string) $this->pdo->query('SHOW CREATE TABLE scheduled_jobs')->fetch(PDO::FETCH_NUM)[1]));
         self::assertSame(2, (int) $this->pdo->query("SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='scheduled_jobs' AND index_name IN ('idx_scheduled_jobs_claim','idx_scheduled_jobs_type_status')")->fetchColumn());
         $insertTool = $this->pdo->prepare("INSERT INTO tool_definitions (id,tool_key,label) VALUES (UNHEX(:id),:tool_key,:label)");

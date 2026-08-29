@@ -9,6 +9,7 @@ use InvalidArgumentException;
 final readonly class AppConfig
 {
     private const ENVIRONMENTS = ['production', 'staging', 'development', 'test'];
+    private const MODES = ['production', 'demo'];
 
     private function __construct(
         public string $appEnv,
@@ -18,6 +19,7 @@ final readonly class AppConfig
         public string $dbName,
         public string $dbUser,
         public string $dbPassword,
+        public string $appMode,
     ) {
     }
 
@@ -28,6 +30,10 @@ final readonly class AppConfig
         $appEnv = self::stringValue($environment, 'APP_ENV', 'production');
         if (!in_array($appEnv, self::ENVIRONMENTS, true)) {
             throw new InvalidArgumentException('APP_ENV must be one of production, staging, development, test');
+        }
+        $appMode = self::stringValue($environment, 'APP_MODE', 'production');
+        if (!in_array($appMode, self::MODES, true)) {
+            throw new InvalidArgumentException('APP_MODE must be production or demo');
         }
 
         $appDebug = self::parseBoolean($environment['APP_DEBUG'] ?? 'false');
@@ -53,7 +59,7 @@ final readonly class AppConfig
             throw new InvalidArgumentException('APP_DEBUG must be false in production');
         }
 
-        return new self($appEnv, $appDebug, $host, $port, $name, $user, $password);
+        return new self($appEnv, $appDebug, $host, $port, $name, $user, $password, $appMode);
     }
 
     private static function parsePort(mixed $value): int

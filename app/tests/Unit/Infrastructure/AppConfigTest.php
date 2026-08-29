@@ -22,6 +22,21 @@ final class AppConfigTest extends TestCase
         self::assertSame('architex_task3_test', $config->dbName);
         self::assertSame('architex_test', $config->dbUser);
         self::assertSame('example-test-password', $config->dbPassword);
+        self::assertSame('production', $config->appMode);
+    }
+
+    public function testApplicationModeDefaultsToProductionAcceptsDemoAndRejectsOtherValues(): void
+    {
+        self::assertSame('production', AppConfig::fromEnvironment($this->validEnvironment())->appMode);
+
+        $environment = $this->validEnvironment();
+        $environment['APP_MODE'] = 'demo';
+        self::assertSame('demo', AppConfig::fromEnvironment($environment)->appMode);
+
+        $environment['APP_MODE'] = 'preview';
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('APP_MODE must be production or demo');
+        AppConfig::fromEnvironment($environment);
     }
 
     public function testInvalidDatabaseConfigurationNeverLeaksPassword(): void
