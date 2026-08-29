@@ -24,10 +24,13 @@ final readonly class CPDRoutes
         $router->post('/api/v1/cpd/courses',fn(Request $request):Response=>$this->govern->process($request,$this->controller->publishCourse(...)));
         $router->post('/api/v1/cpd/entitlements/manual',fn(Request $request):Response=>$this->write->process($request,$this->controller->createManualEntitlement(...)));
         $router->post('/api/v1/cpd/entitlements/{entitlementId}/review',fn(Request $request):Response=>$this->govern->process($request,$this->controller->reviewEntitlement(...)));
+        $router->post('/api/v1/cpd/commercial-settings',fn(Request $request):Response=>$this->govern->process($request,$this->controller->configureCommercialSettings(...)));
+        $router->post('/api/v1/cpd/referrals',fn(Request $request):Response=>$this->write->process($request,$this->controller->captureReferral(...)));
         $router->post('/api/v1/cpd/courses/{courseId}/attempts',fn(Request $request):Response=>$this->attemptRate->process($request,fn(Request $candidate):Response=>$this->write->process($candidate,$this->controller->startAttempt(...))));
         $router->post('/api/v1/cpd/attempts/{attemptId}/submit',fn(Request $request):Response=>$this->attemptRate->process($request,fn(Request $candidate):Response=>$this->write->process($candidate,$this->controller->submitAttempt(...))));
         $router->post('/api/v1/cpd/attempts/{attemptId}/review',fn(Request $request):Response=>$this->govern->process($request,$this->controller->reviewAttempt(...)));
         $router->post('/api/v1/cpd/attempts/{attemptId}/certificate',fn(Request $request):Response=>$this->write->process($request,$this->controller->issueCertificate(...)));
+        $router->get('/api/v1/cpd/certificates/{certificateId}/download',fn(Request $request):Response=>$this->read->process($request,$this->controller->downloadCertificate(...)));
         $router->get('/api/v1/cpd/certificates/verify/{verificationCode}',$this->controller->verifyCertificate(...));
     }
 }

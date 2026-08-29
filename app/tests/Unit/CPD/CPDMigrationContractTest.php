@@ -10,14 +10,17 @@ final class CPDMigrationContractTest extends TestCase
 {
     public function testMigrationOwnsTheCompleteGovernedCpdLifecycle(): void
     {
-        $sql = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0045_cpd_assessment_platform.sql');
-        self::assertIsString($sql);
+        $base = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0045_cpd_assessment_platform.sql');
+        $commerce = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0047_cpd_commercial_ledger.sql');
+        self::assertIsString($base);
+        self::assertIsString($commerce);
+        $sql=$base.$commerce;
         foreach ([
             'cpd_professional_body_rules', 'cpd_professional_profiles', 'cpd_content_items',
             'cpd_assessments', 'cpd_questions', 'cpd_accreditation_applications', 'cpd_courses',
             'cpd_commercial_settings', 'cpd_entitlements', 'cpd_payment_events', 'cpd_attempts',
             'cpd_attempt_answers', 'cpd_certificates', 'cpd_professional_records',
-            'cpd_referral_events', 'cpd_audit_events',
+            'cpd_referral_events', 'cpd_purchase_ledger', 'cpd_payouts', 'cpd_audit_events',
         ] as $table) {
             self::assertStringContainsString('CREATE TABLE IF NOT EXISTS ' . $table, $sql, $table);
         }

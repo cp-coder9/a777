@@ -74,7 +74,7 @@ const globalItems=[
  {id:"inbox",label:"Inbox & Collaboration",icon:"inbox",tone:"coral",meta:"7"},
  {id:"documents",label:"Documents",icon:"document",tone:"core",meta:"128"},
  {id:"finance",label:"Finance & Payments",icon:"finance",tone:"amber",meta:"4"},
- {id:"knowledge",label:"Knowledge & CPD",icon:"knowledge",tone:"cobalt",meta:""},
+ {id:'cpd',label:'CPD Learning Hub',icon:'cpd_learning',tone:'cobalt',meta:'CPD'},
  {id:"feedback",label:"Feedback Intelligence",icon:"feedback",tone:"lavender",meta:"Loop"},
  {id:"settings",label:"Settings",icon:"settings",tone:"core",meta:""}
 ];
@@ -492,6 +492,7 @@ function renderGlobalMenu(){
 }
 function toggleNavigator(){q('#app').classList.toggle('nav-compact');renderTopbar()}
 function openGlobal(id){state.global=id;state.toolTab=0;if(id==='projects'){state.mode='project';state.tool=null}else if(id==='tools'){state.mode='standalone';state.tool=null}else if(id==='feedback'){state.mode='standalone';state.tool='feedback'}else{state.tool=null}renderAll()}
+function openCpdLearningHub(){openGlobal('cpd')}
 function setToolTab(index){state.toolTab=index;renderNavigator();if(TOOLS[state.tool]?.status==='scaffold')renderMain();else invokeToolAction(TOOLS[state.tool].tabs[index]);renderInspector();updateFeedbackContext()}
 function sourceName(id){return TOOLS[id]?.source||'Integration scaffold'}
 function toolGroups(mode){

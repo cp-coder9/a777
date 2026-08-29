@@ -60,6 +60,8 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         ]);
         self::assertSame('live', $course['status']);
         self::assertSame('0.1', $course['approvedCredits']);
+        $settings=$service->configureCommercialSettings($organisation,$admin,'owner',['platformFeePercent'=>10,'minimumPlatformFeeCents'=>100,'payoutEnabled'=>true,'configuredProviders'=>['manual_eft'],'humanConfirmed'=>true]);
+        self::assertSame(1000,$settings['platformFeeBasisPoints']);
 
         $entitlement = $service->createManualEntitlement($organisation, $learner, 'member', $course['id'], [
             'paymentMethod'=>'manual_eft', 'paymentReference'=>'EFT-001', 'humanConfirmed'=>true,
@@ -69,6 +71,11 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
             'decision'=>'grant', 'reason'=>'Bank evidence matched.', 'humanConfirmed'=>true,
         ]);
         self::assertSame('active', $entitlement['status']);
+        self::assertSame(500,(int)$this->pdo->query('SELECT platform_fee_cents FROM cpd_purchase_ledger')->fetchColumn());
+        self::assertSame(4500,(int)$this->pdo->query('SELECT payout_cents FROM cpd_payouts')->fetchColumn());
+
+        $workspace=$service->workspace($organisation,$learner,'member');
+        self::assertArrayNotHasKey('isCorrect',$workspace['assessments'][0]['questions'][0]['options'][0]);
 
         $attempt = $service->startAttempt($organisation, $learner, 'member', $course['id']);
         $result = $service->submitAttempt($organisation, $learner, 'member', $attempt['id'], [
@@ -88,6 +95,11 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertSame('CPD-2026-001', $certificate['accreditationReference']);
         self::assertSame('0.1', $certificate['creditsAwarded']);
         self::assertSame($certificate['id'], $service->verifyCertificate($certificate['verificationCode'])['id']);
+        $pdf=$service->certificatePdf($organisation,$learner,'member',$certificate['id']);
+        self::assertStringStartsWith('%PDF-1.4',$pdf['content']);
+        self::assertSame('application/pdf',$pdf['mimeType']);
+        $service->captureReferral($organisation,$learner,['source'=>'cpd_central','campaign'=>'launch','eventType'=>'completed','courseId'=>$course['id'],'consented'=>true]);
+        self::assertSame(1,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_referral_events')->fetchColumn());
         self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_professional_records')->fetchColumn());
         self::assertGreaterThanOrEqual(10, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_audit_events')->fetchColumn());
     }
