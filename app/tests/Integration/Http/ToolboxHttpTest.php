@@ -14,6 +14,15 @@ use Architex\Tests\Support\MariaDbTestCase;
 
 final class ToolboxHttpTest extends MariaDbTestCase
 {
+    public function testStandaloneBoqCanBeCreatedThenAssignedToAnExternalReferenceThroughHttp(): void
+    {
+        [$organisationId,$ownerId]=$this->seedProject();$notifier=new class implements RegistrationNotifier,PasswordResetNotifier{public function isAvailable():bool{return false;}public function send(string$email,string$token,string$expiresAt):void{}};$kernel=(new AuthenticationKernelFactory($this->pdo,$notifier,$notifier))->create();$session=(new SessionService($this->pdo))->rotate($ownerId);$headers=['Cookie'=>'architex_session='.$session->token,'X-Organisation-Id'=>$organisationId,'X-CSRF-Token'=>$session->csrfToken];
+        $created=$kernel->handle($this->jsonRequest('POST','/api/v1/toolbox/runs',$headers,['toolId'=>'boq_takeoff','input'=>['title'=>'HTTP standalone takeoff','currency'=>'ZAR','contingencyPercent'=>5,'items'=>[['description'=>'Brickwork','quantity'=>20,'unit'=>'m2','rate'=>350]]],'assignment'=>['mode'=>'none'],'issueImmediately'=>false]));
+        self::assertSame(201,$created->status(),$created->body());$run=$created->json()['data'];self::assertSame(735000,$run['output']['totalCents']);
+        $assigned=$kernel->handle($this->jsonRequest('POST','/api/v1/toolbox/runs/'.$run['id'].'/assignment',$headers,['mode'=>'external_reference','projectName'=>'Offline school','externalReference'=>'SCHOOL-EXT-9','notes'=>'Typed by the authenticated user.']));
+        self::assertSame(200,$assigned->status(),$assigned->body());self::assertSame('SCHOOL-EXT-9',$assigned->json()['data']['assignment']['externalReference']);
+    }
+
     public function testVerifiedFeeScheduleCanBeIssuedAndExportedThroughHttp(): void
     {
         [$organisationId, $ownerId, $projectId] = $this->seedProject();

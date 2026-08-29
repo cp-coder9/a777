@@ -64,6 +64,7 @@ use Architex\Platform\Brief\BriefEvidenceService;
 use Architex\Platform\Team\ProjectTeamService;
 use Architex\Platform\Fees\FeeCalculatorService;
 use Architex\Platform\Toolbox\ProductionToolRegistry;
+use Architex\Platform\Toolbox\StandaloneUtilityService;
 use Architex\Platform\Toolbox\ToolboxEngine;
 use Architex\Platform\Proposal\ProposalService;
 use Architex\Platform\Appointment\AppointmentService;
@@ -190,7 +191,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
-        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules),new EngineeringCalculatorService()))->create();
+        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules),new EngineeringCalculatorService(),new StandaloneUtilityService()))->create();
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
         (new ComplianceRoutes(
             new ComplianceController($complianceRules),

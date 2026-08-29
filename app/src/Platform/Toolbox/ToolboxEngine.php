@@ -72,6 +72,19 @@ final readonly class ToolboxEngine
 
     public function runCount(string $organisationId,string $userId,string $toolId):int{$statement=$this->pdo->prepare('SELECT COUNT(*) FROM tool_runs WHERE organisation_id=UNHEX(:organisation_id) AND user_id=UNHEX(:user_id) AND tool_id=:tool_id');$statement->execute(['organisation_id'=>$organisationId,'user_id'=>$userId,'tool_id'=>$toolId]);return(int)$statement->fetchColumn();}
 
+    /** @param array<string,mixed> $assignment @return array<string,mixed> */
+    public function assign(string$organisationId,string$userId,string$runId,array$assignment):array
+    {
+        $run=$this->get($organisationId,$userId,$runId);if($run['status']!=='completed')throw new ToolException('tool_run_immutable');$assignment=$this->assignment($organisationId,$assignment);
+        $this->pdo->beginTransaction();
+        try{
+            $updated=$this->pdo->prepare('UPDATE tool_runs SET assignment_mode=:mode,project_id=UNHEX(:project_id),project_name=:project_name,external_reference=:external_reference,assignment_notes=:notes WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:organisation_id) AND user_id=UNHEX(:user_id) AND status=\'completed\'');$updated->execute(['mode'=>$assignment['mode'],'project_id'=>$assignment['projectId']??null,'project_name'=>$assignment['projectName']??null,'external_reference'=>$assignment['externalReference']??null,'notes'=>$assignment['notes']??null,'id'=>$runId,'organisation_id'=>$organisationId,'user_id'=>$userId]);if($updated->rowCount()!==1)throw new ToolException('tool_run_immutable');
+            $assigned=$this->get($organisationId,$userId,$runId);$assigned['toolName']=$this->registry->required($assigned['toolId'])->name;
+            $this->pdo->prepare('DELETE FROM tool_run_exports WHERE organisation_id=UNHEX(:organisation_id) AND run_id=UNHEX(:run_id)')->execute(['organisation_id'=>$organisationId,'run_id'=>$runId]);$this->storeExports($organisationId,$assigned);
+            (new AuditService($this->pdo))->append($organisationId,$userId,'tool_run.assignment_changed','tool_run',$runId,['from'=>$run['assignment'],'to'=>$assignment]);$this->pdo->commit();return$assigned;
+        }catch(Throwable$exception){if($this->pdo->inTransaction())$this->pdo->rollBack();throw$exception;}
+    }
+
     /** @return list<array<string,mixed>> */
     public function exports(string $organisationId,string $userId,string $runId):array
     {

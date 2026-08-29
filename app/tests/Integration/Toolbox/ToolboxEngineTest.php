@@ -48,6 +48,27 @@ final class ToolboxEngineTest extends MariaDbTestCase
         self::assertSame('superseded',$engine->get($organisationId,$userId,$issued['id'])['status']);
     }
 
+    public function testCompletedRunCanBeAssignedAfterCreationButIssuedEvidenceIsImmutable(): void
+    {
+        [$organisationId,$userId,$projectId]=$this->seedTenant();$engine=$this->engine();
+        $completed=$engine->run($organisationId,$userId,'owner','area_check',['length'=>4,'width'=>5],['mode'=>'none'],false);
+        $external=$engine->assign($organisationId,$userId,$completed['id'],['mode'=>'external_reference','projectName'=>'Offline Library Upgrade','externalReference'=>'EXT-2026-17','notes'=>'Human-entered external job reference.']);
+        self::assertSame('external_reference',$external['assignment']['mode']);
+        self::assertSame('Offline Library Upgrade',$external['assignment']['projectName']);
+        self::assertSame('EXT-2026-17',$external['assignment']['externalReference']);
+        $internal=$engine->assign($organisationId,$userId,$completed['id'],['mode'=>'internal_project','projectId'=>$projectId,'notes'=>'Attach to the live project.']);
+        self::assertSame($projectId,$internal['assignment']['projectId']);
+        $jsonExport=array_values(array_filter($engine->exports($organisationId,$userId,$completed['id']),static fn(array$export):bool=>$export['format']==='json'))[0];
+        $download=$engine->export($organisationId,$userId,$jsonExport['id']);
+        self::assertStringContainsString($projectId,$download['content']);
+        self::assertSame(hash('sha256',$download['content']),$download['sha256']);
+        self::assertSame(2,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action='tool_run.assignment_changed'")->fetchColumn());
+
+        $issued=$engine->run($organisationId,$userId,'owner','area_check',['length'=>2,'width'=>2],['mode'=>'none'],true,'Reviewed and issued.');
+        try{$engine->assign($organisationId,$userId,$issued['id'],['mode'=>'external_reference','projectName'=>'Must fail']);self::fail('Issued tool evidence must remain immutable.');}
+        catch(ToolException$exception){self::assertSame('tool_run_immutable',$exception->reason);}
+    }
+
     public function testEngineeringIssueRequiresExactHumanProfessionalConfirmation(): void
     {
         [$organisationId,$userId,$projectId] = $this->seedTenant();
