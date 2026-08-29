@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Architex\Tests\Http;
 
+use Architex\Http\AuthenticationKernelFactory;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Kernel;
 use Architex\Http\Request;
@@ -15,6 +16,16 @@ use RuntimeException;
 
 final class KernelTest extends TestCase
 {
+    public function testAuthenticationKernelFactoryDefaultsApplicationModeToProduction(): void
+    {
+        $parameters = (new \ReflectionMethod(AuthenticationKernelFactory::class, '__construct'))->getParameters();
+        $mode = array_values(array_filter($parameters, static fn (\ReflectionParameter $parameter): bool => $parameter->getName() === 'appMode'));
+
+        self::assertCount(1, $mode);
+        self::assertTrue($mode[0]->isDefaultValueAvailable());
+        self::assertSame('production', $mode[0]->getDefaultValue());
+    }
+
     public function testHealthResponseUsesStableEnvelopeAndRequestId(): void
     {
         $response = $this->kernel()->handle(Request::json('GET', '/api/v1/health'));

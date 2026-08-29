@@ -22,6 +22,7 @@ use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
 use Architex\Http\Controller\CommunityController;
 use Architex\Http\Controller\DrawingComplianceController;
+use Architex\Http\Controller\DemoSandboxController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
 use Architex\Http\Controller\DocumentEvidenceController;
@@ -53,6 +54,7 @@ use Architex\Platform\Identity\PasswordResetService;
 use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\RegistrationService;
 use Architex\Platform\Identity\SessionService;
+use Architex\Platform\Identity\AuthenticatedIdentity;
 use Architex\Platform\Security\RateLimiter;
 use Architex\Platform\Authorization\PermissionService;
 use Architex\Platform\Project\LifecycleService;
@@ -82,6 +84,7 @@ use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
 use Architex\Platform\DrawingCompliance\DrawingComplianceService;
+use Architex\Platform\Demo\DemoSandboxService;
 use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
 use Architex\Platform\Documents\DocumentTransmittalService;
@@ -109,6 +112,7 @@ final readonly class AuthenticationKernelFactory
         private PasswordResetNotifier $passwordResetNotifier,
         private ?ReadinessController $readinessController = null,
         private ?string $fileStorageRoot = null,
+        private string $appMode = 'production',
     ) {}
 
     public function create(): Kernel
@@ -295,6 +299,17 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
+        if ($this->appMode === 'demo') {
+            $demoResetKey = static fn(Request $request): string => $request->attribute('identity') instanceof AuthenticatedIdentity
+                ? $request->attribute('identity')->userId
+                : 'unauthenticated';
+            (new DemoSandboxRoutes(
+                new DemoSandboxController(new DemoSandboxService($this->pdo)),
+                new PermissionMiddleware(new PermissionService(), 'projects.read'),
+                new PermissionMiddleware(new PermissionService(), 'organisation.manage'),
+                new RateLimitMiddleware($limiter, 'demo_reset', 3, 3_600, $demoResetKey),
+            ))->register($router);
+        }
 
         return new Kernel($router, middleware: [
             new SecurityHeadersMiddleware(),
