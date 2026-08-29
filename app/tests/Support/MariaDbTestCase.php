@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 abstract class MariaDbTestCase extends TestCase
 {
-    private const SEED_TABLES = ['form_templates','community_channels','community_channel_governance','drawing_compliance_sources'];
+    private const SEED_TABLES = ['form_templates','community_channels','community_channel_governance','drawing_compliance_sources','cpd_professional_body_rules'];
     private const BASELINE_PREFIX = '__architex_test_baseline_';
     private static bool $schemaReady = false;
     private static bool $cleanupRegistered = false;

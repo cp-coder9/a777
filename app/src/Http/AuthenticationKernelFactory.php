@@ -41,6 +41,7 @@ use Architex\Http\Controller\PracticeController;
 use Architex\Http\Controller\TrustComplianceController;
 use Architex\Http\Controller\AgentOrchestrationController;
 use Architex\Http\Controller\AnalyticsReportingController;
+use Architex\Http\Controller\CPDController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -80,6 +81,7 @@ use Architex\Platform\Practice\PracticeManagementService;
 use Architex\Platform\Trust\TrustComplianceService;
 use Architex\Platform\Agent\AgentOrchestrationService;
 use Architex\Platform\Analytics\AnalyticsReportingService;
+use Architex\Platform\CPD\CPDAssessmentService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
@@ -298,6 +300,13 @@ final readonly class AuthenticationKernelFactory
             new PracticeController(new PracticeManagementService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new CPDRoutes(
+            new CPDController(new CPDAssessmentService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'tools.use'),
+            new PermissionMiddleware(new PermissionService(),'verification.review'),
+            new RateLimitMiddleware($limiter,'cpd_attempt',60,3_600,$remoteKey),
         ))->register($router);
         if ($this->appMode === 'demo') {
             $demoResetKey = static fn(Request $request): string => $request->attribute('identity') instanceof AuthenticatedIdentity
