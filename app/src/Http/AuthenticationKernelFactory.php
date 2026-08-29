@@ -37,6 +37,7 @@ use Architex\Http\Controller\CloseoutController;
 use Architex\Http\Controller\PracticeController;
 use Architex\Http\Controller\TrustComplianceController;
 use Architex\Http\Controller\AgentOrchestrationController;
+use Architex\Http\Controller\AnalyticsReportingController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -72,6 +73,7 @@ use Architex\Platform\Closeout\CloseoutService;
 use Architex\Platform\Practice\PracticeManagementService;
 use Architex\Platform\Trust\TrustComplianceService;
 use Architex\Platform\Agent\AgentOrchestrationService;
+use Architex\Platform\Analytics\AnalyticsReportingService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Forms\FormService;
@@ -165,6 +167,12 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new AgentOrchestrationRoutes(
             new AgentOrchestrationController(new AgentOrchestrationService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+            new PermissionMiddleware(new PermissionService(), 'verification.review'),
+        ))->register($router);
+        (new AnalyticsReportingRoutes(
+            new AnalyticsReportingController(new AnalyticsReportingService($this->pdo)),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
             new PermissionMiddleware(new PermissionService(), 'verification.review'),
