@@ -1,4 +1,7 @@
-.demo-sandbox-active{padding-bottom:42px}
+.demo-sandbox-active{padding-bottom:42px;--demo-teal-readable:#126965;--demo-amber-readable:#805100;--demo-muted-readable:#526074}
+.demo-sandbox-active .kicker,.demo-sandbox-active .scope-pill,.demo-sandbox-active .project-chip{color:var(--demo-teal-readable)}
+.demo-sandbox-active .nav-heading,.demo-sandbox-active .badge{color:var(--demo-muted-readable)}
+.demo-sandbox-active .page-actions .btn{color:var(--demo-teal-readable)}
 .demo-sandbox-role-control{display:flex;align-items:center;gap:6px;min-width:0;color:var(--muted);font-size:8px;font-weight:750;letter-spacing:.05em;text-transform:uppercase}
 .demo-sandbox-role-control select{max-width:210px;border:1px solid rgba(255,176,32,.32);border-radius:9px;background:#fff;color:var(--ink);padding:6px 28px 6px 8px;font-size:9px;text-transform:none;letter-spacing:0}
 .demo-sandbox-role-control select:focus-visible,.demo-sandbox-reset input:focus-visible,.demo-sandbox-card button:focus-visible{outline:3px solid rgba(255,176,32,.34);outline-offset:2px}
@@ -10,7 +13,7 @@
 .demo-sandbox-metric{padding:12px;border:1px solid var(--border);border-radius:11px;background:#fff}.demo-sandbox-metric b{display:block;font-size:20px;color:var(--ink)}.demo-sandbox-metric span{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .demo-sandbox-project-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
 .demo-sandbox-card{display:flex;flex-direction:column;min-width:0;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:var(--soft)}
-.demo-sandbox-card small{color:var(--amber);font-weight:800;letter-spacing:.06em}.demo-sandbox-card h3{margin:6px 0 3px;font-size:13px}.demo-sandbox-card p{margin:0 0 10px;color:var(--muted);font-size:9px;line-height:1.45}.demo-sandbox-card button{margin-top:auto;align-self:flex-start}
+.demo-sandbox-card small{color:var(--demo-amber-readable);font-weight:800;letter-spacing:.06em}.demo-sandbox-card h3{margin:6px 0 3px;font-size:13px}.demo-sandbox-card p{margin:0 0 10px;color:var(--muted);font-size:9px;line-height:1.45}.demo-sandbox-card button{margin-top:auto;align-self:flex-start}
 .demo-sandbox-reset{display:grid;gap:8px}.demo-sandbox-reset input{width:100%;border:1px solid var(--border);border-radius:9px;padding:8px;color:var(--ink)}.demo-sandbox-reset [role=status]{min-height:14px;color:var(--red);font-size:9px}
 .demo-sandbox-project-detail{display:grid;gap:7px}.demo-sandbox-project-detail dl{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;margin:0;font-size:9px}.demo-sandbox-project-detail dt{color:var(--muted)}.demo-sandbox-project-detail dd{margin:0;color:var(--ink);font-weight:650}
 @media (max-width: 1050px){.demo-sandbox-project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.demo-sandbox-role-control label{display:none}}

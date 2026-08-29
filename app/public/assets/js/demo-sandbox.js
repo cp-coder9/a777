@@ -15,6 +15,8 @@
   let projects = [];
   let learning = null;
   let enabled = false;
+  let unavailable = false;
+  let hydrating = false;
   const directRoute = () => location.pathname === '/demo';
   const roleLabel = key => roleGroups.flatMap(group => group[1]).find(role => role[0] === key)?.[1] || key;
   const roleOptions = selected => roleGroups.map(([group,roles]) => `<optgroup label="${escapeHtml(group)}">${roles.map(([key,label])=>`<option value="${key}" ${key===selected?'selected':''}>${escapeHtml(label)}</option>`).join('')}</optgroup>`).join('');
@@ -88,10 +90,12 @@
   }
 
   async function hydrateDemoSandbox() {
+    if (hydrating || unavailable) return;
     if (!configureDemoApi()) {
       if (document.documentElement.dataset.shellState !== 'signed-out') setTimeout(hydrateDemoSandbox, 60);
       return;
     }
+    hydrating = true;
     try {
       state = await api.post('/demo/sandbox/ensure', {});
       await refreshData();
@@ -99,12 +103,12 @@
       installControls();
       if (directRoute() || document.body.classList.contains('god-mode')) renderWorkspace();
     } catch (error) {
-      if (error.status === 404) return;
+      if (error.status === 404) { unavailable = true; return; }
       if (directRoute()) {
         const main = document.getElementById('main');
         if (main) main.innerHTML = `<div class="notice">${escapeHtml(error.message)}</div>`;
       }
-    }
+    } finally { hydrating = false; }
   }
 
   window.setDemoRole = async role => {
@@ -144,6 +148,7 @@
   const renderSafe = window.renderAll;
   window.renderAll = function () {
     renderSafe();
+    if (!enabled && !unavailable && window.__ARCHITEX_SHELL_STATE__?.session) setTimeout(hydrateDemoSandbox,0);
     if (enabled) {
       installControls();
       if (directRoute() || document.body.classList.contains('god-mode')) setTimeout(renderWorkspace,0);

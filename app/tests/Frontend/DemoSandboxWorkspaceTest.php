@@ -12,6 +12,7 @@ final class DemoSandboxWorkspaceTest extends TestCase
     {
         $public = dirname(__DIR__, 2) . '/public';
         $javascript = (string) file_get_contents($public . '/assets/js/demo-sandbox.js');
+        $shell = (string) file_get_contents($public . '/assets/js/shell.js');
         $css = (string) file_get_contents($public . '/assets/css/demo-sandbox.css');
         $html = (string) file_get_contents($public . '/app.php');
         $index = (string) file_get_contents($public . '/index.php');
@@ -26,7 +27,11 @@ final class DemoSandboxWorkspaceTest extends TestCase
         self::assertSame(1, substr_count($html, 'class="os-rail"'));
         foreach (['id="navigator"','id="main"','class="inspector"'] as $owner) self::assertSame(1, substr_count($html, $owner));
         foreach (['.demo-sandbox-status-rail','.demo-sandbox-role-control','.demo-sandbox-project-grid',':focus-visible','@media (max-width: 760px)','prefers-reduced-motion'] as $needle) self::assertStringContainsString($needle, $css);
+        foreach (['--demo-teal-readable:#126965','--demo-amber-readable:#805100','--demo-muted-readable:#526074','.demo-sandbox-active .kicker','.demo-sandbox-active .scope-pill','.demo-sandbox-active .project-chip','.demo-sandbox-active .nav-heading','.demo-sandbox-active .badge','.demo-sandbox-active .page-actions .btn'] as $needle) self::assertStringContainsString($needle, $css);
         self::assertStringNotContainsString('localStorage', $javascript);
         self::assertStringNotContainsString('MOCK_PROJECTS', $javascript);
+        self::assertStringContainsString("if (!enabled && !unavailable && window.__ARCHITEX_SHELL_STATE__?.session) setTimeout(hydrateDemoSandbox,0);", $javascript);
+        self::assertStringContainsString('hydrate({...result.identity, csrfToken:result.csrfToken})', $shell);
+        self::assertStringNotContainsString('\\n<style id="architex-v8-engineering-godmode-style">', $html);
     }
 }

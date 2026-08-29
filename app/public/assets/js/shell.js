@@ -1057,7 +1057,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
       try {
         const result = await api.post('/sessions', { email:form.get('email'), password:form.get('password') });
         api.setCsrf(result.csrfToken);
-        await hydrate(result.identity);
+        await hydrate({...result.identity, csrfToken:result.csrfToken});
       } catch (failure) { error.textContent = failure.message; }
     });
   }

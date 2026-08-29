@@ -1075,7 +1075,7 @@ window.renderMain=function(){if(state.tool==='practice'){q('#main').innerHTML=re
 })();
 </script>
 
-\n<style id="architex-v8-engineering-godmode-style">
+<style id="architex-v8-engineering-godmode-style">
 /* V8 — Engineering Calculation Hub + God Mode ecosystem explorer */
 .god-toggle{height:38px;border:1px solid rgba(139,92,246,.24);background:#fff;color:#6d50c7;border-radius:11px;padding:0 11px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.18s}.god-toggle:hover{background:#f8f5ff;transform:translateY(-1px)}.god-toggle.active{background:#6f52cb;color:#fff;border-color:#6f52cb;box-shadow:0 8px 24px rgba(111,82,203,.22)}.god-toggle.active .ax-icon .outline{fill:transparent;stroke:#fff}.god-toggle.active .ax-icon .line{stroke:#fff}.god-toggle.active .ax-icon .fold{fill:#d9cdfb;stroke:#fff}.god-toggle small{font-size:9px;font-weight:700;opacity:.78;text-transform:uppercase;letter-spacing:.06em}
 body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mode .os-rail{box-shadow:inset -3px 0 0 rgba(218,205,251,.55)}
