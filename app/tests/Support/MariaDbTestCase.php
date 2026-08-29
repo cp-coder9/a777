@@ -13,6 +13,11 @@ use PHPUnit\Framework\TestCase;
 
 abstract class MariaDbTestCase extends TestCase
 {
+    private const SEED_TABLES = ['form_templates','community_channels','community_channel_governance','drawing_compliance_sources'];
+    private const BASELINE_PREFIX = '__architex_test_baseline_';
+    private static bool $schemaReady = false;
+    private static bool $cleanupRegistered = false;
+    private static string $databaseSignature = '';
     protected PDO $pdo;
     /** @var array<string,string> */
     private array $databaseEnvironment;
@@ -26,10 +31,21 @@ abstract class MariaDbTestCase extends TestCase
         DisposableDatabaseGuard::assertAllowed($this->databaseEnvironment);
         $config = AppConfig::fromEnvironment($this->databaseEnvironment);
         $admin = $this->adminConnection($config);
-        $admin->exec('DROP DATABASE IF EXISTS `' . $config->dbName . '`');
-        $admin->exec('CREATE DATABASE `' . $config->dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+        $signature = implode(':', [$config->dbHost,$config->dbPort,$config->dbName,$config->dbUser]);
+        $exists = (int) $admin->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=" . $admin->quote($config->dbName) . " AND table_name='schema_migrations'")->fetchColumn() === 1;
+        if (!self::$schemaReady || self::$databaseSignature !== $signature || !$exists) {
+            $admin->exec('DROP DATABASE IF EXISTS `' . $config->dbName . '`');
+            $admin->exec('CREATE DATABASE `' . $config->dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+            $this->pdo = ConnectionFactory::create($config);
+            (new MigrationRunner($this->pdo, dirname(__DIR__, 2) . '/database/migrations'))->migrate();
+            $this->createSeedBaselines();
+            self::$schemaReady = true;
+            self::$databaseSignature = $signature;
+            $this->registerCleanup($config);
+            return;
+        }
         $this->pdo = ConnectionFactory::create($config);
-        (new MigrationRunner($this->pdo, dirname(__DIR__, 2) . '/database/migrations'))->migrate();
+        $this->resetData();
     }
 
     protected function tearDown(): void
@@ -37,10 +53,45 @@ abstract class MariaDbTestCase extends TestCase
         if (!isset($this->pdo)) {
             return;
         }
-        DisposableDatabaseGuard::assertAllowed($this->databaseEnvironment);
-        $config = AppConfig::fromEnvironment($this->databaseEnvironment);
         unset($this->pdo);
-        $this->adminConnection($config)->exec('DROP DATABASE IF EXISTS `' . $config->dbName . '`');
+    }
+
+    private function createSeedBaselines(): void
+    {
+        foreach (self::SEED_TABLES as $table) {
+            $baseline = self::BASELINE_PREFIX . $table;
+            $this->pdo->exec("CREATE TABLE `$baseline` LIKE `$table`");
+            $this->pdo->exec("INSERT INTO `$baseline` SELECT * FROM `$table`");
+        }
+    }
+
+    private function resetData(): void
+    {
+        $tables = $this->pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'schema_migrations' AND table_name NOT LIKE '__architex\\_test\\_baseline\\_%' ESCAPE '\\\\' ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
+        $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            foreach ($tables as $table) $this->pdo->exec('TRUNCATE TABLE `' . str_replace('`', '``', (string) $table) . '`');
+            foreach (self::SEED_TABLES as $table) {
+                $baseline = self::BASELINE_PREFIX . $table;
+                $this->pdo->exec("INSERT INTO `$table` SELECT * FROM `$baseline`");
+            }
+        } finally {
+            $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        }
+    }
+
+    private function registerCleanup(AppConfig $config): void
+    {
+        if (self::$cleanupRegistered) return;
+        self::$cleanupRegistered = true;
+        $environment = $this->databaseEnvironment;
+        register_shutdown_function(static function () use ($config, $environment): void {
+            try {
+                DisposableDatabaseGuard::assertAllowed($environment);
+                $pdo = new PDO(sprintf('mysql:host=%s;port=%d;charset=utf8mb4', $config->dbHost, $config->dbPort), $config->dbUser, $config->dbPassword, [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+                $pdo->exec('DROP DATABASE IF EXISTS `' . $config->dbName . '`');
+            } catch (\Throwable) {}
+        });
     }
 
     /** @return array<string,string> */
