@@ -310,8 +310,3 @@ final readonly class SiteExecutionService
     private function json(mixed$v):string{return json_encode($v,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES);}
     private function decode(mixed$v):array{if(!is_string($v))return[];$decoded=json_decode($v,true,512,JSON_THROW_ON_ERROR);return is_array($decoded)?$decoded:[];}
 }
-
-final class SiteExecutionException extends \RuntimeException
-{
-    public function __construct(public readonly string $reason){parent::__construct($reason);}
-}

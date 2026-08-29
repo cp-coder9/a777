@@ -15,6 +15,9 @@
       const response = await fetch(this.base + path, { method, headers, credentials: 'same-origin', body: body === undefined ? undefined : JSON.stringify(body) });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, payload);
+      if (!payload || !Object.prototype.hasOwnProperty.call(payload, 'data')) {
+        throw new ApiError(response.status, { error: { code: 'invalid_api_response', message: 'The server returned an invalid API response.' } });
+      }
       return payload.data;
     }
     get(path) { return this.request('GET', path); }
