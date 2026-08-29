@@ -16,12 +16,16 @@ final class PackLedgerBuilderTest extends TestCase
         $ledger = (new PackLedgerBuilder())->build(dirname(__DIR__, 3) . '/packs');
 
         self::assertNotEmpty($ledger['sources']);
-        self::assertContains('10. architex-site-execution-field-control-pack', array_column($ledger['sources'], 'pack'));
+        $packs = array_values(array_unique(array_column($ledger['sources'], 'pack')));
+        self::assertContains('10. architex-site-execution-field-control-pack', $packs);
+        self::assertContains('21. architex-demo-pack', $packs);
+        self::assertNotContains('Completed', $packs);
+        self::assertNotContains('ZIP', $packs);
         self::assertNotEmpty($ledger['requirements']);
         self::assertSame(['not_implemented'], array_values(array_unique(array_column($ledger['requirements'], 'status'))));
-        $firstDigest = hash('sha256', serialize($ledger));
+        $firstDigest = $this->ledgerDigest($ledger);
         unset($ledger);
-        self::assertSame($firstDigest, hash('sha256', serialize((new PackLedgerBuilder())->build(dirname(__DIR__, 3) . '/packs'))));
+        self::assertSame($firstDigest, $this->ledgerDigest((new PackLedgerBuilder())->build(dirname(__DIR__, 3) . '/packs')));
     }
 
     public function testNodeModuleContentIsExcludedFromDirectoryAndArchiveSources(): void
@@ -441,5 +445,16 @@ final class PackLedgerBuilderTest extends TestCase
             $entry->isDir() ? rmdir($entry->getPathname()) : unlink($entry->getPathname());
         }
         rmdir($path);
+    }
+
+    /** @param array{schemaVersion:int,sources:list<array<string,mixed>>,requirements:list<array<string,mixed>>} $ledger */
+    private function ledgerDigest(array $ledger): string
+    {
+        $context = hash_init('sha256');
+        foreach ((new PackLedgerBuilder())->jsonChunks($ledger) as $chunk) {
+            hash_update($context, $chunk);
+        }
+
+        return hash_final($context);
     }
 }

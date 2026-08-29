@@ -131,5 +131,33 @@ final class PackLedgerBuilder
     }
     /** @return iterable<string> */ private function jsonStatements(string $content): iterable {try{$decoded=json_decode($content,true,flags:JSON_THROW_ON_ERROR);}catch(\JsonException){yield from $this->statements($content,'txt');return;}yield from $this->jsonWalk($decoded,'$');}
     /** @return iterable<string> */ private function jsonWalk(mixed $value,string $path,?string $key=null):iterable {if($key!==null&&$this->semantic($key)){yield $path.': '.json_encode($value,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);return;}if(is_array($value))foreach($value as $k=>$v)yield from $this->jsonWalk($v,is_int($k)?$path.'['.$k.']':$path.'.'.$k,is_int($k)?null:$k);}
-    private function relative(string $base,string $path):string{return str_replace('\\','/',substr($path,strlen($base)+1));} private function pack(string $relative):string{return explode('/',$relative,2)[0];} private function zipPack(string $archive,string $entry):string{$entry=str_replace('\\','/',$entry);return str_contains($entry,'/')?explode('/',$entry,2)[0]:pathinfo(basename($archive),PATHINFO_FILENAME);} private function nodeModule(string $path):bool{return preg_match('#(?:^|/)node_modules(?:/|$)#',str_replace('\\','/',$path))===1;} private function semantic(string $key):bool{return preg_match('/^(?:requirements?|acceptance_?criteria|roles?|permissions?|actions?|routes?|states?|status(?:es)?|outputs?|guardrails?|modules?|tools?|workflows?|features?|entities|events?|services?|screens?|pages?|apis?|endpoints?)$/i',$key)===1;}
+    private function relative(string $base,string $path):string{return str_replace('\\','/',substr($path,strlen($base)+1));}
+
+    private function pack(string $relative): string
+    {
+        $parts = explode('/', str_replace('\\', '/', $relative));
+        if (($parts[0] ?? '') === 'Completed') {
+            array_shift($parts);
+            if (($parts[0] ?? '') === 'Supporting Sources') {
+                array_shift($parts);
+            }
+            if (($parts[0] ?? '') === '2026-06-21') {
+                array_shift($parts);
+            }
+            if (($parts[0] ?? '') === 'extracted') {
+                array_shift($parts);
+                array_shift($parts);
+            }
+        }
+        if (($parts[0] ?? '') === 'ZIP') {
+            array_shift($parts);
+            if (($parts[0] ?? '') === 'Source Metadata') {
+                array_shift($parts);
+            }
+        }
+
+        return $parts[0] ?? 'unknown-pack';
+    }
+
+    private function zipPack(string $archive,string $entry):string{$entry=str_replace('\\','/',$entry);return str_contains($entry,'/')?explode('/',$entry,2)[0]:pathinfo(basename($archive),PATHINFO_FILENAME);} private function nodeModule(string $path):bool{return preg_match('#(?:^|/)node_modules(?:/|$)#',str_replace('\\','/',$path))===1;} private function semantic(string $key):bool{return preg_match('/^(?:requirements?|acceptance_?criteria|roles?|permissions?|actions?|routes?|states?|status(?:es)?|outputs?|guardrails?|modules?|tools?|workflows?|features?|entities|events?|services?|screens?|pages?|apis?|endpoints?)$/i',$key)===1;}
 }
