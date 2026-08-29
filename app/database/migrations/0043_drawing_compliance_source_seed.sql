@@ -1,0 +1,4 @@
+-- architex:migration-mode=dml
+INSERT INTO drawing_compliance_sources(source_key,version,title,source_url,source_status,source_sha256,production_reliance_allowed,source_payload) VALUES
+('pack20_revf','1.6.0-RevF','Pack 20 SANS/NBR codified toolbox illustrative source','https://mwo-aec.github.io/sans-codified-poc/','illustrative_poc_until_verified','18f77490c2af8e1ed6fcd79fb6cc66dc3c2dcfe02845fe566574fedb89820e23',0,JSON_OBJECT('pack','architex-sans-codified-toolbox-integration-brief','boundary','POC numbers, clauses and AI answers are illustrative. Production requires official source verification and licensing.','officialSourcesLastChecked','2026-04-30'))
+ON DUPLICATE KEY UPDATE title=VALUES(title),source_url=VALUES(source_url),source_status=VALUES(source_status),source_sha256=VALUES(source_sha256),production_reliance_allowed=VALUES(production_reliance_allowed),source_payload=VALUES(source_payload);

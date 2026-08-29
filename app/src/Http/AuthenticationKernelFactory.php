@@ -21,6 +21,7 @@ use Architex\Http\Controller\AppointmentController;
 use Architex\Http\Controller\MeetingController;
 use Architex\Http\Controller\CommunicationController;
 use Architex\Http\Controller\CommunityController;
+use Architex\Http\Controller\DrawingComplianceController;
 use Architex\Http\Controller\FormController;
 use Architex\Http\Controller\DocumentController;
 use Architex\Http\Controller\DocumentEvidenceController;
@@ -80,6 +81,7 @@ use Architex\Platform\Analytics\AnalyticsReportingService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
+use Architex\Platform\DrawingCompliance\DrawingComplianceService;
 use Architex\Platform\Forms\FormService;
 use Architex\Platform\Documents\DocumentService;
 use Architex\Platform\Documents\DocumentTransmittalService;
@@ -194,8 +196,9 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
-        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules),new EngineeringCalculatorService(),new StandaloneUtilityService(),new StandaloneRecordToolService()))->create();
+        $fees=new FeeCalculatorService($this->pdo);$complianceRules=new ComplianceRuleRegistry($this->pdo);$drawingCompliance=new DrawingComplianceService($this->pdo);$toolRegistry=(new ProductionToolRegistry($fees,new ComplianceCalculatorService($complianceRules),new EngineeringCalculatorService(),new StandaloneUtilityService(),new StandaloneRecordToolService(),$drawingCompliance))->create();
         (new ToolboxRoutes(new ToolboxController(new ToolboxEngine($this->pdo,$toolRegistry),$toolRegistry,$fees),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
+        (new DrawingComplianceRoutes(new DrawingComplianceController($drawingCompliance),new PermissionMiddleware(new PermissionService(),'tools.use'),new PermissionMiddleware(new PermissionService(),'tools.use')))->register($router);
         (new ComplianceRoutes(
             new ComplianceController($complianceRules),
             new PermissionMiddleware(new PermissionService(),'tools.use'),
