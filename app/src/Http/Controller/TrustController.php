@@ -34,6 +34,11 @@ final readonly class TrustController
         return $scope instanceof Response ? $scope : Response::success($this->service->listForUser($scope[0], $scope[1]));
     }
 
+    public function reviewQueue(Request$request):Response
+    {
+        $scope=$this->scope($request);return$scope instanceof Response?$scope:Response::success($this->service->reviewQueue($scope[0],$scope[1]));
+    }
+
     public function submit(Request $request): Response
     {
         return $this->write($request, fn(array $body, string $organisationId, string $userId): Response => Response::success($this->service->submit($organisationId, $userId, $body), status: 201));

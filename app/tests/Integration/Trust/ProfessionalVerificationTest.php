@@ -38,6 +38,9 @@ final class ProfessionalVerificationTest extends MariaDbTestCase
         ]);
 
         self::assertSame('document_uploaded', $verification['grade']);
+        $queue=$service->reviewQueue($organisationId,$reviewerId);
+        self::assertCount(1,$queue);
+        self::assertSame($ownerId,$queue[0]['subject_user_id']);
         $reviewed = $service->review($organisationId, $reviewerId, $verification['id'], [
             'decision' => 'manually_reviewed',
             'note' => 'Registration document inspected.',
@@ -62,8 +65,10 @@ final class ProfessionalVerificationTest extends MariaDbTestCase
 
         try {
             $service->submit($organisationId, $ownerId, [
-                'kind' => 'insurance_compliance',
+                'kind' => 'professional_registration',
                 'grade' => 'document_uploaded',
+                'registrationBody' => 'SACAP',
+                'registrationNumber' => 'MISSING-POPIA',
                 'consentGiven' => false,
                 'purpose' => '',
                 'retentionUntil' => '',
@@ -71,6 +76,14 @@ final class ProfessionalVerificationTest extends MariaDbTestCase
             self::fail('Sensitive verification evidence must require POPIA metadata.');
         } catch (TrustException $exception) {
             self::assertSame('popia_metadata_required', $exception->reason);
+        }
+        try {
+            $service->submit($organisationId, $ownerId, [
+                'kind'=>'insurance_compliance','grade'=>'self_declared','consentGiven'=>true,'purpose'=>'Legacy generic insurance record','retentionUntil'=>'2031-08-27',
+            ]);
+            self::fail('Insurance evidence must use the structured compliance workflow.');
+        } catch (TrustException $exception) {
+            self::assertSame('invalid_verification_kind', $exception->reason);
         }
 
         $verification = $service->submit($organisationId, $ownerId, [
@@ -99,8 +112,10 @@ final class ProfessionalVerificationTest extends MariaDbTestCase
         [$otherOrganisationId, $otherOwnerId] = $this->seedTenant('trust-delta');
         $service = new VerificationService($this->pdo);
         $verification = $service->submit($organisationId, $ownerId, [
-            'kind' => 'insurance_compliance',
+            'kind' => 'professional_registration',
             'grade' => 'self_declared',
+            'registrationBody' => 'ECSA',
+            'registrationNumber' => 'EXP-1',
             'consentGiven' => true,
             'purpose' => 'Project risk assessment',
             'retentionUntil' => '2031-08-27',

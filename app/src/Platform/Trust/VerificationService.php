@@ -13,7 +13,8 @@ use Throwable;
 
 final readonly class VerificationService
 {
-    private const KINDS = ['professional_registration','company_document','insurance_compliance','contractor_supplier_compliance'];
+    private const KINDS = ['professional_registration'];
+    private const PROFESSIONAL_BODIES = ['SACAP','ECSA','SACQSP','SACLAP','SACPCMP'];
     private const SUBMISSION_GRADES = ['self_declared','document_uploaded'];
     private const REVIEW_DECISIONS = ['manually_reviewed','externally_verified','rejected'];
     private AuditService $audit;
@@ -66,17 +67,20 @@ final readonly class VerificationService
         $retentionUntil = $this->date($input['retentionUntil'] ?? null, false);
         if (($input['consentGiven'] ?? false) !== true || $purpose === '' || $retentionUntil === null) throw new TrustException('popia_metadata_required');
         if ($retentionUntil < new DateTimeImmutable('today')) throw new TrustException('invalid_retention_date');
+        $registrationBody = $this->nullableText($input, 'registrationBody', 120);
+        $registrationNumber = $this->nullableText($input, 'registrationNumber', 120);
+        if ($registrationBody === null || !in_array(strtoupper($registrationBody), self::PROFESSIONAL_BODIES, true) || $registrationNumber === null) throw new TrustException('invalid_professional_registration');
         $expiresOn = $this->date($input['expiresOn'] ?? null, true);
         $evidenceFileId = $this->optionalIdentifier($input['evidenceFileId'] ?? null);
         if ($grade === 'document_uploaded' && $evidenceFileId === null) throw new TrustException('document_evidence_required');
         if ($evidenceFileId !== null && !$this->evidenceExists($organisationId, $userId, $evidenceFileId)) throw new TrustException('evidence_file_not_found');
 
-        return $this->transaction(function () use ($organisationId, $userId, $kind, $grade, $input, $evidenceFileId, $purpose, $retentionUntil, $expiresOn): array {
+        return $this->transaction(function () use ($organisationId, $userId, $kind, $grade, $registrationBody, $registrationNumber, $evidenceFileId, $purpose, $retentionUntil, $expiresOn): array {
             $id = Identifier::generate();
             $statement = $this->pdo->prepare('INSERT INTO verification_records(id,organisation_id,user_id,kind,grade,registration_body,registration_number,evidence_file_id,popia_consent_at,processing_purpose,retention_until,expires_on) VALUES(UNHEX(:id),UNHEX(:organisation_id),UNHEX(:user_id),:kind,:grade,:registration_body,:registration_number,UNHEX(:evidence_file_id),UTC_TIMESTAMP(6),:purpose,:retention_until,:expires_on)');
             $statement->execute([
                 'id'=>$id,'organisation_id'=>$organisationId,'user_id'=>$userId,'kind'=>$kind,'grade'=>$grade,
-                'registration_body'=>$this->nullableText($input, 'registrationBody', 120),'registration_number'=>$this->nullableText($input, 'registrationNumber', 120),
+                'registration_body'=>strtoupper($registrationBody),'registration_number'=>$registrationNumber,
                 'evidence_file_id'=>$evidenceFileId,'purpose'=>$purpose,'retention_until'=>$retentionUntil->format('Y-m-d'),'expires_on'=>$expiresOn?->format('Y-m-d'),
             ]);
             $this->audit->append($organisationId, $userId, 'verification.submitted', 'verification_record', $id, ['kind'=>$kind,'grade'=>$grade,'expiresOn'=>$expiresOn?->format('Y-m-d')]);
@@ -128,6 +132,14 @@ final readonly class VerificationService
             $rows[] = $row;
         }
         return $rows;
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function reviewQueue(string $organisationId, string $reviewerId): array
+    {
+        $this->assertReviewer($organisationId, $reviewerId);
+        $statement=$this->pdo->prepare("SELECT LOWER(HEX(v.id)) id,LOWER(HEX(v.user_id)) subject_user_id,u.email subject_email,v.kind,v.grade,v.registration_body,v.registration_number,LOWER(HEX(v.evidence_file_id)) evidence_file_id,v.provider,v.provider_reference,DATE_FORMAT(v.expires_on,'%Y-%m-%d') expires_on,v.created_at FROM verification_records v JOIN users u ON u.id=v.user_id WHERE v.organisation_id=UNHEX(:organisation_id) AND v.grade IN ('self_declared','document_uploaded') AND v.user_id<>UNHEX(:reviewer_id) ORDER BY v.created_at,v.id");
+        $statement->execute(['organisation_id'=>$organisationId,'reviewer_id'=>$reviewerId]);$rows=[];foreach($statement as$row){$row['effectiveGrade']=$this->effectiveGrade((string)$row['grade'],is_string($row['expires_on'])?$row['expires_on']:null);$rows[]=$row;}return$rows;
     }
 
     /** @return array<string,mixed>|null */

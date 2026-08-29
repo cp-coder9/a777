@@ -23,6 +23,7 @@ final readonly class TrustRoutes
         $router->get('/api/v1/verifications', $this->through($this->readPermission, $this->controller->verifications(...)));
         $router->post('/api/v1/verifications', $this->through($this->writePermission, $this->controller->submit(...)));
         $router->post('/api/v1/verifications/{verificationId}/review', $this->through($this->reviewPermission, $this->controller->review(...)));
+        $router->get('/api/v1/verification-review-queue', $this->through($this->reviewPermission, $this->controller->reviewQueue(...)));
         $router->get('/api/v1/directory/search', $this->through($this->readPermission, $this->controller->directory(...)));
     }
 
