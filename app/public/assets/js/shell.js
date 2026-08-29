@@ -616,7 +616,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
   for(const role of financeRoles){if(typeof roleMap!=='undefined'&&Array.isArray(roleMap[role]))for(const tool of ['payments_escrow','valuations','contract_admin','fm_bridge'])if(!roleMap[role].includes(tool))roleMap[role].push(tool);if(typeof V8_ROLE_TOOL_ALLOWLIST!=='undefined'&&Array.isArray(V8_ROLE_TOOL_ALLOWLIST[role]))for(const tool of ['payments_escrow','valuations','contract_admin','fm_bridge'])if(!V8_ROLE_TOOL_ALLOWLIST[role].includes(tool))V8_ROLE_TOOL_ALLOWLIST[role].push(tool);}
   const originalRenderMain = window.renderMain;
   const originalRenderInspector = window.renderInspector;
-  window.renderInspector = function(){if(siteTools.includes(state.tool)){renderSiteInspector();return;}if(['payments_escrow','valuations','contract_admin'].includes(state.tool)){renderFinanceInspector();return;}originalRenderInspector();};
+  window.renderInspector = function(){if(state.tool==='fm_bridge'){renderCloseoutContext();return;}if(siteTools.includes(state.tool)){renderSiteInspector();return;}if(['payments_escrow','valuations','contract_admin'].includes(state.tool)){renderFinanceInspector();return;}originalRenderInspector();};
   window.renderMain = function () {
     if(state.tool==='forms'){document.getElementById('main').innerHTML=integratedFormWorkspace();return;}
     if(state.tool==='documents_drawings'){document.getElementById('main').innerHTML=documentControlWorkspace();return;}
