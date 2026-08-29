@@ -14,6 +14,8 @@ final class MobileDecisionCentreWorkspaceTest extends TestCase
         foreach(['Mobile Decision Centre','What needs your attention today','/mobile-decision-inbox','operating-snapshot','Review and confirm','AI may draft','Architex does not hold or move funds','cpd_reminder','release_gate']as$token)self::assertStringContainsString($token,$shell);
         self::assertStringContainsString('Exact build timestamp (ISO 8601)',$shell);
         self::assertStringNotContainsString('type="datetime-local" name="buildTimestamp"',$shell);
+        $styles=(string)file_get_contents(dirname(__DIR__,2).'/public/assets/css/community.css');
+        self::assertStringContainsString('.decision-item small{color:#5f7082}',$styles);
         self::assertStringNotContainsString('4 overdue',$shell);
     }
 }
