@@ -28,7 +28,7 @@ if (PHP_SAPI === 'cli-server') {
 }
 
 $request = Request::fromGlobals();
-if ($request->method() === 'GET' && ($request->path()==='/' || $request->path()==='/app' || ($request->path()==='/demo' && getenv('APP_MODE')==='demo') || preg_match('#\A/(?:messages/community|community-app|admin/community-(?:moderation|channels)|admin/platform-completeness|toolbox/standalone/sa-council-drawing-compliance-navigator)(?:/.*)?\z#',$request->path())===1)) {
+if ($request->method() === 'GET' && ($request->path()==='/' || $request->path()==='/app' || ($request->path()==='/demo' && getenv('APP_MODE')==='demo') || preg_match('#\A/(?:messages/community|community-app|admin/community-(?:moderation|channels)|admin/platform-completeness|supplier/rfqs/[A-Za-z0-9_-]{43}|projects/[a-f0-9]{32}/procurement/suppliers|toolbox/standalone/sa-council-drawing-compliance-navigator)(?:/.*)?\z#',$request->path())===1)) {
     header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('X-Content-Type-Options: nosniff');

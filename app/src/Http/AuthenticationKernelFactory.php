@@ -34,6 +34,7 @@ use Architex\Http\Controller\TownPlanningController;
 use Architex\Http\Controller\RegulatoryCaseController;
 use Architex\Http\Controller\SurveyJobController;
 use Architex\Http\Controller\ProcurementController;
+use Architex\Http\Controller\SupplierProcurementController;
 use Architex\Http\Controller\FinanceController;
 use Architex\Http\Controller\SiteExecutionController;
 use Architex\Http\Controller\CloseoutController;
@@ -114,6 +115,8 @@ use Architex\Platform\Environment\RegulatoryCaseService;
 use Architex\Platform\Survey\SurveyJobService;
 use Architex\Platform\Procurement\ProcurementScopeClassifier;
 use Architex\Platform\Procurement\ProcurementService;
+use Architex\Platform\SupplierProcurement\SupplierCatalogueNormaliser;
+use Architex\Platform\SupplierProcurement\SupplierProcurementService;
 use Architex\Infrastructure\Logging\JsonLogger;
 use PDO;
 
@@ -308,6 +311,12 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new RateLimitMiddleware($limiter,'procurement_invitation',60,3_600,$remoteKey),
+        ))->register($router);
+        (new SupplierProcurementRoutes(
+            new SupplierProcurementController(new SupplierProcurementService($this->pdo,new SupplierCatalogueNormaliser())),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new RateLimitMiddleware($limiter,'supplier_quote',60,3_600,$remoteKey),
         ))->register($router);
         (new FinanceRoutes(
             new FinanceController(new CommercialControlService($this->pdo)),
