@@ -6,19 +6,19 @@
 
 ## Implementation plan
 
-- [ ] Encode the complete 12-workstream master register, 21-point QC checklist, 10 build-comparison questions, 14 completeness sections and every supplied checklist item as an immutable PHP catalogue.
-- [ ] Add MariaDB tables for organisation-scoped sections, items, evidence links, QC reviews, shared FileManager attachments, role assignments and immutable sign-offs.
-- [ ] Seed each organisation idempotently from the canonical catalogue without reading pack files at runtime.
-- [ ] Map owners/admins to safe default governance capabilities and allow owners to assign developer, QA reviewer and viewer access without weakening organisation membership enforcement.
-- [ ] Implement optimistic item updates for implementation/QC state, owners, reviewers, route/commit references, blockers, next actions and acceptance criteria.
-- [ ] Implement append-only QC reviews and accountable sign-offs; accepted status must require a human confirmation reason and cannot be produced by AI.
-- [ ] Implement evidence links and FileManager-backed uploads using existing tenant/project-scoped stored files, with category allowlists and cross-tenant rejection.
-- [ ] Publish tenant-scoped Platform Completeness APIs with server-side read/develop/review/sign-off permission gates and route-contract tests.
-- [ ] Add a V1-native `/admin/platform-completeness` control centre under Settings with summary, filters, master register, checklist items, evidence, QC history and role-aware actions.
-- [ ] Preserve cellphone-first behavior, useful empty/loading/error states, exact status labels and explicit POPIA/audit boundaries.
-- [ ] Verify focused contracts, full suite, all 51 migrations, connected MariaDB persistence, optimistic conflicts, tenant isolation, cross-tenant file rejection and sign-off gates.
-- [ ] Certify owner, reviewer and viewer flows in persistent Chrome DevTools MCP at desktop and 390 px mobile, with screenshots, console/network checks and Lighthouse.
-- [ ] Commit Release 21 and build an independently extracted and verified FTP ZIP from its exact source commit.
+- [x] Encode the complete 12-workstream master register, 21-point QC checklist, 10 build-comparison questions, 14 completeness sections and every supplied checklist item as an immutable PHP catalogue.
+- [x] Add MariaDB tables for organisation-scoped sections, items, evidence links, QC reviews, shared FileManager attachments, role assignments and immutable sign-offs.
+- [x] Seed each organisation idempotently from the canonical catalogue without reading pack files at runtime.
+- [x] Map owners/admins to safe default governance capabilities and allow owners to assign developer, QA reviewer and viewer access without weakening organisation membership enforcement.
+- [x] Implement optimistic item updates for implementation/QC state, owners, reviewers, route/commit references, blockers, next actions and acceptance criteria.
+- [x] Implement append-only QC reviews and accountable sign-offs; accepted status must require a human confirmation reason and cannot be produced by AI.
+- [x] Implement evidence links and FileManager-backed uploads using existing tenant/project-scoped stored files, with category allowlists and cross-tenant rejection.
+- [x] Publish tenant-scoped Platform Completeness APIs with server-side read/develop/review/sign-off permission gates and route-contract tests.
+- [x] Add a V1-native `/admin/platform-completeness` control centre under Settings with summary, filters, master register, checklist items, evidence, QC history and role-aware actions.
+- [x] Preserve cellphone-first behavior, useful empty/loading/error states, exact status labels and explicit POPIA/audit boundaries.
+- [x] Verify focused contracts, full suite, all 51 migrations, connected MariaDB persistence, optimistic conflicts, tenant isolation, cross-tenant file rejection and sign-off gates.
+- [x] Certify owner, reviewer and viewer flows in persistent Chrome DevTools MCP at desktop and responsive mobile, with screenshots, console/network checks and Lighthouse. Chrome DevTools clamped the requested 390 px width to 500 px; the mobile breakpoint was active with zero overflow.
+- [x] Commit Release 21 and build an independently extracted and verified FTP ZIP from its exact source commit.
 
 ## Authority model
 
