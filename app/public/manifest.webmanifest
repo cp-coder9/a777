@@ -1,0 +1,14 @@
+{
+  "name": "Architex Mobile Companion",
+  "short_name": "Architex",
+  "description": "Role-aware decisions, project communication and offline-safe field drafts.",
+  "id": "/app",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7fbfa",
+  "theme_color": "#116b67",
+  "icons": [
+    {"src":"/assets/icons/community.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/assets/css/community.css">
 <link rel="stylesheet" href="/assets/css/demo-sandbox.css">
 <link rel="icon" href="/assets/icons/community.svg">
-<link rel="manifest" href="/community.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#116b67">
 </head>
 <body>
@@ -76,6 +76,7 @@ const globalItems=[
  {id:"finance",label:"Finance & Payments",icon:"finance",tone:"amber",meta:"4"},
  {id:'cpd',label:'CPD Learning Hub',icon:'cpd_learning',tone:'cobalt',meta:'CPD'},
  {id:"feedback",label:"Feedback Intelligence",icon:"feedback",tone:"lavender",meta:"Loop"},
+ {id:"dedicated",label:"Dedicated Apps",icon:"tools",tone:"lavender",meta:"12"},
  {id:"settings",label:"Settings",icon:"settings",tone:"core",meta:""}
 ];
 let state={global:"projects",mode:"project",tool:null,toolTab:0,inspector:"context",rail:false,frameReady:false};
