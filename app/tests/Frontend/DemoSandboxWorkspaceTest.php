@@ -24,6 +24,8 @@ final class DemoSandboxWorkspaceTest extends TestCase
             self::assertStringContainsString($label, $javascript);
         }
         self::assertStringContainsString("getenv('APP_MODE')==='demo'", $index);
+        self::assertStringContainsString("data-app-mode=\"<?= getenv('APP_MODE') === 'demo' ? 'demo' : 'production' ?>\"", $html);
+        self::assertStringContainsString("if (runtimeMode !== 'demo')", $javascript);
         self::assertSame(1, substr_count($html, 'class="os-rail"'));
         foreach (['id="navigator"','id="main"','class="inspector"'] as $owner) self::assertSame(1, substr_count($html, $owner));
         foreach (['.demo-sandbox-status-rail','.demo-sandbox-role-control','.demo-sandbox-project-grid',':focus-visible','@media (max-width: 760px)','prefers-reduced-motion'] as $needle) self::assertStringContainsString($needle, $css);

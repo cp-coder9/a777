@@ -18,6 +18,7 @@
   let unavailable = false;
   let hydrating = false;
   const directRoute = () => location.pathname === '/demo';
+  const runtimeMode = document.documentElement.dataset.appMode || 'production';
   const roleLabel = key => roleGroups.flatMap(group => group[1]).find(role => role[0] === key)?.[1] || key;
   const roleOptions = selected => roleGroups.map(([group,roles]) => `<optgroup label="${escapeHtml(group)}">${roles.map(([key,label])=>`<option value="${key}" ${key===selected?'selected':''}>${escapeHtml(label)}</option>`).join('')}</optgroup>`).join('');
 
@@ -90,6 +91,7 @@
   }
 
   async function hydrateDemoSandbox() {
+    if (runtimeMode !== 'demo') { unavailable = true; return; }
     if (hydrating || unavailable) return;
     if (!configureDemoApi()) {
       if (document.documentElement.dataset.shellState !== 'signed-out') setTimeout(hydrateDemoSandbox, 60);
