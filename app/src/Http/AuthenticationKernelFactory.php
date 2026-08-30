@@ -47,6 +47,7 @@ use Architex\Http\Controller\OperatingSystemController;
 use Architex\Http\Controller\BuildInfoController;
 use Architex\Http\Controller\DedicatedAppController;
 use Architex\Http\Controller\PlatformCompletenessController;
+use Architex\Http\Controller\NuancedQcController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -94,6 +95,9 @@ use Architex\Platform\DedicatedApps\DedicatedAppRegistry;
 use Architex\Platform\DedicatedApps\DedicatedAppService;
 use Architex\Platform\PlatformCompleteness\PlatformCompletenessRegistry;
 use Architex\Platform\PlatformCompleteness\PlatformCompletenessService;
+use Architex\Platform\NuancedQc\NuancedQcEvaluator;
+use Architex\Platform\NuancedQc\NuancedQcRegistry;
+use Architex\Platform\NuancedQc\NuancedQcService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
@@ -189,6 +193,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new PlatformCompletenessRoutes(
             new PlatformCompletenessController(new PlatformCompletenessService($this->pdo,new PlatformCompletenessRegistry())),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new NuancedQcRoutes(
+            new NuancedQcController(new NuancedQcService($this->pdo, new NuancedQcRegistry(), new NuancedQcEvaluator())),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
