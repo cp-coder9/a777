@@ -77,6 +77,7 @@ const globalItems=[
  {id:'cpd',label:'CPD Learning Hub',icon:'cpd_learning',tone:'cobalt',meta:'CPD'},
  {id:"feedback",label:"Feedback Intelligence",icon:"feedback",tone:"lavender",meta:"Loop"},
  {id:"dedicated",label:"Dedicated Apps",icon:"tools",tone:"lavender",meta:"12"},
+ {id:"completeness",label:"Platform Completeness",icon:"compliance",tone:"cobalt",meta:"95"},
  {id:"settings",label:"Settings",icon:"settings",tone:"core",meta:""}
 ];
 let state={global:"projects",mode:"project",tool:null,toolTab:0,inspector:"context",rail:false,frameReady:false};

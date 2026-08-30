@@ -45,6 +45,7 @@ use Architex\Http\Controller\CPDController;
 use Architex\Http\Controller\OperatingSystemController;
 use Architex\Http\Controller\BuildInfoController;
 use Architex\Http\Controller\DedicatedAppController;
+use Architex\Http\Controller\PlatformCompletenessController;
 use Architex\Http\Middleware\CsrfMiddleware;
 use Architex\Http\Middleware\JsonRequestMiddleware;
 use Architex\Http\Middleware\OrganisationContextMiddleware;
@@ -90,6 +91,8 @@ use Architex\Platform\OperatingSystem\DeploymentReleaseGateService;
 use Architex\Platform\OperatingSystem\ProductOperatingSystemService;
 use Architex\Platform\DedicatedApps\DedicatedAppRegistry;
 use Architex\Platform\DedicatedApps\DedicatedAppService;
+use Architex\Platform\PlatformCompleteness\PlatformCompletenessRegistry;
+use Architex\Platform\PlatformCompleteness\PlatformCompletenessService;
 use Architex\Platform\Meeting\MeetingService;
 use Architex\Platform\Communication\ProjectCommunicationService;
 use Architex\Platform\Community\CommunityMessagingService;
@@ -180,6 +183,11 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new RateLimitMiddleware($limiter,'dedicated_app_client',600,3_600,$remoteKey),
+        ))->register($router);
+        (new PlatformCompletenessRoutes(
+            new PlatformCompletenessController(new PlatformCompletenessService($this->pdo,new PlatformCompletenessRegistry())),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
         (new FileRoutes(
             new FileController(new FileService($this->pdo, new LocalFileStorage($this->fileStorageRoot ?? dirname(__DIR__, 2) . '/storage/files'))),
