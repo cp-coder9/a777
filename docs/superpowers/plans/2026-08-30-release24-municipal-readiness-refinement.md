@@ -6,17 +6,17 @@
 
 ## 1. Domain contract
 
-- [ ] Add focused unit tests for application types, profile validation, finding severities, route issue gates and canonical manifest wording.
-- [ ] Implement a framework-independent municipal refinement policy that normalises profiles, derives finding/route workflow state and rejects prohibited statutory claims.
-- [ ] Run the focused tests and PHP syntax checks.
-- [ ] Commit the domain contract.
+- [x] Add focused unit tests for application types, profile validation, finding severities, route issue gates and canonical manifest wording.
+- [x] Implement a framework-independent municipal refinement policy that normalises profiles, derives finding/route workflow state and rejects prohibited statutory claims.
+- [x] Run the focused tests and PHP syntax checks.
+- [x] Commit the domain contract.
 
 ## 2. MariaDB persistence
 
-- [ ] Add migration `0054_municipal_readiness_refinement.sql` for project profiles, materialised findings, professional routes and immutable submission packs.
-- [ ] Add schema assertions for foreign keys, tenant/project indexes, unique pack versions and immutable hash fields.
-- [ ] Rebuild a guarded disposable database through every migration and run the schema tests.
-- [ ] Commit the persistence schema.
+- [x] Add migration `0054_municipal_readiness_refinement.sql` for project profiles, materialised findings, professional routes and immutable submission packs.
+- [x] Add schema assertions for foreign keys, tenant/project indexes, unique pack versions and immutable hash fields.
+- [x] Rebuild a guarded disposable database through every migration and run the schema tests.
+- [x] Commit the persistence schema.
 
 ## 3. Governed service lifecycle
 
