@@ -1,6 +1,6 @@
 # Release 23 Nuanced QC Control Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Deliver Pack 27 as a production PHP 8.3/MariaDB Nuanced QC control with all 35 categories, evidence-backed findings, retests, risk acceptance, cross-pack speak-back and immutable human sign-off.
 
@@ -35,7 +35,7 @@
 - Produces: `NuancedQcEvaluator::summarise(array $categoryResults, array $findings): array{recommendation:string,counts:array<string,int>,readyForSignoff:bool,blockReason:?string}`.
 - Produces: `NuancedQcException::$reason` for deterministic controller mapping.
 
-- [ ] **Step 1: Write failing registry and evaluator tests**
+- [x] **Step 1: Write failing registry and evaluator tests**
 
 ```php
 self::assertCount(35, $registry->categories());
@@ -45,13 +45,13 @@ self::assertSame('block_merge_or_deploy', $summary['recommendation']);
 self::assertFalse($summary['readyForSignoff']);
 ```
 
-- [ ] **Step 2: Run the tests and confirm missing-class failures**
+- [x] **Step 2: Run the tests and confirm missing-class failures**
 
 Run: `php vendor/bin/phpunit app/tests/Unit/NuancedQc`
 
 Expected: FAIL because the Nuanced QC classes do not exist.
 
-- [ ] **Step 3: Implement the exact registry and evaluator**
+- [x] **Step 3: Implement the exact registry and evaluator**
 
 ```php
 public function summarise(array $categoryResults,array $findings):array
@@ -65,13 +65,13 @@ public function summarise(array $categoryResults,array $findings):array
 }
 ```
 
-- [ ] **Step 4: Run focused tests and PHP lint**
+- [x] **Step 4: Run focused tests and PHP lint**
 
 Run: `php vendor/bin/phpunit app/tests/Unit/NuancedQc && php -l app/src/Platform/NuancedQc/NuancedQcRegistry.php && php -l app/src/Platform/NuancedQc/NuancedQcEvaluator.php`
 
 Expected: PASS with all 35 categories and severity gates proven.
 
-- [ ] **Step 5: Commit the domain slice**
+- [x] **Step 5: Commit the domain slice**
 
 ```text
 git add app/src/Platform/NuancedQc app/tests/Unit/NuancedQc
@@ -88,7 +88,7 @@ git commit -m "feat: add nuanced qc domain rules"
 - Consumes: the registry keys and statuses from Task 1.
 - Produces: the ten `qc_*` tables, foreign keys, tenant/project indexes, idempotency keys and optimistic versions required by the service.
 
-- [ ] **Step 1: Write a failing migration asset test**
+- [x] **Step 1: Write a failing migration asset test**
 
 ```php
 $sql=(string)file_get_contents(dirname(__DIR__,3).'/database/migrations/0053_nuanced_qc_control.sql');
@@ -97,13 +97,13 @@ self::assertStringContainsString('expected_version INT UNSIGNED NOT NULL DEFAULT
 self::assertStringContainsString('FOREIGN KEY (organisation_id) REFERENCES organisations(id)',$sql);
 ```
 
-- [ ] **Step 2: Run it and confirm the missing migration failure**
+- [x] **Step 2: Run it and confirm the missing migration failure**
 
 Run: `php vendor/bin/phpunit app/tests/Unit/Infrastructure/NuancedQcMigrationAssetTest.php`
 
 Expected: FAIL because migration 0053 does not exist.
 
-- [ ] **Step 3: Implement the schema with explicit constraints**
+- [x] **Step 3: Implement the schema with explicit constraints**
 
 ```sql
 CREATE TABLE IF NOT EXISTS qc_run_records (
@@ -133,13 +133,13 @@ Define the other tables with these exact field groups:
 
 Every child table includes `organisation_id`, an index beginning with organisation and its parent identifier, and foreign keys to organisation, run and user/project/file parents where present.
 
-- [ ] **Step 4: Run the migration asset test and disposable 53-migration rebuild**
+- [x] **Step 4: Run the migration asset test and disposable 53-migration rebuild**
 
 Run: `php vendor/bin/phpunit app/tests/Unit/Infrastructure/NuancedQcMigrationAssetTest.php`
 
 Run the existing guarded MariaDB migration command against `architex_task21_fa570001_test` and confirm all 53 migrations apply.
 
-- [ ] **Step 5: Commit the schema slice**
+- [x] **Step 5: Commit the schema slice**
 
 ```text
 git add app/database/migrations/0053_nuanced_qc_control.sql app/tests/Unit/Infrastructure/NuancedQcMigrationAssetTest.php
@@ -156,7 +156,7 @@ git commit -m "feat: add nuanced qc persistence schema"
 - Consumes: `NuancedQcRegistry`, `NuancedQcEvaluator`, `ProjectRecordService`, `InboxService`, `AuditService`, `ProjectContext` and migration 0053.
 - Produces: `workspace`, `createRun`, `recordTechnicalSummary`, `recordCategoryResult`, `addFinding`, `linkEvidence`, `createRetest`, `completeRetest`, `acceptRisk`, `signOff`, and `assignRole` methods.
 
-- [ ] **Step 1: Write the connected service test first**
+- [x] **Step 1: Write the connected service test first**
 
 ```php
 $run=$service->createRun($organisation,$owner,'owner',[
@@ -174,13 +174,13 @@ $this->expectReason(fn()=>$service->signOff($organisation,$owner,'owner',$run['i
 
 Add assertions for foreign project/file rejection, reviewer/developer separation, optimistic conflict, all category exception reasons, blocker/high risk/retest creation, risk acceptance, passed retest, ProjectRecord/inbox/audit rows and immutable snapshot SHA-256.
 
-- [ ] **Step 2: Run the test and confirm the missing-service failure**
+- [x] **Step 2: Run the test and confirm the missing-service failure**
 
 Run the connected test against the guarded disposable MariaDB database.
 
 Expected: FAIL because `NuancedQcService` is missing.
 
-- [ ] **Step 3: Implement service validation and role resolution**
+- [x] **Step 3: Implement service validation and role resolution**
 
 ```php
 private function accessRole(string $organisationId,string $userId,string $claimedRole):string
@@ -195,7 +195,7 @@ private function accessRole(string $organisationId,string $userId,string $claime
 
 Implement every query with organisation scope, optional project scope, bounded input lengths, enum validation and non-enumerating lookup errors.
 
-- [ ] **Step 4: Implement transactional findings, risks, retests and speak-back**
+- [x] **Step 4: Implement transactional findings, risks, retests and speak-back**
 
 ```php
 $this->pdo->beginTransaction();
@@ -210,7 +210,7 @@ try {
 }
 ```
 
-- [ ] **Step 5: Implement sign-off fail-closed gates and immutable snapshot**
+- [x] **Step 5: Implement sign-off fail-closed gates and immutable snapshot**
 
 ```php
 $summary=$this->evaluator->summarise($this->latestCategoryResults($runId),$this->findings($runId));
@@ -218,13 +218,13 @@ if(!$summary['readyForSignoff']&&in_array($decision,['accepted','accepted_with_n
 $sha=hash('sha256',json_encode($snapshot,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES));
 ```
 
-- [ ] **Step 6: Run connected and full non-database suites**
+- [x] **Step 6: Run connected and full non-database suites**
 
 Run the connected service test, then `php vendor/bin/phpunit`.
 
 Expected: connected PASS; full suite remains green with database-gated skips explicit.
 
-- [ ] **Step 7: Commit the service slice**
+- [x] **Step 7: Commit the service slice**
 
 ```text
 git add app/src/Platform/NuancedQc/NuancedQcService.php app/tests/Integration/NuancedQc/NuancedQcServiceTest.php
@@ -244,7 +244,7 @@ git commit -m "feat: implement governed nuanced qc runs"
 - Consumes: the Task 3 service methods.
 - Produces: `/api/v1/nuanced-qc/*` authenticated endpoints and three V1 deep-link patterns.
 
-- [ ] **Step 1: Write failing route-contract tests**
+- [x] **Step 1: Write failing route-contract tests**
 
 ```php
 foreach(['/api/v1/nuanced-qc','/api/v1/nuanced-qc/runs','/api/v1/nuanced-qc/runs/{runId}/categories','/api/v1/nuanced-qc/runs/{runId}/findings','/api/v1/nuanced-qc/runs/{runId}/signoffs'] as $route) self::assertStringContainsString($route,$routes);
@@ -252,13 +252,13 @@ self::assertStringContainsString('new NuancedQcService',$factory);
 self::assertStringContainsString('admin/qc-controls/nuanced-gap-test',$front);
 ```
 
-- [ ] **Step 2: Run the contract test and confirm failure**
+- [x] **Step 2: Run the contract test and confirm failure**
 
 Run: `php vendor/bin/phpunit app/tests/Http/NuancedQcRoutesContractTest.php`
 
 Expected: FAIL because routes and wiring are absent.
 
-- [ ] **Step 3: Implement route/controller mappings**
+- [x] **Step 3: Implement route/controller mappings**
 
 ```php
 $router->get('/api/v1/nuanced-qc',fn(Request$r):Response=>$this->read->process($r,$this->controller->workspace(...)));
@@ -269,15 +269,15 @@ $router->post('/api/v1/nuanced-qc/runs/{runId}/signoffs',fn(Request$r):Response=
 
 Map not-found to 404, authority failures to 403, optimistic/sign-off/blocker conflicts to 409 and malformed JSON to 400.
 
-- [ ] **Step 4: Wire middleware and deep links**
+- [x] **Step 4: Wire middleware and deep links**
 
 Use `projects.read` for reads and `projects.write` for mutations. Instantiate registry/evaluator/service in `AuthenticationKernelFactory`. Add the admin/run/project deep links to the production shell route regex.
 
-- [ ] **Step 5: Run route, syntax and service tests**
+- [x] **Step 5: Run route, syntax and service tests**
 
 Run the route contract, `php -l` for each new PHP file and the connected service test.
 
-- [ ] **Step 6: Commit the HTTP slice**
+- [x] **Step 6: Commit the HTTP slice**
 
 ```text
 git add app/src/Http/NuancedQcRoutes.php app/src/Http/Controller/NuancedQcController.php app/src/Http/AuthenticationKernelFactory.php app/public/index.php app/tests/Http/NuancedQcRoutesContractTest.php
@@ -295,20 +295,20 @@ git commit -m "feat: expose nuanced qc api"
 - Consumes: the `/api/v1/nuanced-qc` workspace/run contracts.
 - Produces: `nuancedQcWorkspace()`, run/category/finding/retest/risk/sign-off renderers and responsive `.nq-*` styles.
 
-- [ ] **Step 1: Write a failing frontend contract test**
+- [x] **Step 1: Write a failing frontend contract test**
 
 ```php
 foreach(['nuancedQcWorkspace','Nuanced QC Control','35 nuanced categories','Cross-pack speak-back','Risk acceptance','Retest checklist','AI may execute: no'] as $token) self::assertStringContainsString($token,$shell);
 foreach(['.nq-workspace','.nq-category-grid','.nq-findings','@media(max-width:760px)'] as $token) self::assertStringContainsString($token,$css);
 ```
 
-- [ ] **Step 2: Run it and confirm missing UI tokens**
+- [x] **Step 2: Run it and confirm missing UI tokens**
 
 Run: `php vendor/bin/phpunit app/tests/Frontend/NuancedQcWorkspaceTest.php`
 
 Expected: FAIL before UI implementation.
 
-- [ ] **Step 3: Implement the route-aware workspace and safe renderers**
+- [x] **Step 3: Implement the route-aware workspace and safe renderers**
 
 ```js
 function nuancedQcWorkspace(){
@@ -319,7 +319,7 @@ function nuancedQcWorkspace(){
 
 Escape all persisted values, filter available controls by server-returned capabilities, and refresh from the API after each mutation.
 
-- [ ] **Step 4: Implement responsive CSS and hidden-state correctness**
+- [x] **Step 4: Implement responsive CSS and hidden-state correctness**
 
 ```css
 .nq-workspace{display:grid;gap:14px;max-width:1540px;margin:0 auto}
@@ -328,7 +328,7 @@ Escape all persisted values, filter available controls by server-returned capabi
 @media(max-width:760px){.nq-workspace{display:block}.nq-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nq-layout{grid-template-columns:1fr}}
 ```
 
-- [ ] **Step 5: Run frontend, JavaScript syntax and full tests**
+- [x] **Step 5: Run frontend, JavaScript syntax and full tests**
 
 Run: `php vendor/bin/phpunit app/tests/Frontend/NuancedQcWorkspaceTest.php`
 
@@ -336,7 +336,7 @@ Run: `node --check app/public/assets/js/shell.js`
 
 Run: `php vendor/bin/phpunit`
 
-- [ ] **Step 6: Commit the UI slice**
+- [x] **Step 6: Commit the UI slice**
 
 ```text
 git add app/public/assets/js/shell.js app/public/assets/css/architex-v1.css app/tests/Frontend/NuancedQcWorkspaceTest.php
@@ -358,25 +358,25 @@ git commit -m "feat: add nuanced qc workspace"
 - Consumes: all Release 23 implementation slices.
 - Produces: exact-source FTP artifact, persistent Chrome evidence and truthful completion record.
 
-- [ ] **Step 1: Run all automated gates**
+- [x] **Step 1: Run all automated gates**
 
 Run full PHPUnit, focused Nuanced QC suites, all 53 guarded MariaDB migrations, connected service tests, PHP/JavaScript syntax and `git diff --check`.
 
 Expected: every gate exits 0; database skips remain clearly separated from the connected test.
 
-- [ ] **Step 2: Exercise the complete browser story in persistent Chrome DevTools**
+- [x] **Step 2: Exercise the complete browser story in persistent Chrome DevTools**
 
 Create a real project-scoped run; record all category states; add blocker/high findings with FileManager evidence; prove recommendation blocking; create/complete a retest; accept risk as owner; sign off; verify ProjectRecord, inbox and audit speak-back. Prove reviewer, developer and viewer controls and direct API denials independently.
 
-- [ ] **Step 3: Capture responsive and quality evidence**
+- [x] **Step 3: Capture responsive and quality evidence**
 
 Verify production mode, exact build info, HTTP 200 workspace requests, no console warning/error, zero horizontal overflow at desktop and 390 by 844, and visually inspect both screenshots. Run an authenticated Chrome DevTools Lighthouse snapshot and retain JSON/HTML reports.
 
-- [ ] **Step 4: Commit implementation evidence before artifact build**
+- [x] **Step 4: Commit implementation evidence before artifact build**
 
 Write the exact test counts, MariaDB assertions, role evidence, browser page/port and truthful external-integration boundaries. Mark plan boxes only for executed work and commit source evidence.
 
-- [ ] **Step 5: Build and independently verify the exact-source FTP ZIP**
+- [x] **Step 5: Build and independently verify the exact-source FTP ZIP**
 
 ```powershell
 $release23Sha = git rev-parse --short HEAD
@@ -389,6 +389,6 @@ php app/bin/verify-release.php "dist/ftp-redownload-verification-$release23Sha"
 
 Record ZIP bytes, SHA-256, manifest file count and extracted file count.
 
-- [ ] **Step 6: Move the completed pack and commit certification**
+- [x] **Step 6: Move the completed pack and commit certification**
 
 Move only the verified Pack 27 folder under `packs/Completed`, leave `packs/` and `v1.html` untracked, commit the plan/evidence/screenshots/reports, and confirm `git status --short` contains no tracked changes.
