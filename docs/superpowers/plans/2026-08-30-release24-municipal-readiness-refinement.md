@@ -31,12 +31,12 @@
 
 ## 4. Authenticated API
 
-- [ ] Add HTTP tests for all profile, workflow, resolution, route and pack endpoints, including CSRF, role and cross-tenant failures.
-- [ ] Add controller methods and authenticated routes using existing read/write/govern middleware.
-- [ ] Map stable domain errors to 403, 404, 409 and 422 responses.
-- [ ] Wire dependencies through `AuthenticationKernelFactory` without a second service graph.
-- [ ] Run focused HTTP and existing municipal regression tests.
-- [ ] Commit the API surface.
+- [x] Add HTTP tests for all profile, workflow, resolution, route and pack endpoints, including CSRF, role and cross-tenant failures.
+- [x] Add controller methods and authenticated routes using existing read/write/govern middleware.
+- [x] Map stable domain errors to 403, 404, 409 and 422 responses.
+- [x] Wire dependencies through `AuthenticationKernelFactory` without a second service graph.
+- [x] Run focused HTTP and existing municipal regression tests.
+- [x] Commit the API surface.
 
 ## 5. Canonical workspace
 

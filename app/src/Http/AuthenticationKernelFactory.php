@@ -111,6 +111,7 @@ use Architex\Platform\Compliance\ComplianceCalculatorService;
 use Architex\Platform\Engineering\EngineeringCalculatorService;
 use Architex\Platform\Compliance\ComplianceRuleRegistry;
 use Architex\Platform\Municipal\MunicipalReadinessService;
+use Architex\Platform\Municipal\MunicipalReadinessRefinementService;
 use Architex\Platform\Municipal\MunicipalRequirementRegistry;
 use Architex\Platform\SpecForge\SpecForgeService;
 use Architex\Platform\Models\ModelMetadataService;
@@ -253,7 +254,7 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         $municipalMatrices=new MunicipalRequirementRegistry($this->pdo);
         (new MunicipalReadinessRoutes(
-            new MunicipalReadinessController($municipalMatrices,new MunicipalReadinessService($this->pdo,$municipalMatrices)),
+            new MunicipalReadinessController($municipalMatrices,new MunicipalReadinessService($this->pdo,$municipalMatrices),new MunicipalReadinessRefinementService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new PermissionMiddleware(new PermissionService(),'verification.review'),
