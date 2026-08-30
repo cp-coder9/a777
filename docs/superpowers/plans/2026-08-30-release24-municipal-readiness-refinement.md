@@ -40,11 +40,11 @@
 
 ## 5. Canonical workspace
 
-- [ ] Extend the frontend contract test for the profile editor, status dashboard, findings, professional routes, issue gate and immutable pack history.
-- [ ] Implement the workspace within the existing `shell.js` municipal route and visual system.
-- [ ] Add responsive CSS, accessible names and live status output.
+- [x] Extend the frontend contract test for the profile editor, status dashboard, findings, professional routes, issue gate and immutable pack history.
+- [x] Implement the workspace within the existing `shell.js` municipal route and visual system.
+- [x] Add responsive CSS, accessible names and live status output.
 - [ ] Exercise profile save, assessment, resolution, assignment, sign-off and issue through the real UI against MariaDB.
-- [ ] Commit the workspace.
+- [x] Commit the workspace.
 
 ## 6. Release certification
 
