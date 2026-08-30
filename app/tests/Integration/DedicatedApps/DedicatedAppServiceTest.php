@@ -37,6 +37,10 @@ final class DedicatedAppServiceTest extends MariaDbTestCase
         ]);
         self::assertSame('requires_human',$event['status']);
         self::assertFalse($event['aiMayExecute']);
+        self::assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/',$event['projectRecordId']);
+        self::assertMatchesRegularExpression('/\A[a-f0-9]{32}\z/',$event['inboxItemId']);
+        self::assertSame('pending_review',(string)$this->pdo->query("SELECT status FROM project_records WHERE id=UNHEX('{$event['projectRecordId']}')")->fetchColumn());
+        self::assertSame('open',(string)$this->pdo->query("SELECT status FROM inbox_items WHERE id=UNHEX('{$event['inboxItemId']}')")->fetchColumn());
         self::assertSame($event['id'],$service->ingestEvent($organisation,$owner,'owner',[
             'eventId'=>'field-approval-0001','installationId'=>$registered['installation']['id'],'projectId'=>$project,
             'type'=>'site_instruction_ready','summary'=>'Site instruction requires accountable approval.',
@@ -45,6 +49,13 @@ final class DedicatedAppServiceTest extends MariaDbTestCase
         try{$service->confirmEvent($organisation,$owner,'owner',$event['id'],false,'Not reviewed');self::fail('Sensitive event must fail without human confirmation.');}
         catch(DedicatedAppException$exception){self::assertSame('dedicated_app_human_confirmation_required',$exception->reason);}
         self::assertSame('completed',$service->confirmEvent($organisation,$owner,'owner',$event['id'],true,'Owner reviewed the exact site instruction.')['status']);
+        self::assertSame('approved',(string)$this->pdo->query("SELECT status FROM project_records WHERE id=UNHEX('{$event['projectRecordId']}')")->fetchColumn());
+
+        $this->pdo->prepare("INSERT INTO dedicated_app_notification_dispatches(id,organisation_id,workflow_event_id,channel,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:event),'email','queued')")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'event'=>$event['id']]);
+        $delivery=$service->deliverQueuedNotifications(20);
+        self::assertSame(1,$delivery['sent']);
+        self::assertSame(1,$delivery['integrationRequired']);
+        self::assertSame(['integration_required','sent'],$this->pdo->query("SELECT status FROM dedicated_app_notification_dispatches WHERE workflow_event_id=UNHEX('{$event['id']}') ORDER BY status")->fetchAll(\PDO::FETCH_COLUMN));
 
         $first=$service->submitSyncBatch($organisation,$owner,'owner',[
             'installationId'=>$registered['installation']['id'],'projectId'=>$project,'clientBatchId'=>'batch-0001','baseVersion'=>0,
@@ -57,6 +68,26 @@ final class DedicatedAppServiceTest extends MariaDbTestCase
         ]);
         self::assertSame('conflict',$conflict['status']);self::assertSame(1,$conflict['serverVersion']);self::assertNotEmpty($conflict['conflicts']);
         self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM dedicated_app_workflow_events WHERE external_event_id='field-approval-0001'")->fetchColumn());
+    }
+
+    public function testFileManagerOutputsRejectMissingOrCrossProjectReferences():void
+    {
+        [$organisation,$owner,$project]=$this->tenant('dedicated-files-a');
+        [$otherOrganisation,$otherOwner,$otherProject]=$this->tenant('dedicated-files-b');
+        $foreignFile=Identifier::generate();
+        $this->pdo->prepare("INSERT INTO stored_files(id,organisation_id,project_id,uploaded_by,original_name,storage_name,mime_type,byte_size,sha256) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:p),UNHEX(:u),'foreign.pdf',:storage,'application/pdf',4,:sha)")->execute(['id'=>$foreignFile,'o'=>$otherOrganisation,'p'=>$otherProject,'u'=>$otherOwner,'storage'=>substr(hash('sha256',$foreignFile),0,48),'sha'=>hash('sha256','foreign')]);
+        $service=new DedicatedAppService($this->pdo,new DedicatedAppRegistry());
+        $registered=$service->registerInstallation($organisation,$owner,'owner',[
+            'appId'=>'architex_drive','projectId'=>$project,'name'=>'Drive bridge','version'=>'1.0.0',
+            'buildCommit'=>str_repeat('b',40),'deviceId'=>'drive-bridge-01','capabilities'=>['watched folders','resumable upload','version snapshots','duplicate drawing warnings'],
+        ]);
+        foreach([[],[$foreignFile]]as$index=>$refs){
+            try{$service->ingestEvent($organisation,$owner,'owner',[
+                'eventId'=>'file-event-'.$index,'installationId'=>$registered['installation']['id'],'projectId'=>$project,
+                'type'=>'file_ready','summary'=>'File output','outputs'=>['FileManagerAsset','AuditEvent'],'humanGate'=>'review','riskLevel'=>'medium','fileRefs'=>$refs,
+            ]);self::fail('Invalid FileManager references must fail closed.');}
+            catch(DedicatedAppException$exception){self::assertSame($index===0?'dedicated_app_file_refs_required':'dedicated_app_file_ref_not_found',$exception->reason);}
+        }
     }
 
     /** @return array{string,string,string} */
