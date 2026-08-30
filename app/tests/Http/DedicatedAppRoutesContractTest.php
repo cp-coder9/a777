@@ -15,5 +15,7 @@ final class DedicatedAppRoutesContractTest extends TestCase
         $factory=(string)file_get_contents(dirname(__DIR__,2).'/src/Http/AuthenticationKernelFactory.php');
         self::assertStringContainsString('new DedicatedAppRoutes',$factory);
         self::assertStringContainsString('new DedicatedAppService',$factory);
+        $csrf=(string)file_get_contents(dirname(__DIR__,2).'/src/Http/Middleware/CsrfMiddleware.php');
+        self::assertStringContainsString("str_starts_with(\$request->path(), '/api/v1/dedicated-app-client/')",$csrf);
     }
 }
