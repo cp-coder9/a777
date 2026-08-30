@@ -8,17 +8,17 @@
 
 ## Implementation plan
 
-- [ ] Add MariaDB release-gate provenance and review tables without duplicating existing project records, inbox items or audit events.
-- [ ] Implement one project-operating-system service that adapts real project records and role-routed inbox facts into canonical decisions, risks, plain-language client cards and CPD status.
-- [ ] Extend the inbox lifecycle with authenticated, tenant-scoped read/resolve/dismiss transitions requiring human confirmation for sensitive decisions.
-- [ ] Publish an explicit API-capability registry whose statuses match the implemented PHP routes and keep provider, municipal, professional and money-moving boundaries fail-closed.
-- [ ] Add authenticated operating snapshot, mobile inbox, capability and release-gate endpoints plus public build provenance.
-- [ ] Emit `public/build-info.json` from every immutable release artifact using the exact source commit, version, PHP/API mode and build timestamp.
-- [ ] Replace the scaffolded Action Centre/global inbox with a responsive V1-native Decision Centre using live MariaDB projections, role-aware labels, risk categories, client summaries and human confirmation controls.
-- [ ] Add CPD profile/certificate reminders without generalising professional-body credit rules or merging CPD into professional toolboxes.
-- [ ] Verify focused contracts, connected disposable MariaDB workflows, tenant isolation, stale-deployment failure, provider boundaries and immutable release metadata.
-- [ ] Certify desktop and 390 px mobile flows with persistent Chrome DevTools MCP, screenshots, console/network checks and Lighthouse.
-- [ ] Commit Release 19 implementation and build an independently verified FTP ZIP from an exact commit.
+- [x] Add MariaDB release-gate provenance and review tables without duplicating existing project records, inbox items or audit events.
+- [x] Implement one project-operating-system service that adapts real project records and role-routed inbox facts into canonical decisions, risks, plain-language client cards and CPD status.
+- [x] Extend the inbox lifecycle with authenticated, tenant-scoped read/resolve/dismiss transitions requiring human confirmation for sensitive decisions.
+- [x] Publish an explicit API-capability registry whose statuses match the implemented PHP routes and keep provider, municipal, professional and money-moving boundaries fail-closed.
+- [x] Add authenticated operating snapshot, mobile inbox, capability and release-gate endpoints plus public build provenance.
+- [x] Emit `public/build-info.json` from every immutable release artifact using the exact source commit, version, PHP/API mode and build timestamp.
+- [x] Replace the scaffolded Action Centre/global inbox with a responsive V1-native Decision Centre using live MariaDB projections, role-aware labels, risk categories, client summaries and human confirmation controls.
+- [x] Add CPD profile/certificate reminders without generalising professional-body credit rules or merging CPD into professional toolboxes.
+- [x] Verify focused contracts, connected disposable MariaDB workflows, tenant isolation, stale-deployment failure, provider boundaries and immutable release metadata.
+- [x] Certify desktop and 390 px mobile flows with persistent Chrome DevTools MCP, screenshots, console/network checks and Lighthouse.
+- [x] Commit Release 19 implementation and build an independently verified FTP ZIP from an exact commit.
 
 ## Canonical status contract
 
