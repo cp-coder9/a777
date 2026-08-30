@@ -20,14 +20,14 @@
 
 ## 3. Governed service lifecycle
 
-- [ ] Add failing integration tests for profile upsert/read, refined assessment materialisation, finding resolution, route assignment/sign-off and tenant isolation.
-- [ ] Implement profile persistence and enrich new assessments without changing existing response compatibility.
-- [ ] Materialise findings and required routes transactionally with the assessment.
-- [ ] Add stable workflow reads and audited state transitions.
-- [ ] Add fail-closed pack issue tests for unverified matrices, missing review, open blockers, unsigned routes, candidate supervision and missing authority.
-- [ ] Implement transactional issue, canonical manifest hashing, ProjectRecord/inbox/audit writes and prior-pack supersession.
-- [ ] Prove issued rows remain immutable and changed evidence requires a new assessment/revision.
-- [ ] Commit the service lifecycle.
+- [x] Add failing integration tests for profile upsert/read, refined assessment materialisation, finding resolution, route assignment/sign-off and tenant isolation.
+- [x] Implement profile persistence and enrich new assessments without changing existing response compatibility.
+- [x] Materialise findings and required routes transactionally with the assessment.
+- [x] Add stable workflow reads and audited state transitions.
+- [x] Add fail-closed pack issue tests for unverified matrices, missing review, open blockers, unsigned routes, candidate supervision and missing authority.
+- [x] Implement transactional issue, canonical manifest hashing, ProjectRecord/inbox/audit writes and prior-pack supersession.
+- [x] Prove issued rows remain immutable and changed evidence requires a new assessment/revision.
+- [x] Commit the service lifecycle.
 
 ## 4. Authenticated API
 
