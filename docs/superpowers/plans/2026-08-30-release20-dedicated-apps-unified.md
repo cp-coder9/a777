@@ -8,19 +8,19 @@
 
 ## Implementation plan
 
-- [ ] Add MariaDB tables for tenant/project-scoped dedicated-app installations, one-time credential provenance, workflow events, offline sync batches/conflicts and notification dispatch evidence.
-- [ ] Encode the full 12-app registry in PHP with the supplied priority, runtime kind, repository anchors, spine outputs, offline/device needs, MVP capabilities and sensitive gates.
-- [ ] Add governance routing that blocks missing tenant/actor/app scope, preserves `aiMayExecute=false`, and requires accountable humans for approval, signature, payment release, municipal submission, professional certification and closeout acceptance.
-- [ ] Implement owner/admin installation registration, secret hashing, revocation, build/version/device provenance, heartbeat and readiness reporting without ever returning stored secrets.
-- [ ] Implement authenticated project-scoped workflow ingestion with idempotency, ProjectRecord/FileManager/Inbox/Risk/Notification routing facts, human-gate state and immutable audit events.
-- [ ] Implement ordered offline sync submission with optimistic base versions, explicit conflict records and no silent overwrite.
-- [ ] Reuse the existing scheduled-job foundation for cron-safe worker/notification dispatch requests; unsupported providers must fail closed as `integration_required`.
-- [ ] Publish dedicated-app catalogue, status, installation, event and sync APIs with tenant/role enforcement and route-contract tests.
-- [ ] Add a responsive V1-native Dedicated Apps control centre showing all 12 capabilities, exact readiness, missing integration steps, provenance, sync conflicts, worker state and governance boundaries.
-- [ ] Extend the mobile/site PWA installability contract with a manifest and service worker limited to safe static-shell/offline-draft support; authenticated API responses must never be cached.
-- [ ] Verify focused contracts, connected disposable MariaDB workflows, idempotency, tenant isolation, stale/conflicting sync, sensitive human gates, token secrecy and provider fail-closed behavior.
-- [ ] Certify desktop and 390 px mobile flows in persistent Chrome DevTools MCP with screenshots, console/network checks and Lighthouse.
-- [ ] Commit Release 20 and build an independently extracted and verified FTP ZIP from its exact source commit.
+- [x] Add MariaDB tables for tenant/project-scoped dedicated-app installations, one-time credential provenance, workflow events, offline sync batches/conflicts and notification dispatch evidence.
+- [x] Encode the full 12-app registry in PHP with the supplied priority, runtime kind, repository anchors, spine outputs, offline/device needs, MVP capabilities and sensitive gates.
+- [x] Add governance routing that blocks missing tenant/actor/app scope, preserves `aiMayExecute=false`, and requires accountable humans for approval, signature, payment release, municipal submission, professional certification and closeout acceptance.
+- [x] Implement owner/admin installation registration, secret hashing, revocation, build/version/device provenance, heartbeat and readiness reporting without ever returning stored secrets.
+- [x] Implement authenticated project-scoped workflow ingestion with idempotency and real ProjectRecord/FileManager/Inbox/Risk/Notification links, human-gate state and immutable audit events.
+- [x] Implement ordered offline sync submission with optimistic base versions, explicit conflict records and no silent overwrite.
+- [x] Reuse the bounded cron/outbox operating pattern for notification dispatch requests; unsupported providers fail closed as `integration_required`.
+- [x] Publish dedicated-app catalogue, status, installation, event and sync APIs with tenant/role enforcement and route-contract tests.
+- [x] Add a responsive V1-native Dedicated Apps control centre showing all 12 capabilities, exact readiness, missing integration steps, provenance, sync conflicts, worker state and governance boundaries.
+- [x] Extend the mobile/site PWA installability contract with a manifest and service worker limited to safe static-shell/offline-draft support; authenticated API responses are never cached.
+- [x] Verify focused contracts, connected disposable MariaDB workflows, idempotency, tenant isolation, stale/conflicting sync, sensitive human gates, token secrecy and provider fail-closed behavior.
+- [x] Certify desktop and 390 px mobile flows in persistent Chrome DevTools MCP with screenshots, console/network checks and Lighthouse.
+- [x] Commit Release 20 and build an independently extracted and verified FTP ZIP from its exact source commit.
 
 ## Shared-hosting operating model
 
