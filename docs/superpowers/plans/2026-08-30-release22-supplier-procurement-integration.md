@@ -16,24 +16,24 @@
 
 ## Implementation plan
 
-- [ ] Add migration 0052 for supplier profiles/connectors, catalogue revisions/items, approved procurement baselines/lines, integration packages/lines, match snapshots, RFQs/quotes, substitution and award decisions, purchase orders, deliveries, site acceptance, invoices and payment-release recommendations.
-- [ ] Add explicit foreign keys, tenant/project indexes, idempotency keys, optimistic versions and immutable SHA-256 snapshots.
-- [ ] Implement a tenant-scoped supplier procurement service with strict value validation, membership/capacity checks and transaction boundaries.
-- [ ] Implement supplier registration and Level 0/1 catalogue entry/import while failing closed for unconfigured Level 2–6 connectors.
-- [ ] Implement draft baseline creation, FileManager/document evidence validation and accountable human baseline approval.
-- [ ] Build procurement packages only from the approved immutable baseline; never mutate source lines silently.
-- [ ] Implement deterministic catalogue normalisation, unit/standard/stock/region matching, programme dates and advisory risk scoring.
-- [ ] Implement RFQ issue, supplier quote revision submission and quote-normalisation snapshots with complete price/stock/lead-time evidence.
-- [ ] Implement substitution review, award approval and purchase-order issue as separate human-confirmed gates.
-- [ ] Implement dispatch/delivery tracking, site receipt and accountable site acceptance/rejection/partial decisions with critical blocker enforcement.
-- [ ] Implement invoice capture and finance payment-release recommendation handoff; rejected/disputed/blocked deliveries must fail closed.
-- [ ] Write real ProjectRecords, inbox items and audit events for governed lifecycle changes and link FileManager evidence instead of creating another file store.
-- [ ] Publish authenticated project APIs plus the minimum scoped supplier-portal credential flow, with rate limiting and non-enumerating errors.
-- [ ] Add a V1-native supplier procurement workspace under the existing procurement area with baseline, catalogue, matching, RFQ/quote, award/PO, delivery/site and payment panels.
-- [ ] Add unit, migration, route, frontend and connected MariaDB tests covering the happy path, every human gate, optimistic conflicts, idempotency, tenant isolation and foreign-file rejection.
-- [ ] Run the full test suite, all 52 migrations, PHP/JavaScript syntax checks and release-manifest verification.
-- [ ] Certify owner/procurement operator/supplier/read-only flows in persistent Chrome DevTools at desktop and responsive mobile, with network, console, screenshots and Lighthouse evidence.
-- [ ] Commit Release 22, build and independently extract/verify an exact-source FTP ZIP, document truthful evidence, and move Pack 26 to `packs/Completed`.
+- [x] Add migration 0052 for supplier profiles/connectors, catalogue revisions/items, approved procurement baselines/lines, integration packages/lines, match snapshots, RFQs/quotes, substitution and award decisions, purchase orders, deliveries, site acceptance, invoices and payment-release recommendations.
+- [x] Add explicit foreign keys, tenant/project indexes, idempotency keys, optimistic versions and immutable SHA-256 snapshots.
+- [x] Implement a tenant-scoped supplier procurement service with strict value validation, membership/capacity checks and transaction boundaries.
+- [x] Implement supplier registration and Level 0/1 catalogue entry/import while failing closed for unconfigured Level 2–6 connectors.
+- [x] Implement draft baseline creation, FileManager/document evidence validation and accountable human baseline approval.
+- [x] Build procurement packages only from the approved immutable baseline; never mutate source lines silently.
+- [x] Implement deterministic catalogue normalisation, unit/standard/stock/region matching, programme dates and advisory risk scoring.
+- [x] Implement RFQ issue, supplier quote revision submission and quote-normalisation snapshots with complete price/stock/lead-time evidence.
+- [x] Implement substitution review, award approval and purchase-order issue as separate human-confirmed gates.
+- [x] Implement dispatch/delivery tracking, site receipt and accountable site acceptance/rejection/partial decisions with critical blocker enforcement.
+- [x] Implement invoice capture and finance payment-release recommendation handoff; rejected/disputed/blocked deliveries must fail closed.
+- [x] Write real ProjectRecords, inbox items and audit events for governed lifecycle changes and link FileManager evidence instead of creating another file store.
+- [x] Publish authenticated project APIs plus the minimum scoped supplier-portal credential flow, with rate limiting and non-enumerating errors.
+- [x] Add a V1-native supplier procurement workspace under the existing procurement area with baseline, catalogue, matching, RFQ/quote, award/PO, delivery/site and payment panels.
+- [x] Add unit, migration, route, frontend and connected MariaDB tests covering the happy path, every human gate, optimistic conflicts, idempotency, tenant isolation and foreign-file rejection.
+- [x] Run the full test suite, all 52 migrations, PHP/JavaScript syntax checks and release-manifest verification.
+- [x] Certify owner/procurement operator/supplier/read-only flows in persistent Chrome DevTools at desktop and responsive mobile, with network, console, screenshots and Lighthouse evidence.
+- [x] Commit Release 22, build and independently extract/verify an exact-source FTP ZIP, document truthful evidence, and move Pack 26 to `packs/Completed`.
 
 ## Acceptance boundary
 
