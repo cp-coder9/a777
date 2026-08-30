@@ -46,7 +46,7 @@ final readonly class ReleaseBuilder
                 $this->copyTree($source . '/app/' . $directory, $staging . '/' . $directory);
             }
             mkdir($staging . '/bin', 0700, true);
-            foreach (['migrate.php','database-status.php','backup.php','restore.php','verify-release.php'] as $script) {
+            foreach (['migrate.php','database-status.php','backup.php','restore.php','verify-release.php','deliver-community-notifications.php','deliver-dedicated-app-notifications.php'] as $script) {
                 if (is_file($source . '/app/bin/' . $script)) copy($source . '/app/bin/' . $script, $staging . '/bin/' . $script);
             }
             copy($source . '/app/bootstrap.php', $staging . '/bootstrap.php');

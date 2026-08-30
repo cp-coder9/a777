@@ -44,6 +44,8 @@ final class ReleaseArtifactTest extends TestCase
         self::assertFileExists($release . '/vendor/autoload.php');
         self::assertFileExists($release . '/release-manifest.json');
         self::assertFileExists($release . '/public/build-info.json');
+        self::assertFileExists($release . '/bin/deliver-community-notifications.php');
+        self::assertFileExists($release . '/bin/deliver-dedicated-app-notifications.php');
         $buildInfo=json_decode((string)file_get_contents($release.'/public/build-info.json'),true,512,JSON_THROW_ON_ERROR);
         self::assertSame('test-release',$buildInfo['version']);
         self::assertSame('php-shared-hosting',$buildInfo['apiMode']);
