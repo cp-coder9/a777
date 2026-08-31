@@ -22,7 +22,7 @@ final class JobTicketMarketplaceWorkspaceTest extends TestCase
             'createJobTicket','submitJobTicketQuote','acceptJobTicketQuote','expandJobTicket','publishFreelancerProfile','submitFreelancerTimesheet','recordFreelancerPaymentEvidence','signOffFreelancerDeliverable','completeFreelancerEngagement',
             "t.posterUserId===window.__ARCHITEX_SHELL_STATE__?.session?.userId",
             'window.reviewFreelancerEngagement=reviewFreelancerEngagement',
-            'role="tab" aria-selected="true"','role="tab" aria-selected="false"',
+            "setAttribute('aria-label','Execution categories')","categories.innerHTML='<span class=\"jtm-tab active\">Timesheets &amp; claims</span>",
         ] as $token)self::assertStringContainsString($token,$javascript);
 
         foreach(['.jtm-workspace','.jtm-lineage','.jtm-lanes','.jtm-classification','.jtm-workspace [hidden]','@media (max-width: 760px)','overflow-x:clip'] as $token)self::assertStringContainsString($token,$css);
