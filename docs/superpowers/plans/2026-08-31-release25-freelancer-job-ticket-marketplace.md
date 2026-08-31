@@ -21,12 +21,12 @@
 
 ## 3. Ticket and marketplace lifecycle
 
-- [ ] Add connected tests for public/direct creation, privacy-safe discovery, advisory recommendation and tenant boundaries.
-- [ ] Implement ticket creation, automatic classification history, human override and equal-information clarification.
-- [ ] Add quotation submit/withdraw/list/select with visibility, bidder-role, poster-authority and single-holder gates.
-- [ ] Add holder-only recursive expansion and stable tree reads with depth/cycle protection.
-- [ ] Write project records, inbox events and audit events transactionally.
-- [ ] Commit the ticket lifecycle.
+- [x] Add connected tests for public/direct creation, privacy-safe discovery, advisory recommendation and tenant boundaries.
+- [x] Implement ticket creation, automatic classification history, human override and equal-information clarification.
+- [x] Add quotation submit/withdraw/list/select with visibility, bidder-role, poster-authority and single-holder gates.
+- [x] Add holder-only recursive expansion and stable tree reads with depth/cycle protection.
+- [x] Write project records, inbox events and audit events transactionally.
+- [x] Commit the ticket lifecycle.
 
 ## 4. Freelancer supervision and execution
 
