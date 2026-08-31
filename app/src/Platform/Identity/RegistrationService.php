@@ -37,6 +37,17 @@ final readonly class RegistrationService implements RegistrationGateway
             $createUser->execute(['id' => $userId, 'email' => $command->email, 'password_hash' => $this->passwords->hash($command->password)]);
             $organisationId = $this->organisations->createPending($command->organisationName, $command->organisationSlug);
             $this->memberships->addPendingOwner($organisationId, $userId);
+            if ($command->fullName !== null && $command->roleKey !== null) {
+                $profile = $this->pdo->prepare('INSERT INTO registration_profiles(id,user_id,organisation_id,full_name,role_key,profile) VALUES(UNHEX(:id),UNHEX(:user),UNHEX(:organisation),:full_name,:role_key,:profile)');
+                $profile->execute([
+                    'id'=>Identifier::generate(),
+                    'user'=>$userId,
+                    'organisation'=>$organisationId,
+                    'full_name'=>$command->fullName,
+                    'role_key'=>$command->roleKey,
+                    'profile'=>json_encode($command->profile, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
+                ]);
+            }
             $this->legal->recordRequiredSignupAcceptances($userId, $organisationId, $command->acceptedNoticeVersions, $command->ipAddress, $command->deviceMetadata);
 
             $token = $this->newToken();

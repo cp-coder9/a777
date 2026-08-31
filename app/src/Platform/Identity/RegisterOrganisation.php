@@ -14,6 +14,9 @@ final readonly class RegisterOrganisation
         public string $organisationName,
         public string $organisationSlug,
         public array $acceptedNoticeVersions,
+        public ?string $fullName = null,
+        public ?string $roleKey = null,
+        public array $profile = [],
         public ?string $ipAddress = null,
         public array $deviceMetadata = [],
     ) {}
@@ -52,7 +55,27 @@ final readonly class RegisterOrganisation
         if ($ip !== null && (!is_string($ip) || filter_var($ip, FILTER_VALIDATE_IP) === false)) {
             throw new InvalidArgumentException('IP address is invalid.');
         }
-        return new self($email, self::text($input, 'password'), $name, $slug, $accepted, $ip, $device);
+        $fullName = self::optionalText($input, 'fullName', 180);
+        $roleKey = self::optionalText($input, 'roleKey', 80);
+        $roles = ['architect','client','bep','engineer','quantity_surveyor','town_planner','land_surveyor','energy_professional','fire_engineer','cpm','contractor','subcontractor','supplier','site_manager','health_safety','developer','freelancer','firm_admin','organisation_admin','admin','platform_admin'];
+        if ($roleKey !== null && !in_array($roleKey, $roles, true)) {
+            throw new InvalidArgumentException('Role profile is invalid.');
+        }
+        $profile = $input['profile'] ?? [];
+        if (!is_array($profile) || count($profile) > 20) {
+            throw new InvalidArgumentException('Role profile details are invalid.');
+        }
+        $normalisedProfile = [];
+        foreach ($profile as $key => $value) {
+            if (!is_string($key) || preg_match('/\A[a-z][a-z0-9_]{0,79}\z/D', $key) !== 1 || !is_string($value) || strlen(trim($value)) > 500) {
+                throw new InvalidArgumentException('Role profile details are invalid.');
+            }
+            if (trim($value) !== '') $normalisedProfile[$key] = trim($value);
+        }
+        if (($fullName === null) !== ($roleKey === null)) {
+            throw new InvalidArgumentException('Full name and role profile must be supplied together.');
+        }
+        return new self($email, self::text($input, 'password'), $name, $slug, $accepted, $fullName, $roleKey, $normalisedProfile, $ip, $device);
     }
 
     /** @param array<string,mixed> $input */
@@ -62,5 +85,15 @@ final readonly class RegisterOrganisation
             throw new InvalidArgumentException($key . ' must be a string.');
         }
         return $input[$key];
+    }
+
+    /** @param array<string,mixed> $input */
+    private static function optionalText(array $input, string $key, int $maximum): ?string
+    {
+        if (!array_key_exists($key, $input) || $input[$key] === null || $input[$key] === '') return null;
+        if (!is_string($input[$key])) throw new InvalidArgumentException($key . ' must be a string.');
+        $value = trim($input[$key]);
+        if ($value === '' || strlen($value) > $maximum) throw new InvalidArgumentException($key . ' is invalid.');
+        return $value;
     }
 }

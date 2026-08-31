@@ -14,6 +14,33 @@ final readonly class LegalAcceptanceService
 
     public function __construct(private PDO $pdo) {}
 
+    /** @return list<array{noticeType:string,version:string,title:string,contentSha256:string,effectiveAt:string,href:string}> */
+    public function currentSignupNotices(): array
+    {
+        $types = implode(',', array_fill(0, count(self::SIGNUP_NOTICE_TYPES), '?'));
+        $statement = $this->pdo->prepare("SELECT notice_type,version,title,content_sha256,DATE_FORMAT(effective_at,'%Y-%m-%dT%H:%i:%s.%fZ') effective_at FROM legal_notices WHERE notice_type IN ($types) AND published_at<=UTC_TIMESTAMP(6) AND effective_at<=UTC_TIMESTAMP(6) AND retired_at IS NULL ORDER BY FIELD(notice_type,$types)");
+        $statement->execute([...self::SIGNUP_NOTICE_TYPES, ...self::SIGNUP_NOTICE_TYPES]);
+        $hrefs = [
+            'terms_of_service'=>'/terms',
+            'privacy_policy'=>'/privacy',
+            'platform_disclaimer'=>'/disclaimer',
+            'signup_privacy_notice'=>'/privacy#signup',
+        ];
+        $result = [];
+        foreach ($statement->fetchAll() as $row) {
+            $type = (string)$row['notice_type'];
+            $result[] = [
+                'noticeType'=>$type,
+                'version'=>(string)$row['version'],
+                'title'=>(string)$row['title'],
+                'contentSha256'=>(string)$row['content_sha256'],
+                'effectiveAt'=>(string)$row['effective_at'],
+                'href'=>$hrefs[$type],
+            ];
+        }
+        return $result;
+    }
+
     /** @param array<string,string> $versions @param array<string,mixed> $deviceMetadata */
     public function recordRequiredSignupAcceptances(string $userId, string $organisationId, array $versions, ?string $ipAddress, array $deviceMetadata): void
     {

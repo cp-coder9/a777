@@ -7,6 +7,7 @@ namespace Architex\Http;
 use Architex\Http\Controller\AuthController;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
+use Architex\Http\Controller\LegalNoticeController;
 use Architex\Http\Controller\ProjectController;
 use Architex\Http\Controller\InboxController;
 use Architex\Http\Controller\ToolRegistryController;
@@ -63,6 +64,7 @@ use Architex\Platform\Identity\PasswordResetService;
 use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\RegistrationService;
 use Architex\Platform\Identity\SessionService;
+use Architex\Platform\Legal\LegalAcceptanceService;
 use Architex\Platform\Identity\AuthenticatedIdentity;
 use Architex\Platform\Security\RateLimiter;
 use Architex\Platform\Authorization\PermissionService;
@@ -179,6 +181,7 @@ final readonly class AuthenticationKernelFactory
             new RateLimitMiddleware($limiter, 'registration', 5, 3_600, $remoteKey),
             new RateLimitMiddleware($limiter, 'login', 10, 900, $loginKey),
             new RateLimitMiddleware($limiter, 'password_reset', 5, 3_600, $remoteKey),
+            new LegalNoticeController(new LegalAcceptanceService($this->pdo)),
         ))->register($router);
         (new ProjectRoutes(
             new ProjectController(new ProjectPassportService($this->pdo), new LifecycleService($this->pdo)),
