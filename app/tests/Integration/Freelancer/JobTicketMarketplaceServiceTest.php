@@ -91,6 +91,84 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         try{$service->acceptQuotation($outsiderOrg,$outsider,'owner',$public['id'],$quote['id'],$overridden['version'],true,'Attempt cross tenant.');self::fail('Cross-tenant acceptance must fail.');}catch(JobTicketMarketplaceException$e){self::assertContains($e->reason,['job_ticket_not_found','job_ticket_poster_required']);}
     }
 
+    public function testFreelancerSupervisionExecutionPaymentEvidenceCloseoutAndReview():void
+    {
+        [$clientOrg,$client,$project]=$this->tenant('execution-client',true);
+        [$bepOrg,$bep]=$this->tenant('execution-bep');
+        [$freelancerOrg,$freelancer]=$this->tenant('execution-freelancer');
+        [$outsiderOrg,$outsider]=$this->tenant('execution-outsider');
+        $this->verifiedProfessional($bepOrg,$bep,'SACAP','PrArch EXEC-25');
+        $this->verifiedProfessional($freelancerOrg,$freelancer,'Portfolio review','SPEC EXEC-25');
+        $this->professionalProfile($bepOrg,$bep,'registered_architect');
+        $this->listing($bepOrg,$bep,'specialist_consultant',['architectural_design'],['Johannesburg']);
+        $service=new JobTicketMarketplaceService($this->pdo,new JobTicketMarketplacePolicy());
+
+        $profile=$service->upsertFreelancerProfile($freelancerOrg,$freelancer,'owner',[
+            'displayName'=>'Release 25 BIM specialist','discipline'=>'draughtsperson_bim_modeller','registrationStatus'=>'specialist',
+            'council'=>null,'councilRegistrationNumber'=>null,'councilExpiryDate'=>null,
+            'publicSummary'=>'Supervised Revit and CAD production support.','portfolioRefs'=>['portfolio-exec-25'],
+            'serviceAreas'=>['Johannesburg'],'capacityStatus'=>'available','expectedVersion'=>null,
+        ]);
+        self::assertSame('draft',$profile['status']);
+        $profile=$service->publishFreelancerProfile($freelancerOrg,$freelancer,'owner',$profile['version'],true,'Reviewed the public-safe profile and current trust evidence.');
+        self::assertSame('published',$profile['status']);
+        self::assertTrue($profile['identityVerified']);
+        self::assertTrue($profile['supervisorRequired']);
+        self::assertFalse($profile['independentAppointmentPermitted']);
+
+        $root=$service->createTicket($clientOrg,$client,'owner',$project,$this->ticketPayload('public',[]));
+        $bepQuote=$service->submitQuotation($bepOrg,$bep,'owner','registered_bep',$root['id'],['amount'=>125000,'currency'=>'ZAR','scope'=>'Lead architectural service.','exclusions'=>[],'qualifications'=>['Verified Pr Arch'],'deliverables'=>['Working drawings'],'timeline'=>'Six weeks','conflictDeclared'=>false,'conflictDetail'=>null]);
+        $root=$service->acceptQuotation($clientOrg,$client,'owner',$root['id'],$bepQuote['id'],$bepQuote['ticketVersion'],true,'Client selected the verified lead professional.');
+        $child=$service->expandTicket($bepOrg,$bep,'owner',$root['id'],$root['version'],'freelancer_draughtsperson',$this->childPayload('direct',[$freelancer]));
+        $freelancerQuote=$service->submitQuotation($freelancerOrg,$freelancer,'owner','freelancer_specialist',$child['ticket']['id'],['amount'=>16000,'currency'=>'ZAR','scope'=>'Supervised Revit production support.','exclusions'=>[],'qualifications'=>['All output remains under registered-professional supervision.'],'deliverables'=>['Working drawing set'],'timeline'=>'Four working days','conflictDeclared'=>false,'conflictDetail'=>null]);
+
+        try{$service->acceptFreelancerQuotation($bepOrg,$bep,'owner',$child['ticket']['id'],$freelancerQuote['id'],$freelancerQuote['ticketVersion'],$freelancerOrg,$freelancer,'registered_architect',true,'Invalid self-supervision attempt.');self::fail('A freelancer cannot supervise their own engagement.');}catch(JobTicketMarketplaceException$e){self::assertSame('freelancer_self_supervision_prohibited',$e->reason);}
+        $engagement=$service->acceptFreelancerQuotation($bepOrg,$bep,'owner',$child['ticket']['id'],$freelancerQuote['id'],$freelancerQuote['ticketVersion'],$bepOrg,$bep,'registered_architect',true,'Lead architect reviewed the supervised scope, quote and route.');
+        self::assertSame('active',$engagement['status']);
+        self::assertSame('locked',$engagement['supervisionRoute']['status']);
+        self::assertSame($bep,$engagement['supervisionRoute']['supervisorUserId']);
+        try{$service->reassignSupervisor($bepOrg,$bep,'owner',$engagement['id'],$outsiderOrg,$outsider,'registered_architect');self::fail('A locked route must be immutable.');}catch(JobTicketMarketplaceException$e){self::assertSame('freelancer_supervision_route_locked',$e->reason);}
+
+        $timesheet=$service->submitTimesheet($freelancerOrg,$freelancer,'owner',$engagement['id'],[
+            'weekEnding'=>'2026-09-06','milestones'=>['Floor plans drafted','Elevations coordinated'],'notes'=>'Worked from lead architect markups.',
+            'entries'=>[['workDate'=>'2026-09-01','hours'=>8,'description'=>'Floor plan production'],['workDate'=>'2026-09-02','hours'=>8,'description'=>'Elevation production']],
+        ]);
+        self::assertSame(16.0,$timesheet['totalHours']);
+        $timesheet=$service->reviewTimesheet($bepOrg,$bep,'owner',$engagement['id'],$timesheet['id'],'approved','Supervisor checked entries against the controlled drawing work.');
+        self::assertSame('approved',$timesheet['status']);
+
+        $claim=$service->submitClaim($freelancerOrg,$freelancer,'owner',$engagement['id'],['timesheetIds'=>[$timesheet['id']],'amountClaimed'=>16000,'currency'=>'ZAR','supportingNotes'=>'Two approved production days.']);
+        $claim=$service->reviewClaim($bepOrg,$bep,'owner',$engagement['id'],$claim['id'],'approved',16000,'Approved against the signed-off timesheet.');
+        $claim=$service->recordClaimPayment($bepOrg,$bep,'owner',$engagement['id'],$claim['id'],['reference'=>'EFT-EXEC-25','paidAt'=>'2026-09-10','note'=>'Payment evidence recorded from the payer remittance.']);
+        self::assertSame('recorded_paid',$claim['status']);
+        self::assertSame('recorded_evidence_not_bank_confirmation',$claim['verificationBoundary']);
+        self::assertFalse($claim['paymentExecutionClaimed']);
+
+        $deliverable=$service->submitDeliverable($freelancerOrg,$freelancer,'owner',$engagement['id'],['name'=>'Working drawing set','description'=>'Controlled production drawing issue.','files'=>[['storedFileId'=>null,'name'=>'A-101.pdf','sha256'=>str_repeat('a',64)],['storedFileId'=>null,'name'=>'A-201.pdf','sha256'=>str_repeat('b',64)]],'submissionNote'=>'Revision 1 for supervisor review.']);
+        $firstRevision=$deliverable['currentRevision'];
+        $deliverable=$service->reviseDeliverable($freelancerOrg,$freelancer,'owner',$engagement['id'],$deliverable['id'],$deliverable['version'],['files'=>[['storedFileId'=>null,'name'=>'A-101-r2.pdf','sha256'=>str_repeat('c',64)],['storedFileId'=>null,'name'=>'A-201-r2.pdf','sha256'=>str_repeat('d',64)]],'submissionNote'=>'Revision 2 addresses coordinated markups.']);
+        self::assertSame(2,$deliverable['currentRevision']['revision']);
+        self::assertNotSame($firstRevision['fileManifestSha256'],$deliverable['currentRevision']['fileManifestSha256']);
+        self::assertSame(2,(int)$this->pdo->query("SELECT COUNT(*) FROM freelancer_deliverable_revisions")->fetchColumn());
+        try{$service->signOffDeliverable($bepOrg,$bep,'owner',$engagement['id'],$deliverable['id'],$firstRevision['id'],'approved','Attempt to sign superseded revision.');self::fail('Only the exact current revision can be signed.');}catch(JobTicketMarketplaceException$e){self::assertSame('freelancer_deliverable_revision_not_current',$e->reason);}
+        try{$service->issueDeliverable($bepOrg,$bep,'owner',$engagement['id'],$deliverable['id'],true,'Attempt before supervisor sign-off.');self::fail('Unsigned deliverables cannot be externally issued.');}catch(JobTicketMarketplaceException$e){self::assertSame('current_revision_supervisor_signoff_required',$e->reason);}
+        $deliverable=$service->signOffDeliverable($bepOrg,$bep,'owner',$engagement['id'],$deliverable['id'],$deliverable['currentRevision']['id'],'approved','I reviewed this exact revision under the locked supervision route.');
+        self::assertTrue($deliverable['externalIssueReady']);
+        $deliverable=$service->issueDeliverable($bepOrg,$bep,'owner',$engagement['id'],$deliverable['id'],true,'Lead architect approved external issue of the exact signed revision.');
+        self::assertSame('externally_issued',$deliverable['status']);
+
+        $engagement=$service->completeEngagement($bepOrg,$bep,'owner',$engagement['id'],$engagement['version'],true,'Lead architect accepted the completed supervised scope.');
+        self::assertSame('completed',$engagement['status']);
+        $review=$service->createPerformanceReview($bepOrg,$bep,'owner',$engagement['id'],5,'Reliable supervised production work with clear revision control.');
+        self::assertSame(5,$review['rating']);
+        try{$service->createPerformanceReview($freelancerOrg,$freelancer,'owner',$engagement['id'],5,'Self review.');self::fail('Self reviews are prohibited.');}catch(JobTicketMarketplaceException$e){self::assertSame('freelancer_review_authority_required',$e->reason);}
+        try{$service->getEngagement($outsiderOrg,$outsider,'owner',$engagement['id']);self::fail('Unrelated tenants cannot read an engagement.');}catch(JobTicketMarketplaceException$e){self::assertSame('freelancer_engagement_not_found',$e->reason);}
+
+        self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM freelancer_claims WHERE status='recorded_paid' AND payment_execution_claimed=0")->fetchColumn());
+        self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM freelancer_deliverables WHERE status='externally_issued' AND external_issue_ready=1")->fetchColumn());
+        self::assertGreaterThanOrEqual(8,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'freelancer.%'")->fetchColumn());
+    }
+
     /** @return array{string,string,?string} */
     private function tenant(string$slug,bool$project=false):array
     {
@@ -106,6 +184,11 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
     {
         $reviewer=Identifier::generate();$this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),:email,'hash','active',UTC_TIMESTAMP(6))")->execute(['id'=>$reviewer,'email'=>$number.'@review.test']);
         $this->pdo->prepare("INSERT INTO verification_records(id,organisation_id,user_id,kind,grade,registration_body,registration_number,popia_consent_at,processing_purpose,retention_until,reviewed_by,reviewed_at) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'professional_registration','manually_reviewed',:council,:number,UTC_TIMESTAMP(6),'Job ticket role evidence',DATE_ADD(UTC_DATE(),INTERVAL 1 YEAR),UNHEX(:reviewer),UTC_TIMESTAMP(6))")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$user,'council'=>$council,'number'=>$number,'reviewer'=>$reviewer]);
+    }
+
+    private function professionalProfile(string$organisation,string$user,string$profession):void
+    {
+        $this->pdo->prepare("INSERT INTO professional_profiles(id,organisation_id,user_id,display_name,profession,bio,service_areas,directory_visible) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'Release 25 supervisor',:profession,'Verified supervision test profile.',JSON_ARRAY('Johannesburg'),1)")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$user,'profession'=>$profession]);
     }
 
     /** @param list<string> $disciplines @param list<string> $areas */

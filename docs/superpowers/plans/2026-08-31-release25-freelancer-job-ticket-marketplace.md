@@ -30,13 +30,13 @@
 
 ## 4. Freelancer supervision and execution
 
-- [ ] Add connected tests for profile publication, eligible supervisor selection, route locking and freelancer acceptance.
-- [ ] Implement supervised profile and engagement creation without independent freelancer appointments.
-- [ ] Add timesheet submit/review and claim submit/approve/reject/record-payment with explicit payment-evidence wording.
-- [ ] Add immutable deliverable revisions and exact-revision supervisor sign-off; reject external issue before approval.
-- [ ] Add governed completion and completed-engagement-only reviews.
-- [ ] Prove tenant isolation, self-supervision rejection, route immutability and review uniqueness.
-- [ ] Commit the freelancer execution lifecycle.
+- [x] Add connected tests for profile publication, eligible supervisor selection, route locking and freelancer acceptance.
+- [x] Implement supervised profile and engagement creation without independent freelancer appointments.
+- [x] Add timesheet submit/review and claim submit/approve/reject/record-payment with explicit payment-evidence wording.
+- [x] Add immutable deliverable revisions and exact-revision supervisor sign-off; reject external issue before approval.
+- [x] Add governed completion and completed-engagement-only reviews.
+- [x] Prove tenant isolation, self-supervision rejection, route immutability and review uniqueness.
+- [x] Commit the freelancer execution lifecycle.
 
 ## 5. Authenticated API
 
