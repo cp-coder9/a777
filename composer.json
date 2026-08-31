@@ -5,6 +5,7 @@
   "license": "proprietary",
   "require": {
     "php": "^8.3",
+    "ext-curl": "*",
     "ext-json": "*",
     "ext-fileinfo": "*",
     "ext-openssl": "*",
