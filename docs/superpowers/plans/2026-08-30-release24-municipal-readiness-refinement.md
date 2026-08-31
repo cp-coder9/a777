@@ -43,21 +43,21 @@
 - [x] Extend the frontend contract test for the profile editor, status dashboard, findings, professional routes, issue gate and immutable pack history.
 - [x] Implement the workspace within the existing `shell.js` municipal route and visual system.
 - [x] Add responsive CSS, accessible names and live status output.
-- [ ] Exercise profile save, assessment, resolution, assignment, sign-off and issue through the real UI against MariaDB.
+- [x] Exercise profile save, assessment, resolution, assignment, sign-off and issue through the real UI against MariaDB.
 - [x] Commit the workspace.
 
 ## 6. Release certification
 
-- [ ] Run PHP syntax, JavaScript syntax, focused municipal tests and the complete test suite.
-- [ ] Rebuild all migrations on a reserved disposable MariaDB target and record exact assertions/skips.
-- [ ] Verify an authenticated blocked-to-issued lifecycle and database row counts.
-- [ ] Use the persistent Chrome DevTools MCP browser to inspect desktop and 390 x 844 views, console/network output, accessibility and horizontal overflow.
-- [ ] Capture desktop/mobile screenshots and Lighthouse evidence.
-- [ ] Build the staged shared-hosting artifact from the exact certified source commit, excluding local secrets and development-only files.
-- [ ] Verify the artifact manifest, fresh ZIP extraction, PHP syntax and SHA-256.
-- [ ] Write Release 24 evidence with local-versus-remote boundaries and check every plan item.
-- [ ] Move Pack 28 into `packs/Completed` outside Git while retaining its source ZIP under `packs/ZIP`.
-- [ ] Commit certification documentation.
+- [x] Run PHP syntax, JavaScript syntax, focused municipal tests and the complete test suite.
+- [x] Rebuild all migrations on a reserved disposable MariaDB target and record exact assertions/skips.
+- [x] Verify an authenticated blocked-to-issued lifecycle and database row counts.
+- [x] Use the persistent Chrome DevTools MCP browser to inspect desktop and 390 x 844 views, console/network output, accessibility and horizontal overflow.
+- [x] Capture desktop/mobile screenshots and Lighthouse evidence.
+- [x] Build the staged shared-hosting artifact from the exact certified source commit, excluding local secrets and development-only files.
+- [x] Verify the artifact manifest, fresh ZIP extraction, PHP syntax and SHA-256.
+- [x] Write Release 24 evidence with local-versus-remote boundaries and check every plan item.
+- [x] Move Pack 28 into `packs/Completed` outside Git while retaining its source ZIP under `packs/ZIP`.
+- [x] Commit certification documentation.
 
 ## Release boundary
 
