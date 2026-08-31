@@ -53,6 +53,7 @@ final class NvidiaNemotronClientTest extends TestCase
         self::assertSame('nvidia/nemotron-3.5-lightning-30b-a3b', $transport->request['payload']['model']);
         self::assertSame('Bearer test-only-secret', $transport->request['headers']['Authorization']);
         self::assertFalse($transport->request['payload']['stream']);
+        self::assertSame(['enable_thinking' => false], $transport->request['payload']['chat_template_kwargs']);
         self::assertLessThanOrEqual(2_048, $transport->request['payload']['max_tokens']);
     }
 

@@ -28,6 +28,7 @@ final readonly class NvidiaNemotronClient implements WingmanModel
             'top_p' => 0.95,
             'max_tokens' => 2_048,
             'stream' => false,
+            'chat_template_kwargs' => ['enable_thinking' => false],
         ];
         if ($tools !== []) {
             $payload['tools'] = $tools;
