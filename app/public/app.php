@@ -1265,6 +1265,6 @@ body.god-mode .topbar{box-shadow:inset 0 -2px 0 rgba(139,92,246,.22)}body.god-mo
 })();
 </script>
 
-<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script><script src="/assets/js/job-ticket-marketplace.js"></script><script src="/assets/js/demo-sandbox.js"></script>
+<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script><script src="/assets/js/job-ticket-marketplace.js"></script><script src="/assets/js/demo-sandbox.js"></script><script src="/assets/js/flightpath-shell.js"></script>
 </body>
 </html>

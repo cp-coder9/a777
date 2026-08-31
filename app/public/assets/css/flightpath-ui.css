@@ -95,6 +95,20 @@ body{font-family:var(--fp-body);color:var(--fp-ink);background:var(--fp-canvas);
 .app .nav-row,.app .os-item{font-family:var(--fp-body)}
 .app .nav-row.active{box-shadow:inset 3px 0 0 var(--fp-datum-teal)}
 
+/* Lifecycle-first shell additions. */
+.fp-global-destination{--tone:var(--fp-datum-teal)}
+.fp-global-destination.active{background:linear-gradient(135deg,rgba(25,183,176,.16),rgba(15,129,123,.08))}
+.fp-lifecycle-shell{display:grid;gap:8px;padding:10px 9px 12px;border-bottom:1px solid var(--fp-line);background:linear-gradient(180deg,var(--fp-tracing-wash),rgba(234,248,246,.35))}
+.fp-lifecycle-title{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 3px}
+.fp-lifecycle-title span{font:800 12px/1 var(--fp-heading);color:var(--fp-ink)}
+.fp-lifecycle-title small{font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--fp-muted)}
+.fp-lifecycle-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.fp-lifecycle-nav button{display:grid;grid-template-columns:18px minmax(0,1fr);align-items:center;gap:5px;min-width:0;padding:6px 5px;border:1px solid transparent;border-radius:8px;color:var(--fp-muted);background:transparent;font:700 9px/1.15 var(--fp-body);text-align:left;cursor:pointer}
+.fp-lifecycle-nav button:hover{border-color:#b8d0cc;background:var(--fp-paper)}
+.fp-lifecycle-nav button[aria-current="step"]{border-color:var(--fp-datum-teal);color:var(--fp-paper);background:var(--fp-datum-teal)}
+.fp-lifecycle-nav i{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:rgba(16,32,51,.08);font:700 8px/1 var(--fp-mono);font-style:normal}
+.fp-lifecycle-nav button[aria-current="step"] i{background:rgba(255,255,255,.2)}
+
 @keyframes fp-spin{to{transform:rotate(360deg)}}
 
 @media (max-width: 1000px){
@@ -114,6 +128,8 @@ body{font-family:var(--fp-body);color:var(--fp-ink);background:var(--fp-canvas);
   .fp-dialog{padding:10px}
   .fp-dialog__panel{max-height:calc(100vh - 20px);padding:15px}
   .app .fp-field input:not([type="checkbox"]):not([type="radio"]),.app .fp-field select,.app .fp-field textarea,.app .form-input,.app .form-select,.app .form-textarea{font-size:16px}
+  .fp-lifecycle-nav{display:flex;overflow-x:auto;scroll-snap-type:x proximity}
+  .fp-lifecycle-nav button{flex:0 0 94px;scroll-snap-align:start}
 }
 
 @media (prefers-reduced-motion: reduce){
