@@ -29,7 +29,9 @@ final readonly class JobTicketMarketplaceRoutes
         $router->post('/api/v1/job-tickets/{ticketId}/freelancer-quotations/{quotationId}/accept',$govern($this->controller->acceptFreelancerQuote(...)));
         $router->post('/api/v1/job-tickets/{ticketId}/expansions',$write($this->controller->expand(...)));
         $router->put('/api/v1/freelancers/me',$write($this->controller->upsertProfile(...)));
+        $router->get('/api/v1/freelancers/me',$read($this->controller->profile(...)));
         $router->post('/api/v1/freelancers/me/publish',$govern($this->controller->publishProfile(...)));
+        $router->get('/api/v1/freelancer-engagements',$read($this->controller->engagements(...)));
         $router->get('/api/v1/freelancer-engagements/{engagementId}',$read($this->controller->engagement(...)));
         $router->post('/api/v1/freelancer-engagements/{engagementId}/timesheets',$write($this->controller->timesheet(...)));
         $router->post('/api/v1/freelancer-engagements/{engagementId}/timesheets/{timesheetId}/review',$govern($this->controller->reviewTimesheet(...)));

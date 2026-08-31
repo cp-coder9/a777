@@ -49,12 +49,12 @@
 
 ## 6. Canonical V1 workspace
 
-- [ ] Add failing frontend contract tests for the composer, discovery lanes, classification, quotations, JV tree, profile, supervision and execution controls.
-- [ ] Add a dedicated live tool route while preserving the existing governed RFQ marketplace.
-- [ ] Bind the complete authenticated lifecycle with accessible controls and live status output.
-- [ ] Add responsive CSS for 390 x 844 without horizontal overflow.
-- [ ] Exercise client posting, BEP acceptance/expansion and supervised freelancer execution through the real UI against MariaDB.
-- [ ] Commit the workspace.
+- [x] Add failing frontend contract tests for the composer, discovery lanes, classification, quotations, JV tree, profile, supervision and execution controls.
+- [x] Add a dedicated live tool route while preserving the existing governed RFQ marketplace.
+- [x] Bind the complete authenticated lifecycle with accessible controls and live status output.
+- [x] Add responsive CSS for 390 x 844 without horizontal overflow.
+- [x] Exercise client posting, BEP acceptance/expansion and supervised freelancer execution through the real UI against MariaDB.
+- [x] Commit the workspace.
 
 ## 7. Release certification
 

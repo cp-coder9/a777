@@ -46,6 +46,8 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame('submitted',$quote['status']);
         self::assertMatchesRegularExpression('/\A[a-f0-9]{64}\z/',$quote['snapshotSha256']);
         self::assertSame($quote['id'],$service->listQuotations($clientOrg,$client,'owner',$public['id'])[0]['id']);
+        self::assertSame($quote['id'],$service->listQuotations($bepOrg,$bep,'owner',$public['id'])[0]['id']);
+        self::assertSame([],$service->listQuotations($outsiderOrg,$outsider,'owner',$public['id']));
 
         $accepted=$service->acceptQuotation($clientOrg,$client,'owner',$public['id'],$quote['id'],$quote['ticketVersion'],true,'Client reviewed the quotation, exclusions and platform fee disclosure.');
         self::assertSame('assigned',$accepted['status']);
@@ -57,6 +59,8 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame($public['id'],$child['ticket']['parentTicketId']);
         self::assertSame('production_drawings',$child['ticket']['classification']['primaryCategory']);
         self::assertSame('direct',$child['ticket']['invitationType']);
+        self::assertSame($child['ticket']['id'],$service->getTicket($bepOrg,$bep,'owner',$child['ticket']['id'])['id']);
+        self::assertSame($child['ticket']['id'],$service->ticketTree($bepOrg,$bep,'owner',$child['ticket']['id'])['ticket']['id']);
 
         $tree=$service->ticketTree($clientOrg,$client,'owner',$public['id']);
         self::assertSame($public['id'],$tree['ticket']['id']);
@@ -143,6 +147,7 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame('recorded_paid',$claim['status']);
         self::assertSame('recorded_evidence_not_bank_confirmation',$claim['verificationBoundary']);
         self::assertFalse($claim['paymentExecutionClaimed']);
+        self::assertSame('recorded_evidence_not_bank_confirmation',$service->getEngagement($bepOrg,$bep,'owner',$engagement['id'])['claims'][0]['verificationBoundary']);
 
         $deliverable=$service->submitDeliverable($freelancerOrg,$freelancer,'owner',$engagement['id'],['name'=>'Working drawing set','description'=>'Controlled production drawing issue.','files'=>[['storedFileId'=>null,'name'=>'A-101.pdf','sha256'=>str_repeat('a',64)],['storedFileId'=>null,'name'=>'A-201.pdf','sha256'=>str_repeat('b',64)]],'submissionNote'=>'Revision 1 for supervisor review.']);
         $firstRevision=$deliverable['currentRevision'];
