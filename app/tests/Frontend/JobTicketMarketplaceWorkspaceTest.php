@@ -8,6 +8,25 @@ use PHPUnit\Framework\TestCase;
 
 final class JobTicketMarketplaceWorkspaceTest extends TestCase
 {
+    public function testUsesTheFlightpathPageGrammarAndOrderedMarketplaceWorkflow(): void
+    {
+        $javascript = strtolower((string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/job-ticket-marketplace.js'));
+        $css = strtolower((string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/job-ticket-marketplace.css'));
+
+        foreach ([
+            'fp-page', 'fp-page-header', 'fp-page-header__copy', 'fp-page-header__actions',
+            'fp-workflow', 'marketplace workflow', "setattribute('data-jtm-region',region)",
+            'orient:', 'find:', 'create:', 'review:', 'administer:',
+            'scrolltojobticketregion', "classlist.add('fp-field')", 'btn primary',
+        ] as $token) self::assertStringContainsString($token, $javascript);
+
+        self::assertLessThan(strpos($javascript, "scrolltojobticketregion('find')"), strpos($javascript, "scrolltojobticketregion('orient')"));
+        self::assertLessThan(strpos($javascript, "scrolltojobticketregion('review')"), strpos($javascript, "scrolltojobticketregion('find')"));
+        foreach (['.jtm-workflow', '.jtm-region', '.jtm-form .fp-field', '@media (max-width: 760px)'] as $token) {
+            self::assertStringContainsString($token, $css);
+        }
+    }
+
     public function testV1ShellContainsResponsiveGovernedJobTicketWorkspace(): void
     {
         $javascript=(string)file_get_contents(dirname(__DIR__,2).'/public/assets/js/job-ticket-marketplace.js');
