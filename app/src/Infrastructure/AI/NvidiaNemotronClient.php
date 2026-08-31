@@ -6,7 +6,7 @@ namespace Architex\Infrastructure\AI;
 
 use JsonException;
 
-final readonly class NvidiaNemotronClient
+final readonly class NvidiaNemotronClient implements WingmanModel
 {
     public function __construct(private WingmanConfig $config, private NvidiaTransport $transport) {}
 
