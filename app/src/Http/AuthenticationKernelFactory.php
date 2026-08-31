@@ -42,6 +42,7 @@ use Architex\Http\Controller\CloseoutController;
 use Architex\Http\Controller\PracticeController;
 use Architex\Http\Controller\TrustComplianceController;
 use Architex\Http\Controller\AgentOrchestrationController;
+use Architex\Http\Controller\WingmanController;
 use Architex\Http\Controller\AnalyticsReportingController;
 use Architex\Http\Controller\CPDController;
 use Architex\Http\Controller\OperatingSystemController;
@@ -87,6 +88,7 @@ use Architex\Platform\Closeout\CloseoutService;
 use Architex\Platform\Practice\PracticeManagementService;
 use Architex\Platform\Trust\TrustComplianceService;
 use Architex\Platform\Agent\AgentOrchestrationService;
+use Architex\Platform\Wingman\WingmanService;
 use Architex\Platform\Analytics\AnalyticsReportingService;
 use Architex\Platform\CPD\CPDAssessmentService;
 use Architex\Platform\OperatingSystem\ApiCapabilityService;
@@ -126,6 +128,10 @@ use Architex\Platform\Freelancer\JobTicketMarketplaceService;
 use Architex\Platform\SupplierProcurement\SupplierCatalogueNormaliser;
 use Architex\Platform\SupplierProcurement\SupplierProcurementService;
 use Architex\Infrastructure\Logging\JsonLogger;
+use Architex\Infrastructure\AI\CurlNvidiaTransport;
+use Architex\Infrastructure\AI\NvidiaNemotronClient;
+use Architex\Infrastructure\AI\WingmanConfig;
+use Architex\Infrastructure\AI\WingmanModel;
 use PDO;
 
 final readonly class AuthenticationKernelFactory
@@ -137,6 +143,7 @@ final readonly class AuthenticationKernelFactory
         private ?ReadinessController $readinessController = null,
         private ?string $fileStorageRoot = null,
         private string $appMode = 'production',
+        private ?WingmanModel $wingmanModel = null,
     ) {}
 
     public function create(): Kernel
@@ -227,6 +234,19 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
             new PermissionMiddleware(new PermissionService(), 'verification.review'),
+        ))->register($router);
+        $wingmanEnvironment = getenv();
+        $wingmanModel = $this->wingmanModel ?? new NvidiaNemotronClient(
+            WingmanConfig::fromEnvironment(is_array($wingmanEnvironment) ? $wingmanEnvironment : []),
+            new CurlNvidiaTransport(),
+        );
+        $wingmanRateKey = static fn (Request $request): string => $request->attribute('identity') instanceof AuthenticatedIdentity
+            ? $request->attribute('identity')->userId
+            : $remoteKey($request);
+        (new WingmanRoutes(
+            new WingmanController(new WingmanService($this->pdo, $wingmanModel, dirname(__DIR__, 2) . '/public/assets/route-placement.json')),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new RateLimitMiddleware($limiter, 'wingman_message', 30, 300, $wingmanRateKey),
         ))->register($router);
         (new AnalyticsReportingRoutes(
             new AnalyticsReportingController(new AnalyticsReportingService($this->pdo)),
