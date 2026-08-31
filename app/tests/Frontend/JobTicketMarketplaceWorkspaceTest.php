@@ -22,9 +22,12 @@ final class JobTicketMarketplaceWorkspaceTest extends TestCase
             'createJobTicket','submitJobTicketQuote','acceptJobTicketQuote','expandJobTicket','publishFreelancerProfile','submitFreelancerTimesheet','recordFreelancerPaymentEvidence','signOffFreelancerDeliverable','completeFreelancerEngagement',
             "t.posterUserId===window.__ARCHITEX_SHELL_STATE__?.session?.userId",
             'window.reviewFreelancerEngagement=reviewFreelancerEngagement',
+            'role="tab" aria-selected="true"','role="tab" aria-selected="false"',
         ] as $token)self::assertStringContainsString($token,$javascript);
 
         foreach(['.jtm-workspace','.jtm-lineage','.jtm-lanes','.jtm-classification','.jtm-workspace [hidden]','@media (max-width: 760px)','overflow-x:clip'] as $token)self::assertStringContainsString($token,$css);
+        self::assertStringContainsString('.jtm-hero-controls .btn{background:#eafaf8;color:#0b5b57}',$css);
+        self::assertStringContainsString('.jtm-empty{color:#50645f',$css);
         self::assertStringContainsString('/assets/css/job-ticket-marketplace.css',$app);
         self::assertStringContainsString('/assets/js/job-ticket-marketplace.js',$app);
         self::assertStringContainsString('freelancer-job-ticket-marketplace',$front);
