@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/css/community.css">
 <link rel="stylesheet" href="/assets/css/demo-sandbox.css">
 <link rel="stylesheet" href="/assets/css/job-ticket-marketplace.css">
+<link rel="stylesheet" href="/assets/css/flightpath-ui.css">
 <link rel="icon" href="/assets/icons/community.svg">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#116b67">
