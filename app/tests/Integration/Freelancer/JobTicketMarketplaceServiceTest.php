@@ -18,8 +18,10 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         [$bepOrg,$bep]=$this->tenant('ticket-bep');
         [$freelancerOrg,$freelancer]=$this->tenant('ticket-freelancer');
         [$outsiderOrg,$outsider]=$this->tenant('ticket-outsider');
+        [$contractorOrg,$contractor]=$this->tenant('ticket-contractor');
         $this->verifiedProfessional($bepOrg,$bep,'SACAP','PrArch TEST-25');
         $this->listing($bepOrg,$bep,'specialist_consultant',['architectural_design'],['Johannesburg']);
+        $this->listing($contractorOrg,$contractor,'contractor',['construction'],['Johannesburg']);
         $service=new JobTicketMarketplaceService($this->pdo,new JobTicketMarketplacePolicy());
 
         $public=$service->createTicket($clientOrg,$client,'owner',$project,$this->ticketPayload('public',[]));
@@ -55,12 +57,19 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame($bepOrg,$accepted['holderOrganisationId']);
 
         try{$service->expandTicket($outsiderOrg,$outsider,'owner',$public['id'],$accepted['version'],'consultant',$this->childPayload('public',[]));self::fail('Only the current holder may expand.');}catch(JobTicketMarketplaceException$e){self::assertSame('job_ticket_holder_required',$e->reason);}
-        $child=$service->expandTicket($bepOrg,$bep,'owner',$public['id'],$accepted['version'],'freelancer_draughtsperson',$this->childPayload('direct',[$freelancer]));
+        $child=$service->expandTicket($bepOrg,$bep,'owner',$public['id'],$accepted['version'],'freelancer_draughtsperson',$this->childPayload('direct',[$freelancer,$contractor]));
         self::assertSame($public['id'],$child['ticket']['parentTicketId']);
         self::assertSame('production_drawings',$child['ticket']['classification']['primaryCategory']);
         self::assertSame('direct',$child['ticket']['invitationType']);
         self::assertSame($child['ticket']['id'],$service->getTicket($bepOrg,$bep,'owner',$child['ticket']['id'])['id']);
         self::assertSame($child['ticket']['id'],$service->ticketTree($bepOrg,$bep,'owner',$child['ticket']['id'])['ticket']['id']);
+        $childClarification=$service->addClarification($bepOrg,$bep,'owner',$child['ticket']['id'],['title'=>'Controlled issue boundary','content'=>'All production output remains subject to the lead architect review.','material'=>true]);
+        self::assertSame('direct_invitees',$childClarification['visibility']);
+        $childTicket=$service->overrideClassification($bepOrg,$bep,'owner',$child['ticket']['id'],[...$child['ticket']['classification'],'expectedVersion'=>$child['ticket']['version'],'reason'=>'The registered BEP confirmed the advisory production route.']);
+        self::assertSame('human_override_after_advisory',$childTicket['classification']['classifiedBy']);
+        $contractorQuote=$service->submitQuotation($contractorOrg,$contractor,'owner','contractor',$child['ticket']['id'],['amount'=>18000,'currency'=>'ZAR','scope'=>'Controlled installation support under the appointed BEP.','exclusions'=>[],'qualifications'=>['Verified contractor listing'],'deliverables'=>['Installation register'],'timeline'=>'Five working days','conflictDeclared'=>false,'conflictDetail'=>null]);
+        $assignedChild=$service->acceptQuotation($bepOrg,$bep,'owner',$child['ticket']['id'],$contractorQuote['id'],$contractorQuote['ticketVersion'],true,'The BEP reviewed and selected the verified contractor quotation.');
+        self::assertSame($contractor,$assignedChild['holderUserId']);
 
         $tree=$service->ticketTree($clientOrg,$client,'owner',$public['id']);
         self::assertSame($public['id'],$tree['ticket']['id']);
@@ -78,7 +87,7 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame('human_override_after_advisory',$overridden['classification']['classifiedBy']);
         self::assertSame(2,$overridden['classificationRevision']);
 
-        self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE record_type='job_ticket_assignment'")->fetchColumn());
+        self::assertSame(2,(int)$this->pdo->query("SELECT COUNT(*) FROM project_records WHERE record_type='job_ticket_assignment'")->fetchColumn());
         self::assertGreaterThanOrEqual(4,(int)$this->pdo->query("SELECT COUNT(*) FROM audit_events WHERE action LIKE 'job_ticket.%'")->fetchColumn());
         self::assertGreaterThanOrEqual(2,(int)$this->pdo->query("SELECT COUNT(*) FROM inbox_items WHERE event_type LIKE 'job_ticket_%'")->fetchColumn());
 
