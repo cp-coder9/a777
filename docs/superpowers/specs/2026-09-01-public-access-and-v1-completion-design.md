@@ -1,6 +1,6 @@
 # Public Access and V1 Completion Design
 
-**Date:** 2026-09-01  
+**Date:** 2026-09-01
 **Runtime:** PHP 8.3, MariaDB, shared hosting, FTP staged release
 
 ## Outcome

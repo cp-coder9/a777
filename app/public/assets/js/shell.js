@@ -1047,6 +1047,10 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
       : '<div class="avatar">—</div><div class="user-copy"><b>Signed out</b><span>No organisation data loaded</span></div>';
   }
   function renderSignIn() {
+    if (window.ArchitexPublicAccess) {
+      window.ArchitexPublicAccess.showAuth('sign in');
+      return;
+    }
     const main = document.getElementById('main');
     if (!main) return;
     enforceProductionControls(null);
@@ -1085,6 +1089,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
     state.role = projects[0]?.effectiveRole || 'client';
     window.setRole = () => showToast('Production access follows your verified organisation role.');
     root.dataset.shellState = projects.length ? 'ready' : 'empty';
+    if (window.ArchitexPublicAccess) window.ArchitexPublicAccess.showWorkspace();
     renderAll();
     if (!projects.length) renderEmptyProjects(session);
   }
@@ -1149,7 +1154,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
       await hydrate(session);
     } catch (error) {
       root.dataset.shellState = error.status === 401 ? 'signed-out' : 'error';
-      if (error.status === 401) { renderSignIn(); return; }
+      if (error.status === 401) { if (window.ArchitexPublicAccess) window.ArchitexPublicAccess.showLanding(); return; }
       const main = document.getElementById('main');
       if (main) main.innerHTML = '<section class="panel panel-pad"><div class="notice"><b>Workspace unavailable</b><br>Live project data could not be loaded. Retry shortly.</div></section>';
     }
