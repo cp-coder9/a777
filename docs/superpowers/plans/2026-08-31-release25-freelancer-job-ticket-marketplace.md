@@ -6,11 +6,11 @@
 
 ## 1. Production domain policy
 
-- [ ] Add failing unit tests for role capabilities, ticket validation, deterministic classification, manual override provenance, direct visibility, matching, supervision compatibility and canonical hashes.
-- [ ] Implement `JobTicketMarketplacePolicy` with the complete Pack 29 taxonomy and supervision map.
-- [ ] Prove unknown roles/disciplines/states and misleading payment/AI/statutory claims fail closed.
-- [ ] Run focused tests and PHP syntax checks.
-- [ ] Commit the policy contract.
+- [x] Add failing unit tests for role capabilities, ticket validation, deterministic classification, manual override provenance, direct visibility, matching, supervision compatibility and canonical hashes.
+- [x] Implement `JobTicketMarketplacePolicy` with the complete Pack 29 taxonomy and supervision map.
+- [x] Prove unknown roles/disciplines/states and misleading payment/AI/statutory claims fail closed.
+- [x] Run focused tests and PHP syntax checks.
+- [x] Commit the policy contract.
 
 ## 2. MariaDB persistence
 
