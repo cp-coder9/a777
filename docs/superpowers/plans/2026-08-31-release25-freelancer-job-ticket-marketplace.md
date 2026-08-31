@@ -40,12 +40,12 @@
 
 ## 5. Authenticated API
 
-- [ ] Add HTTP tests for ticket, discovery, quotation, expansion, profile, supervision, timesheet, claim, deliverable, completion and review routes.
-- [ ] Prove CSRF, role, direct-privacy, cross-tenant and stale-version failures.
-- [ ] Implement controller methods and routes with existing authentication/read/write/govern middleware.
-- [ ] Wire the service through `AuthenticationKernelFactory` without a second dependency graph.
-- [ ] Map stable domain errors to 403, 404, 409 and 422.
-- [ ] Commit the API surface.
+- [x] Add HTTP tests for ticket, discovery, quotation, expansion, profile, supervision, timesheet, claim, deliverable, completion and review routes.
+- [x] Prove CSRF, role, direct-privacy, cross-tenant and stale-version failures.
+- [x] Implement controller methods and routes with existing authentication/read/write/govern middleware.
+- [x] Wire the service through `AuthenticationKernelFactory` without a second dependency graph.
+- [x] Map stable domain errors to 403, 404, 409 and 422.
+- [x] Commit the API surface.
 
 ## 6. Canonical V1 workspace
 

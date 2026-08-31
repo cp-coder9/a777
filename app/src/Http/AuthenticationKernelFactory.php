@@ -34,6 +34,7 @@ use Architex\Http\Controller\TownPlanningController;
 use Architex\Http\Controller\RegulatoryCaseController;
 use Architex\Http\Controller\SurveyJobController;
 use Architex\Http\Controller\ProcurementController;
+use Architex\Http\Controller\JobTicketMarketplaceController;
 use Architex\Http\Controller\SupplierProcurementController;
 use Architex\Http\Controller\FinanceController;
 use Architex\Http\Controller\SiteExecutionController;
@@ -120,6 +121,8 @@ use Architex\Platform\Environment\RegulatoryCaseService;
 use Architex\Platform\Survey\SurveyJobService;
 use Architex\Platform\Procurement\ProcurementScopeClassifier;
 use Architex\Platform\Procurement\ProcurementService;
+use Architex\Platform\Freelancer\JobTicketMarketplacePolicy;
+use Architex\Platform\Freelancer\JobTicketMarketplaceService;
 use Architex\Platform\SupplierProcurement\SupplierCatalogueNormaliser;
 use Architex\Platform\SupplierProcurement\SupplierProcurementService;
 use Architex\Infrastructure\Logging\JsonLogger;
@@ -321,6 +324,12 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new RateLimitMiddleware($limiter,'procurement_invitation',60,3_600,$remoteKey),
+        ))->register($router);
+        (new JobTicketMarketplaceRoutes(
+            new JobTicketMarketplaceController(new JobTicketMarketplaceService($this->pdo,new JobTicketMarketplacePolicy())),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new PermissionMiddleware(new PermissionService(),'verification.review'),
         ))->register($router);
         (new SupplierProcurementRoutes(
             new SupplierProcurementController(new SupplierProcurementService($this->pdo,new SupplierCatalogueNormaliser())),
