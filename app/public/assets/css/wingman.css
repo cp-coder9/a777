@@ -1,0 +1,53 @@
+.wingman-assistant{position:fixed;top:72px;right:22px;z-index:4500;display:grid;justify-items:end;gap:9px;pointer-events:none;font-family:var(--fp-body,Aptos,"Segoe UI",sans-serif)}
+.wingman-bird{position:relative;width:58px;height:58px;padding:7px;border:1px solid rgba(15,129,123,.24);border-radius:19px;background:linear-gradient(145deg,#fff,#eaf8f6);box-shadow:0 14px 34px rgba(16,32,51,.2);cursor:pointer;pointer-events:auto;transition:transform .18s ease,box-shadow .18s ease}
+.wingman-bird:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(16,32,51,.24)}
+.wingman-bird img{display:block;width:100%;height:100%;object-fit:contain}
+.wingman-bird::after{content:"";position:absolute;right:4px;bottom:5px;width:10px;height:10px;border:2px solid #fff;border-radius:50%;background:#4aa874}
+.wingman-assistant[data-wingman-state="suggestion"] .wingman-bird{box-shadow:0 0 0 5px rgba(25,183,176,.14),0 18px 40px rgba(16,32,51,.22)}
+.wingman-suggestion{display:none;align-items:center;gap:8px;max-width:270px;padding:9px 10px 9px 13px;border:1px solid #b9d8d4;border-radius:14px 5px 14px 14px;background:#fff;box-shadow:0 14px 34px rgba(16,32,51,.14);color:#102033;font-size:12px;line-height:1.35;pointer-events:auto}
+.wingman-assistant[data-wingman-state="suggestion"] .wingman-suggestion{display:flex}
+.wingman-suggestion button{flex:0 0 auto;border:0;border-radius:8px;padding:6px 8px;background:#eaf8f6;color:#0b6560;font-weight:750;cursor:pointer}
+.wingman-panel{display:none;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 92px);overflow:hidden;border:1px solid #cbd9d6;border-radius:22px;background:#fff;box-shadow:0 28px 80px rgba(16,32,51,.24);pointer-events:auto}
+.wingman-assistant[data-wingman-state="expanded"] .wingman-panel{display:grid;grid-template-rows:auto auto minmax(140px,1fr) auto}
+.wingman-assistant[data-wingman-state="expanded"]>.wingman-bird,.wingman-assistant[data-wingman-state="expanded"]>.wingman-suggestion{display:none}
+.wingman-head{display:flex;align-items:center;gap:11px;padding:15px 16px;border-bottom:1px solid #dbe5e3;background:linear-gradient(135deg,#eaf8f6,#fff)}
+.wingman-head img{width:38px;height:38px}
+.wingman-head div{display:grid;gap:2px;min-width:0}
+.wingman-head strong{font:800 18px/1.1 var(--fp-heading,"Bahnschrift SemiCondensed",sans-serif)}
+.wingman-head span{color:#526966;font-size:10px}
+.wingman-close{margin-left:auto;width:34px;height:34px;border:0;border-radius:10px;background:#f1f5f4;color:#102033;font-size:20px;cursor:pointer}
+.wingman-context{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #e3ebe9;background:#f8fbfa;color:#526966;font-size:10px}
+.wingman-context::before{content:"";width:7px;height:7px;border-radius:50%;background:#19b7b0}
+.wingman-messages{display:grid;align-content:start;gap:10px;overflow:auto;padding:14px;background:linear-gradient(180deg,#fff,#f8fbfa)}
+.wingman-welcome{display:grid;gap:8px;padding:14px;border:1px solid #cde2df;border-radius:15px;background:#eaf8f6;color:#24413e;font-size:12px;line-height:1.5}
+.wingman-welcome strong{font-size:14px;color:#102033}
+.wingman-prompts{display:flex;flex-wrap:wrap;gap:6px}
+.wingman-prompts button{padding:7px 9px;border:1px solid #b9d8d4;border-radius:999px;background:#fff;color:#0b6560;font-size:10px;cursor:pointer}
+.wingman-message{max-width:88%;padding:10px 12px;border-radius:14px;background:#edf3f2;color:#102033;font-size:12px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.wingman-message.user{justify-self:end;border-bottom-right-radius:4px;background:#102033;color:#fff}
+.wingman-message.assistant{justify-self:start;border:1px solid #d3e1df;border-bottom-left-radius:4px;background:#fff}
+.wingman-message.error{border-color:#e0aaa6;background:#fff7f6;color:#8c332e}
+.wingman-citations,.wingman-actions{display:grid;gap:6px;margin-top:7px}
+.wingman-citation,.wingman-navigation{display:grid;gap:3px;padding:8px;border:1px solid #cde2df;border-radius:10px;background:#f8fbfa;color:#102033;text-align:left;font-size:10px}
+button.wingman-citation,button.wingman-navigation{cursor:pointer}
+.wingman-citation small,.wingman-navigation small{color:#526966;line-height:1.35}
+.wingman-navigation{border-left:4px solid #ffb020;background:#fffaf0}
+.wingman-navigation span{font-weight:800}
+.wingman-feedback{display:flex;gap:5px;margin-top:5px}
+.wingman-feedback button{padding:4px 7px;border:1px solid #cbd9d6;border-radius:7px;background:#fff;color:#526966;font-size:9px;cursor:pointer}
+.wingman-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:12px;border-top:1px solid #dbe5e3;background:#fff}
+.wingman-compose textarea{min-height:44px;max-height:120px;resize:vertical;padding:10px;border:1px solid #adc1bd;border-radius:11px;color:#102033;font:500 13px/1.35 var(--fp-body,Aptos,sans-serif)}
+.wingman-compose button{align-self:end;min-height:42px;padding:0 14px;border:0;border-radius:11px;background:#0f817b;color:#fff;font-weight:800;cursor:pointer}
+.wingman-compose [role="status"]{grid-column:1/-1;color:#526966;font-size:10px}
+
+@media (max-width: 760px){
+  .wingman-assistant{top:auto;right:12px;bottom:76px}
+  .wingman-bird{width:54px;height:54px}
+  .wingman-panel{position:fixed;inset:10px;width:auto;max-height:none;border-radius:18px}
+  .wingman-assistant[data-wingman-state="expanded"] .wingman-panel{grid-template-rows:auto auto minmax(0,1fr) auto}
+  .wingman-compose textarea{font-size:16px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .wingman-bird{transition:none}
+}
