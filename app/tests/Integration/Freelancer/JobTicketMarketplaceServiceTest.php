@@ -16,6 +16,7 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
     {
         [$clientOrg,$client,$project]=$this->tenant('ticket-client',true);
         [$bepOrg,$bep]=$this->tenant('ticket-bep');
+        $bepAdmin=$this->member($bepOrg,'ticket-bep-admin','admin');
         [$freelancerOrg,$freelancer]=$this->tenant('ticket-freelancer');
         [$outsiderOrg,$outsider]=$this->tenant('ticket-outsider');
         [$contractorOrg,$contractor]=$this->tenant('ticket-contractor');
@@ -63,12 +64,15 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         self::assertSame('direct',$child['ticket']['invitationType']);
         self::assertSame($child['ticket']['id'],$service->getTicket($bepOrg,$bep,'owner',$child['ticket']['id'])['id']);
         self::assertSame($child['ticket']['id'],$service->ticketTree($bepOrg,$bep,'owner',$child['ticket']['id'])['ticket']['id']);
+        self::assertSame($child['ticket']['id'],$service->getTicket($bepOrg,$bepAdmin,'admin',$child['ticket']['id'])['id']);
+        self::assertSame($child['ticket']['id'],$service->ticketTree($bepOrg,$bepAdmin,'admin',$child['ticket']['id'])['ticket']['id']);
         $childClarification=$service->addClarification($bepOrg,$bep,'owner',$child['ticket']['id'],['title'=>'Controlled issue boundary','content'=>'All production output remains subject to the lead architect review.','material'=>true]);
         self::assertSame('direct_invitees',$childClarification['visibility']);
         $childTicket=$service->overrideClassification($bepOrg,$bep,'owner',$child['ticket']['id'],[...$child['ticket']['classification'],'expectedVersion'=>$child['ticket']['version'],'reason'=>'The registered BEP confirmed the advisory production route.']);
         self::assertSame('human_override_after_advisory',$childTicket['classification']['classifiedBy']);
         $contractorQuote=$service->submitQuotation($contractorOrg,$contractor,'owner','contractor',$child['ticket']['id'],['amount'=>18000,'currency'=>'ZAR','scope'=>'Controlled installation support under the appointed BEP.','exclusions'=>[],'qualifications'=>['Verified contractor listing'],'deliverables'=>['Installation register'],'timeline'=>'Five working days','conflictDeclared'=>false,'conflictDetail'=>null]);
-        $assignedChild=$service->acceptQuotation($bepOrg,$bep,'owner',$child['ticket']['id'],$contractorQuote['id'],$contractorQuote['ticketVersion'],true,'The BEP reviewed and selected the verified contractor quotation.');
+        self::assertSame($contractorQuote['id'],$service->listQuotations($bepOrg,$bepAdmin,'admin',$child['ticket']['id'])[0]['id']);
+        $assignedChild=$service->acceptQuotation($bepOrg,$bepAdmin,'admin',$child['ticket']['id'],$contractorQuote['id'],$contractorQuote['ticketVersion'],true,'The BEP administrator reviewed and selected the verified contractor quotation.');
         self::assertSame($contractor,$assignedChild['holderUserId']);
 
         $tree=$service->ticketTree($clientOrg,$client,'owner',$public['id']);
@@ -192,6 +196,14 @@ final class JobTicketMarketplaceServiceTest extends MariaDbTestCase
         $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'owner','active')")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$user]);
         $projectId=null;if($project){$projectId=Identifier::generate();$this->pdo->prepare("INSERT INTO projects(id,organisation_id,project_code,project_name,client_name,municipality,property_reference,property_use,land_use_notes,lead_professional_role,current_phase,created_by) VALUES(UNHEX(:id),UNHEX(:o),'JT-25','Job Ticket Project','Ticket Client','Johannesburg','Erf JT25','Residential','Marketplace test','architect','tender_procurement',UNHEX(:u))")->execute(['id'=>$projectId,'o'=>$organisation,'u'=>$user]);}
         return[$organisation,$user,$projectId];
+    }
+
+    private function member(string$organisation,string$slug,string$role):string
+    {
+        $user=Identifier::generate();
+        $this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),:email,'hash','active',UTC_TIMESTAMP(6))")->execute(['id'=>$user,'email'=>$slug.'@example.test']);
+        $this->pdo->prepare('INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),:role,\'active\')')->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$user,'role'=>$role]);
+        return$user;
     }
 
     private function verifiedProfessional(string$organisation,string$user,string$council,string$number):void
