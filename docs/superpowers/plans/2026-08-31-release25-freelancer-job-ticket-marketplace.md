@@ -14,10 +14,10 @@
 
 ## 2. MariaDB persistence
 
-- [ ] Add migration `0055_freelancer_job_ticket_marketplace.sql` for tickets, direct invites, classification revisions, clarifications, quotations, expansions, profiles, supervision, engagements, timesheets, claims, deliverables, sign-offs and reviews.
-- [ ] Add schema tests for foreign keys, public/direct discovery indexes, uniqueness, immutable hash fields and optimistic versions.
-- [ ] Rebuild a guarded disposable database through all 55 migrations and run existing migration regressions.
-- [ ] Commit the schema.
+- [x] Add migration `0055_freelancer_job_ticket_marketplace.sql` for tickets, direct invites, classification revisions, clarifications, quotations, expansions, profiles, supervision, engagements, timesheets, claims, deliverables, sign-offs and reviews.
+- [x] Add schema tests for foreign keys, public/direct discovery indexes, uniqueness, immutable hash fields and optimistic versions.
+- [x] Rebuild a guarded disposable database through all 55 migrations and run existing migration regressions.
+- [x] Commit the schema.
 
 ## 3. Ticket and marketplace lifecycle
 
