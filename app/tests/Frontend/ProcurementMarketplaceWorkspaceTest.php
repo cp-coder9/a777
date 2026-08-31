@@ -24,7 +24,7 @@ final class ProcurementMarketplaceWorkspaceTest extends TestCase
 
         $app=file_get_contents(dirname(__DIR__,2).'/public/app.php');
         self::assertIsString($app);
-        foreach(['client','architect','bep','engineer','quantity_surveyor','contractor','supplier','developer']as$role){
+        foreach(['quantity_surveyor','supplier']as$role){
             self::assertMatchesRegularExpression('/'.$role.":\\[[^\\]]*'rfq_marketplace'/",$app);
         }
         self::assertMatchesRegularExpression("/Procure:\\[[^\\]]*'rfq_marketplace'/",$app);

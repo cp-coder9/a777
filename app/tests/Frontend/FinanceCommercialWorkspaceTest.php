@@ -38,11 +38,13 @@ final class FinanceCommercialWorkspaceTest extends TestCase
         $css = file_get_contents(dirname(__DIR__, 2).'/public/assets/css/architex-v1.css');
         self::assertIsString($app);
         self::assertIsString($css);
-        self::assertStringContainsString('<meta name="description" content="Architex OS is a governed built-environment operating system for project, professional, document and commercial workflows.">', $app);
-        self::assertStringContainsString('aria-label="${i.label} ${i.meta}"', $app);
-        self::assertStringContainsString('.kicker{font-size:9px;text-transform:uppercase;letter-spacing:.11em;color:#167e79', $css);
+        self::assertStringContainsString('<meta name="description" content="Architex OS project and standalone built-environment workflows with governed evidence and professional review gates.">', $app);
+        $flightpath = file_get_contents(dirname(__DIR__, 2).'/public/assets/js/flightpath-shell.js');
+        self::assertIsString($flightpath);
+        self::assertStringContainsString('aria-label="${escapeHtml(destination.label)}"', $flightpath);
+        self::assertStringContainsString('.kicker{font-size:9px;text-transform:uppercase;letter-spacing:.11em;color:#126965', $css);
         self::assertStringContainsString('.scope-pill{font-size:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;padding:5px 8px;border-radius:99px;background:rgba(25,183,176,.08);color:#14756f}', $css);
         self::assertStringContainsString('.project-chip{font-size:9px;padding:6px 9px;border:1px solid rgba(25,183,176,.16);background:var(--aqua);border-radius:9px;color:#14756f', $css);
-        self::assertStringContainsString('.inspect-block h4{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#687486', $css);
+        self::assertStringContainsString('.inspect-block h4{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#96a0ad', $css);
     }
 }

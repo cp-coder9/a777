@@ -89,11 +89,69 @@
     document.documentElement.dataset.flightpathDestination = activeDestination() || 'unplaced';
   }
 
+  function routeTitle() {
+    if (typeof state === 'undefined') return 'Architex workspace';
+    if (state.tool && typeof TOOLS !== 'undefined') return TOOLS[state.tool]?.name || 'Workspace tool';
+    if (typeof globalItems !== 'undefined') return globalItems.find(item => item.id === state.global)?.label || 'Architex workspace';
+    return 'Architex workspace';
+  }
+
+  function enhancePageGrammar() {
+    const main = document.getElementById('main');
+    if (!main) return;
+    main.classList.add('fp-page');
+    const navigator = document.getElementById('navigator');
+    navigator?.setAttribute('aria-label', 'Context navigation');
+
+    let header = main.querySelector(':scope > .page-head,:scope > .fp-page-header,:scope > .jtm-hero');
+    let heading = main.querySelector('h1');
+    if (!heading) {
+      header = document.createElement('section');
+      header.className = 'fp-page-header';
+      const copy = document.createElement('div');
+      copy.className = 'fp-page-header__copy';
+      heading = document.createElement('h1');
+      heading.textContent = routeTitle();
+      copy.appendChild(heading);
+      header.appendChild(copy);
+      main.prepend(header);
+    }
+    heading.id = 'flightpathPageTitle';
+    main.setAttribute('aria-labelledby', 'flightpathPageTitle');
+
+    if (header) {
+      header.classList.add('fp-page-header');
+      const copy = header.querySelector('.page-copy,.fp-page-header__copy') || heading.parentElement;
+      copy?.classList.add('fp-page-header__copy');
+      let actions = header.querySelector('.page-actions,.jtm-hero-controls,.fp-page-header__actions');
+      if (!actions) {
+        actions = document.createElement('div');
+        header.appendChild(actions);
+      }
+      actions.classList.add('fp-page-header__actions');
+      const firstAction = actions.querySelector('.btn');
+      if (firstAction && !actions.querySelector('.btn.primary,.btn.dark')) firstAction.classList.add('primary');
+      if (!firstAction) {
+        const guidance = document.createElement('button');
+        guidance.type = 'button';
+        guidance.className = 'btn ghost';
+        guidance.textContent = 'Ask Wingman';
+        guidance.addEventListener('click', () => document.querySelector('.wingman-bird')?.click());
+        actions.appendChild(guidance);
+      }
+    }
+
+    main.querySelectorAll('.empty-state,.jtm-empty,[data-empty-state]').forEach(element => element.classList.add('fp-empty'));
+    main.querySelectorAll('.loading-state,[data-loading-state]').forEach(element => element.classList.add('fp-loading'));
+    main.querySelectorAll('.error-state,[data-error-state],[role="alert"]').forEach(element => element.classList.add('fp-error'));
+  }
+
   function enhanceShell() {
     if (!placement) return;
     renderGlobalDestinations();
     renderLifecycleNavigation();
     applyPageFamily();
+    enhancePageGrammar();
     document.documentElement.dataset.flightpathPlacement = 'ready';
   }
 

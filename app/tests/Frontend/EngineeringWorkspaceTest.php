@@ -16,7 +16,8 @@ final class EngineeringWorkspaceTest extends TestCase
         ]as$expected)self::assertStringContainsString($expected,$shell);
         self::assertStringContainsString('.engineering-evidence-workspace',$styles);
         self::assertStringContainsString('@media(max-width:760px)',$styles);
-        $canonical=(string)file_get_contents(dirname(__DIR__,2).'/public/app.php');self::assertStringContainsString("state.tool==='engineering_calc'&&action.fn==='showCalc'",$canonical);
+        $canonical=(string)file_get_contents(dirname(__DIR__,2).'/public/app.php');self::assertStringContainsString('TOOLS.engineering_calc={',$canonical);
+        self::assertStringContainsString("if(state.tool==='engineering_calc'){q('#main').innerHTML=renderEngineering()",$canonical);
         self::assertStringNotContainsString("state.engineeringSaved=true;showToast(review?'Calculation record sent to professional review.'",$shell);
     }
 }
