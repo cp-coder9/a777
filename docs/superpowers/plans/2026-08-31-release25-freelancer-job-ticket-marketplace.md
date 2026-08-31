@@ -58,16 +58,16 @@
 
 ## 7. Release certification
 
-- [ ] Run PHP/JavaScript syntax, focused Release 25 tests and the complete suite.
-- [ ] Rebuild all migrations on a reserved disposable MariaDB target and record exact tests/assertions/skips.
-- [ ] Verify public/direct privacy, full ticket tree, locked supervision, payment-evidence wording and deliverable sign-off in MariaDB.
-- [ ] Inspect desktop and 390 x 844 views through the persistent Chrome DevTools MCP session, including console, network, accessibility and horizontal overflow.
-- [ ] Capture screenshots and Lighthouse evidence.
-- [ ] Build and fresh-extract the staged shared-hosting ZIP from the exact certified functional commit.
-- [ ] Verify release manifest, PHP syntax, file counts and SHA-256.
-- [ ] Write Release 25 evidence with local-versus-remote boundaries.
-- [ ] Move Pack 29 into `packs/Completed` outside Git and retain its source ZIP under `packs/ZIP`.
-- [ ] Check every plan item and commit certification documentation.
+- [x] Run PHP/JavaScript syntax, focused Release 25 tests and the complete suite.
+- [x] Rebuild all migrations on a reserved disposable MariaDB target and record exact tests/assertions/skips.
+- [x] Verify public/direct privacy, full ticket tree, locked supervision, payment-evidence wording and deliverable sign-off in MariaDB.
+- [x] Inspect desktop and 390 x 844 views through the persistent Chrome DevTools MCP session, including console, network, accessibility and horizontal overflow.
+- [x] Capture screenshots and Lighthouse evidence.
+- [x] Build and fresh-extract the staged shared-hosting ZIP from the exact certified functional commit.
+- [x] Verify release manifest, PHP syntax, file counts and SHA-256.
+- [x] Write Release 25 evidence with local-versus-remote boundaries.
+- [x] Move Pack 29 into `packs/Completed` outside Git and retain its source ZIP under `packs/ZIP`.
+- [x] Check every plan item and commit certification documentation.
 
 ## Release boundary
 
