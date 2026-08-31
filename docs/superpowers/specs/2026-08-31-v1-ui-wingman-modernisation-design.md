@@ -1,10 +1,10 @@
 # Architex V1 UI and Wingman Modernisation Design
 
-**Status:** Approved design direction; written specification awaiting final user review  
-**Date:** 2026-08-31  
-**Runtime:** PHP 8.3, MariaDB, shared hosting, FTP staged releases  
-**Reference:** `v1.html` is the visual and structural source of truth  
-**AI provider:** NVIDIA NIM API Catalog  
+**Status:** Approved design direction; written specification awaiting final user review
+**Date:** 2026-08-31
+**Runtime:** PHP 8.3, MariaDB, shared hosting, FTP staged releases
+**Reference:** `v1.html` is the visual and structural source of truth
+**AI provider:** NVIDIA NIM API Catalog
 **Model:** `nvidia/nemotron-3.5-lightning-30b-a3b`
 
 ## 1. Subject, audience, and single job
