@@ -1,8 +1,11 @@
 # V1 UI and Guided Wingman Modernisation — Local Certification
 
-Date: 2026-08-31  
-Certified source commit: `2d8e496392b5a53686f321ec2f79896dda8e3f44`  
-Candidate: `dist/architex-release-staged-20260831-2d8e496`  
+Date: 2026-08-31
+
+Certified source commit: `2d8e496392b5a53686f321ec2f79896dda8e3f44`
+
+Candidate: `dist/architex-release-staged-20260831-2d8e496`
+
 FTP archive: `dist/architex-release-staged-20260831-2d8e496.zip`
 
 ## Implemented scope
