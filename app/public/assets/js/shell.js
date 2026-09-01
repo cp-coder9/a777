@@ -656,6 +656,20 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
   window.closeoutIssuePack=id=>closeoutAction(`/handover-packs/${id}/issue`,{humanConfirmed:confirm('Issue this exact handover pack?'),reason:'Authorised professional reviewed all indexed handover evidence.'});
   window.closeoutAssessFinalAccount=()=>closeoutAction(`/projects/${window.__ARCHITEX_SHELL_STATE__.selectedProjectId}/final-account-readiness`,{humanConfirmed:true});
 
+  const controlledRegisterKeys=['dispute_resolution','insurance_register','nhbrc_enrolment','contractor_compliance'];
+  let controlledRegisterState=null;
+  function controlledRegisterWorkspace(key){const project=window.__ARCHITEX_SHELL_STATE__?.projects.find(x=>x.id===window.__ARCHITEX_SHELL_STATE__?.selectedProjectId),tool=TOOLS[key];if(!project)return'<div class="notice">Select a project before opening this controlled register.</div>';setTimeout(()=>hydrateControlledRegister(key),0);return `${pageHead(tool.name,tool.summary,tool.icon,tool.tone)}<div id="controlledRegisterWorkspace" class="procurement-workspace" data-register-key="${escapeHtml(key)}"><div class="notice"><b>Human-governed register:</b> Entries are human-entered, tenant scoped, versioned and written to the ProjectRecord spine. Architex does not submit externally, verify statutory approval, decide entitlement or move money.</div><section class="panel panel-pad"><form id="controlledRegisterForm" class="scaffold-grid"><label>Title<input class="form-input" name="title" required maxlength="220"></label><label>Reference<input class="form-input" name="reference" required maxlength="120"></label><label>Owner role<input class="form-input" name="ownerRole" required maxlength="80" value="${escapeHtml(state.role||'owner')}"></label><label>Due date<input class="form-input" type="date" name="dueOn"></label><label class="trust-wide">Human-entered details (JSON)<textarea class="form-textarea" name="details" required>{
+  "source": "human-entered",
+  "reviewNote": "Evidence requires authorised review"
+}</textarea></label><label class="trust-wide">Private evidence file IDs, comma separated<input class="form-input" name="evidenceFileIds" placeholder="32-character IDs"></label><label class="trust-check trust-wide"><input type="checkbox" name="humanConfirmed" required> I confirm this exact entry and its evidence references.</label><button class="btn dark" type="submit">Create controlled entry</button><span role="status"></span></form></section><section class="panel panel-pad"><div class="trust-card-head"><div><h2>${escapeHtml(tool.name)} entries</h2><p>Allowed next states are calculated by the server-owned workflow policy.</p></div><button class="btn ghost" type="button" onclick="hydrateControlledRegister('${escapeHtml(key)}')">Refresh</button></div><div id="controlledRegisterList" class="trust-list"><div class="notice">Loading register…</div></div></section></div>`;}
+  async function hydrateControlledRegister(key){const root=document.getElementById('controlledRegisterWorkspace'),projectId=window.__ARCHITEX_SHELL_STATE__?.selectedProjectId;if(!root||!projectId)return;try{controlledRegisterState=await api.get(`/projects/${projectId}/controlled-registers/${key}`);renderControlledRegister();bindControlledRegister(key);}catch(error){document.getElementById('controlledRegisterList').innerHTML=`<div class="notice">${escapeHtml(error.message)}</div>`;}}
+  function renderControlledRegister(){const list=document.getElementById('controlledRegisterList');if(!list||!controlledRegisterState)return;const transitions=controlledRegisterState.definition.transitions;list.innerHTML=controlledRegisterState.entries.length?controlledRegisterState.entries.map(entry=>`<article class="trust-row"><div><b>${escapeHtml(entry.title)}</b><span>${escapeHtml(entry.reference)} · owner ${escapeHtml(entry.ownerRole)} · due ${escapeHtml(entry.dueOn||'not set')}</span><small>Version ${entry.version} · ${escapeHtml(entry.updatedAt)} · ${escapeHtml(JSON.stringify(entry.details))}</small></div><div class="trust-row-actions"><span class="status ${['active','enrolled','compliant','resolved','closed'].includes(entry.status)?'green':'amber'}">${escapeHtml(entry.status.replaceAll('_',' '))}</span>${(transitions[entry.status]||[]).map(status=>`<button class="btn ghost" type="button" onclick="transitionControlledRegister('${entry.id}','${escapeHtml(status)}',${entry.version})">${escapeHtml(status.replaceAll('_',' '))}</button>`).join('')}</div></article>`).join(''):'<div class="notice">No entries exist in this register yet.</div>';}
+  function bindControlledRegister(key){const form=document.getElementById('controlledRegisterForm');if(!form||form.dataset.bound)return;form.dataset.bound='1';form.addEventListener('submit',async event=>{event.preventDefault();const values=new FormData(form),status=form.querySelector('[role=status]');status.textContent='Saving…';try{let details;try{details=JSON.parse(values.get('details'));}catch{throw new Error('Details must be a valid JSON object.');}if(!details||Array.isArray(details)||typeof details!=='object')throw new Error('Details must be a valid JSON object.');await api.post(`/projects/${window.__ARCHITEX_SHELL_STATE__.selectedProjectId}/controlled-registers/${key}`,{title:values.get('title'),reference:values.get('reference'),ownerRole:values.get('ownerRole'),dueOn:values.get('dueOn')||null,details,evidenceFileIds:String(values.get('evidenceFileIds')||'').split(',').map(x=>x.trim()).filter(Boolean),humanConfirmed:values.get('humanConfirmed')==='on'});form.reset();await hydrateControlledRegister(key);}catch(error){status.textContent=error.message;}});}
+  window.hydrateControlledRegister=hydrateControlledRegister;
+  window.transitionControlledRegister=async(id,status,version)=>{const reason=prompt(`Reason for transition to ${status.replaceAll('_',' ')}:`);if(!reason)return;try{await api.post(`/controlled-registers/${id}/transition`,{status,expectedVersion:version,reason,humanConfirmed:confirm('Confirm this exact human-governed transition?')});await hydrateControlledRegister(document.getElementById('controlledRegisterWorkspace')?.dataset.registerKey);}catch(error){showToast(error.message);}};
+  function iconographyRegistryWorkspace(){const names=Object.keys(ICONS||{}).sort();return `${pageHead('Iconography Registry','The central V1 semantic icon catalogue used by navigation, workspaces and governed action states.','iconography_registry','lavender')}<div class="notice"><b>Production asset registry:</b> Icons are code-owned, semantic and reusable. Module tone is applied by the host surface rather than baked into the bird/origami mark.</div><section class="panel panel-pad"><div class="standalone-filter"><label>Filter icons<input class="form-input" type="search" oninput="filterIconography(this.value)" placeholder="Search semantic name"></label><span class="status">${names.length} registered</span></div><div id="iconographyGrid" class="registry-grid">${names.map(name=>`<button class="registry-item" type="button" data-icon-name="${escapeHtml(name)}" onclick="navigator.clipboard?.writeText('${escapeHtml(name)}');showToast('Icon key copied')"><span class="nav-icon">${icon(name,23)}</span><span><b>${escapeHtml(name.replaceAll('_',' '))}</b><small>${escapeHtml(name)}</small></span></button>`).join('')}</div></section>`;}
+  window.filterIconography=value=>{const term=String(value||'').toLowerCase();document.querySelectorAll('[data-icon-name]').forEach(item=>item.hidden=!item.dataset.iconName.includes(term));};
+
   TOOLS.professional_directory.status = 'live';
   TOOLS.team_workspace.status = 'live';
   TOOLS.project_passport.status = 'live';
@@ -674,7 +688,7 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
   TOOLS.survey_geomatics.status = 'live';
   TOOLS.refuse_calculator.status = 'live';
   TOOLS.rfq_marketplace.status = 'live';
-  TOOLS.payments_escrow.status = 'live';
+  TOOLS.payments_escrow.status = 'integration_required';
   if(!TOOLS.valuations)TOOLS.valuations={...TOOLS.payments_escrow,name:'Valuations',icon:'valuation',summary:'Progress valuations, cumulative certification, retention, previous payments, disputes and net payable evidence.'};
   TOOLS.valuations.status = 'live';
   TOOLS.contract_admin.status = 'live';
@@ -689,6 +703,9 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
   TOOLS.fm_bridge.status = 'live';
   TOOLS.practice.status = 'live';
   TOOLS.market_insights.status = 'live';
+  for(const key of controlledRegisterKeys)TOOLS[key].status='live';
+  for(const key of ['project_explorer','inbox_action','approvals_queue','cpd_learning','admin_review','iconography_registry','council_navigator','municipal_tracker','compliance_hub'])TOOLS[key].status='limited';
+  TOOLS.remote_desktop.status='integration_required';
   const financeRoles=['client','architect','bep','engineer','quantity_surveyor','cpm','contractor','subcontractor','supplier','developer','firm_admin','admin'];
   for(const role of financeRoles){if(typeof roleMap!=='undefined'&&Array.isArray(roleMap[role]))for(const tool of ['payments_escrow','valuations','contract_admin','fm_bridge','market_insights'])if(!roleMap[role].includes(tool))roleMap[role].push(tool);if(typeof V8_ROLE_TOOL_ALLOWLIST!=='undefined'&&Array.isArray(V8_ROLE_TOOL_ALLOWLIST[role]))for(const tool of ['payments_escrow','valuations','contract_admin','fm_bridge','market_insights'])if(!V8_ROLE_TOOL_ALLOWLIST[role].includes(tool))V8_ROLE_TOOL_ALLOWLIST[role].push(tool);}
   let agentOrchestrationState=null;
@@ -816,6 +833,14 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
     if(state.global==='tools'&&!state.tool&&state.standalonePriority){document.getElementById('main').innerHTML=standaloneToolRunnerWorkspace(state.standalonePriority);return;}
     if(state.global==='tools'&&!state.tool&&standaloneToolMode==='tiles'){document.getElementById('main').innerHTML=standaloneTilesWorkspace();return;}
     if(state.tool==='market_insights'){document.getElementById('main').innerHTML=analyticsReportingWorkspace();renderAnalyticsInspector();setTimeout(hydrateAnalyticsReporting,0);return;}
+    if(controlledRegisterKeys.includes(state.tool)){document.getElementById('main').innerHTML=controlledRegisterWorkspace(state.tool);return;}
+    if(['inbox_action','approvals_queue','project_explorer','admin_review'].includes(state.tool)){document.getElementById('main').innerHTML=mobileDecisionCentre();return;}
+    if(state.tool==='cpd_learning'){document.getElementById('main').innerHTML=cpdWorkspace();return;}
+    if(state.tool==='iconography_registry'){document.getElementById('main').innerHTML=iconographyRegistryWorkspace();return;}
+    if(state.tool==='remote_desktop'){document.getElementById('main').innerHTML=`${pageHead('Remote Desktop Integration','Governed installation, workflow-event and human-gate controls for the external host-agent integration.','remote_desktop','lavender')}<div class="notice"><b>Integration required:</b> No remote-control session is simulated. A signed host agent, app allowlist, short-lived broker tokens and verified viewer transport must be configured before remote access can start.</div>${dedicatedAppsWorkspace()}`;return;}
+    if(state.tool==='council_navigator'){document.getElementById('main').innerHTML=window.drawingComplianceWorkspace();setTimeout(window.hydrateDrawingCompliance,0);return;}
+    if(state.tool==='municipal_tracker'){document.getElementById('main').innerHTML=municipalReadinessWorkspace();return;}
+    if(state.tool==='compliance_hub'){document.getElementById('main').innerHTML=complianceWorkspace();return;}
     if(state.tool==='wingman'){document.getElementById('main').innerHTML=agentOrchestrationWorkspace();renderAgentInspector();setTimeout(hydrateAgentOrchestration,0);return;}
     if(state.tool==='practice'){document.getElementById('main').innerHTML=`${pageHead('Practice Management','Pipeline, workload, time, supervision, office compliance and versioned templates.','practice','cobalt')}${practiceManagementWorkspace()}`;renderPracticeContext();setTimeout(hydratePracticeManagement,0);return;}
     if(state.tool==='forms'){document.getElementById('main').innerHTML=integratedFormWorkspace();return;}
@@ -1608,4 +1633,18 @@ Native IFC geometry interpretation is unavailable.</textarea></label></div><div 
   const apply=()=>document.querySelectorAll('.nq-category').forEach(card=>{const select=card.querySelector('select[name="status"]'),title=card.querySelector('b')?.textContent;if(select&&title)select.setAttribute('aria-label',`${title} status`);});
   new MutationObserver(apply).observe(document.documentElement,{childList:true,subtree:true});
   apply();
+})();
+
+(function installEvidenceBackedReadinessInspector(){
+  const previous=window.renderInspector;
+  window.renderInspector=function(){
+    previous();
+    const tool=typeof state!=='undefined'&&state.tool&&typeof TOOLS!=='undefined'?TOOLS[state.tool]:null;
+    const body=document.getElementById('inspectBody');
+    if(!tool||!body||tool.status==='live')return;
+    const label=typeof readinessLabel==='function'?readinessLabel(tool):String(tool.status).replaceAll('_',' ');
+    const description=typeof readinessDescription==='function'?readinessDescription(tool):'This capability has a bounded runtime readiness state.';
+    body.querySelectorAll('.readiness-truth').forEach(node=>node.remove());
+    body.insertAdjacentHTML('afterbegin',`<div class="inspect-note readiness-truth"><b>${escapeHtml(label)}</b><br>${escapeHtml(description)}</div>`);
+  };
 })();

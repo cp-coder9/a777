@@ -1,0 +1,25 @@
+-- architex:migration-mode=ddl
+CREATE TABLE IF NOT EXISTS controlled_register_entries (
+  id BINARY(16) PRIMARY KEY,
+  organisation_id BINARY(16) NOT NULL,
+  project_id BINARY(16) NOT NULL,
+  register_key VARCHAR(80) NOT NULL,
+  title VARCHAR(220) NOT NULL,
+  reference_code VARCHAR(120) NOT NULL,
+  status VARCHAR(80) NOT NULL,
+  owner_role VARCHAR(80) NOT NULL,
+  due_on DATE NULL,
+  details JSON NOT NULL,
+  evidence_file_ids JSON NOT NULL,
+  version INT UNSIGNED NOT NULL DEFAULT 1,
+  created_by BINARY(16) NOT NULL,
+  updated_by BINARY(16) NOT NULL,
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  UNIQUE KEY uq_controlled_register_reference (organisation_id, project_id, register_key, reference_code),
+  KEY idx_controlled_register_status (organisation_id, project_id, register_key, status, due_on),
+  FOREIGN KEY (organisation_id) REFERENCES organisations(id),
+  FOREIGN KEY (project_id) REFERENCES projects(id),
+  FOREIGN KEY (created_by) REFERENCES users(id),
+  FOREIGN KEY (updated_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

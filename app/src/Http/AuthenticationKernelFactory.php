@@ -8,6 +8,7 @@ use Architex\Http\Controller\AuthController;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
 use Architex\Http\Controller\LegalNoticeController;
+use Architex\Http\Controller\ControlledRegisterController;
 use Architex\Http\Controller\ProjectController;
 use Architex\Http\Controller\InboxController;
 use Architex\Http\Controller\ToolRegistryController;
@@ -65,6 +66,8 @@ use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\RegistrationService;
 use Architex\Platform\Identity\SessionService;
 use Architex\Platform\Legal\LegalAcceptanceService;
+use Architex\Platform\Governance\ControlledRegisterPolicy;
+use Architex\Platform\Governance\ControlledRegisterService;
 use Architex\Platform\Identity\AuthenticatedIdentity;
 use Architex\Platform\Security\RateLimiter;
 use Architex\Platform\Authorization\PermissionService;
@@ -373,6 +376,11 @@ final readonly class AuthenticationKernelFactory
         ))->register($router);
         (new CloseoutRoutes(
             new CloseoutController(new CloseoutService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new ControlledRegisterRoutes(
+            new ControlledRegisterController(new ControlledRegisterService($this->pdo,new ControlledRegisterPolicy())),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
