@@ -4,6 +4,7 @@
   const root = document.documentElement;
   const access = document.getElementById('publicAccess');
   const landing = document.getElementById('publicLandingFrame');
+  const birdFlock = document.getElementById('birdFlockTransition');
   const authMount = document.getElementById('publicAuthMount');
   const workspace = document.getElementById('app');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -39,6 +40,38 @@
   let transitionTimer = null;
   let authMode = 'signin';
   let signupNotices = null;
+
+  function buildBirdFlock() {
+    if (!birdFlock || birdFlock.childElementCount > 0) return;
+    const ghost = document.createElement('img');
+    ghost.className = 'bird-flock-ghost';
+    ghost.src = '/logo.png';
+    ghost.alt = '';
+    birdFlock.appendChild(ghost);
+    const destinations = [
+      [-43,-34],[-27,-39],[-10,-36],[12,-40],[29,-35],[44,-30],
+      [-48,-12],[-31,-16],[-14,-11],[14,-15],[32,-10],[47,-14],
+      [-46,13],[-29,9],[-12,16],[13,10],[30,15],[45,11],
+      [-40,35],[-25,31],[-8,39],[10,33],[27,38],[41,30],
+    ];
+    destinations.forEach(([x, y], index) => {
+      const row = Math.floor(index / 6);
+      const column = index % 6;
+      const fragment = document.createElement('img');
+      fragment.className = 'bird-flock-fragment';
+      fragment.src = '/logo.png';
+      fragment.alt = '';
+      fragment.style.setProperty('--dx', `${x}vw`);
+      fragment.style.setProperty('--dy', `${y}vh`);
+      fragment.style.setProperty('--dx-near', `${x * .22}vw`);
+      fragment.style.setProperty('--dy-near', `${y * .22}vh`);
+      fragment.style.setProperty('--dx-home', `${x * .18 - 46}vw`);
+      fragment.style.setProperty('--dy-home', `${y * .18 - 43}vh`);
+      fragment.style.setProperty('--delay', `${180 + index * 9}ms`);
+      fragment.style.clipPath = `inset(${row * 25}% ${(5 - column) * (100 / 6)}% ${(3 - row) * 25}% ${column * (100 / 6)}%)`;
+      birdFlock.appendChild(fragment);
+    });
+  }
 
   const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
   const slugify = value => String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
@@ -183,6 +216,7 @@
     setState('auth');
     access?.classList.remove('is-auth-ready');
     access?.classList.add('is-flocking');
+    buildBirdFlock();
     if (authMount) {
       authMount.hidden = false;
       authMount.innerHTML = authMarkup();
@@ -215,10 +249,11 @@
       const trigger = event.target?.closest?.('a,button,[role="button"]');
       if (!trigger) return;
       const label = String(trigger.textContent || trigger.getAttribute('aria-label') || '').trim().toLowerCase();
-      if (!['sign in', 'sign up', 'create account'].some(action => label.includes(action))) return;
+      const birdActivated = Boolean(trigger.closest('.bird-orbit'));
+      if (!birdActivated && !['sign in', 'sign up', 'create account'].some(action => label.includes(action))) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      showAuth(label);
+      showAuth(birdActivated ? 'sign in' : label);
     }, true);
   }
 

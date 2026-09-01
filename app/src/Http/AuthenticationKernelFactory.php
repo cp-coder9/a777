@@ -9,6 +9,7 @@ use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
 use Architex\Http\Controller\LegalNoticeController;
 use Architex\Http\Controller\ControlledRegisterController;
+use Architex\Http\Controller\KnowledgeController;
 use Architex\Http\Controller\ProjectController;
 use Architex\Http\Controller\InboxController;
 use Architex\Http\Controller\ToolRegistryController;
@@ -68,6 +69,7 @@ use Architex\Platform\Identity\SessionService;
 use Architex\Platform\Legal\LegalAcceptanceService;
 use Architex\Platform\Governance\ControlledRegisterPolicy;
 use Architex\Platform\Governance\ControlledRegisterService;
+use Architex\Platform\Knowledge\KnowledgeService;
 use Architex\Platform\Identity\AuthenticatedIdentity;
 use Architex\Platform\Security\RateLimiter;
 use Architex\Platform\Authorization\PermissionService;
@@ -253,6 +255,11 @@ final readonly class AuthenticationKernelFactory
             new WingmanController(new WingmanService($this->pdo, $wingmanModel, dirname(__DIR__, 2) . '/public/assets/route-placement.json')),
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new RateLimitMiddleware($limiter, 'wingman_message', 30, 300, $wingmanRateKey),
+        ))->register($router);
+        (new KnowledgeRoutes(
+            new KnowledgeController(new KnowledgeService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
         (new AnalyticsReportingRoutes(
             new AnalyticsReportingController(new AnalyticsReportingService($this->pdo)),

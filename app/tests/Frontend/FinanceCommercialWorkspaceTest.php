@@ -23,9 +23,10 @@ final class FinanceCommercialWorkspaceTest extends TestCase
             'installProductionRenderLifecycle', 'productionRenderAll', 'syncProjectSelector(projects, session, inbox)',
             'name="name" autocomplete="organization"',
         ] as $expected) self::assertStringContainsString($expected, $shell);
-        foreach (['payments_escrow', 'valuations', 'contract_admin'] as $tool) {
+        foreach (['valuations', 'contract_admin'] as $tool) {
             self::assertStringContainsString("TOOLS.$tool.status = 'live'", $shell);
         }
+        self::assertStringContainsString("TOOLS.payments_escrow.status = 'integration_required'", $shell);
         self::assertStringContainsString("['payments_escrow','valuations','contract_admin'].includes(state.tool)", $shell);
         foreach (['client','architect','bep','engineer','quantity_surveyor','cpm','contractor','subcontractor','supplier','developer','firm_admin','admin'] as $role) {
             self::assertStringContainsString("'$role'", $shell);

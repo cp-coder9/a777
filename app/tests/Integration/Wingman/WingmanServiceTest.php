@@ -20,6 +20,9 @@ final class WingmanServiceTest extends MariaDbTestCase
             'id' => $knowledge, 'organisation' => $organisation, 'project' => $project,
             'sha' => hash('sha256', 'municipal submission pack'), 'user' => $owner,
         ]);
+        $this->pdo->prepare("INSERT INTO knowledge_source_governance(knowledge_chunk_id,organisation_id,source_category,source_key,source_version,review_status,reviewed_by,reviewed_at) VALUES(UNHEX(:id),UNHEX(:organisation),'practice_note','practice.guide.4.2',1,'approved',UNHEX(:user),UTC_TIMESTAMP(6))")->execute([
+            'id' => $knowledge, 'organisation' => $organisation, 'user' => $owner,
+        ]);
         $model = new QueueWingmanModel([
             $this->modelResult('', [['id' => 'call-1', 'name' => 'search_authorised_knowledge', 'arguments' => ['query' => 'submission evidence']]]),
             $this->modelResult('Review the cited submission evidence before opening Comply.'),

@@ -41,6 +41,50 @@
   transition: opacity 420ms ease;
 }
 
+.bird-flock-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.bird-flock-ghost,
+.bird-flock-fragment {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(92px, 10vw, 148px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+}
+
+.bird-flock-ghost { opacity: .14; filter: saturate(.72); }
+.bird-flock-fragment { opacity: 0; will-change: transform, opacity, filter; }
+
+.public-access.is-flocking .bird-flock-transition { opacity: 1; }
+.public-access.is-flocking .bird-flock-ghost {
+  animation: bird-flock-anchor 2200ms cubic-bezier(.4,0,.2,1) both;
+}
+.public-access.is-flocking .bird-flock-fragment {
+  animation: bird-flock-agent 1900ms var(--delay) cubic-bezier(.4,0,.2,1) both;
+}
+
+@keyframes bird-flock-anchor {
+  0%, 9% { opacity: .2; }
+  72% { opacity: .1; }
+  100% { opacity: 0; }
+}
+
+@keyframes bird-flock-agent {
+  0% { opacity: .92; filter: blur(0); transform: translate(-50%, -50%); }
+  28% { opacity: .88; filter: blur(0); transform: translate(calc(-50% + var(--dx-near)), calc(-50% + var(--dy-near))); }
+  70% { opacity: .6; filter: blur(2px); transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); }
+  100% { opacity: 0; filter:blur(6px); transform: translate(calc(-50% + var(--dx-home)), calc(-50% + var(--dy-home))) scale(.34); }
+}
+
 :root[data-access-state="auth"] .public-access.is-flocking .public-landing-frame {
   opacity: .18;
   filter: blur(8px) saturate(.7);
@@ -83,4 +127,5 @@
   .public-auth-mount {
     transition-duration: 1ms !important;
   }
+  .bird-flock-transition { display: none !important; }
 }

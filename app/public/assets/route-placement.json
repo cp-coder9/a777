@@ -26,6 +26,7 @@
     {"id": "tools", "destination": "workspace-tools", "stage": "platform", "family": "find", "requiresProject": false},
     {"id": "inbox", "destination": "collaboration", "stage": "platform", "family": "review", "requiresProject": false},
     {"id": "documents", "destination": "projects", "stage": "design", "family": "find", "requiresProject": true},
+    {"id": "knowledge", "destination": "knowledge-cpd", "stage": "platform", "family": "find", "requiresProject": false},
     {"id": "finance", "destination": "projects", "stage": "pay", "family": "review", "requiresProject": true},
     {"id": "cpd", "destination": "knowledge-cpd", "stage": "platform", "family": "find", "requiresProject": false},
     {"id": "feedback", "destination": "knowledge-cpd", "stage": "platform", "family": "create", "requiresProject": false},

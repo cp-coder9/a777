@@ -29,7 +29,7 @@ final class V1ExtractionTest extends TestCase
         self::assertStringContainsString('/* Release 2 project-team workspace */', $css);
         self::assertStringContainsString('/* Release 13 standalone tool tiles */', $css);
         $registry = json_decode((string) file_get_contents($root . '/app/public/assets/tool-registry.json'), true, flags: JSON_THROW_ON_ERROR);
-        self::assertCount(45, $registry['tools']);
+        self::assertCount(49, $registry['tools']);
         self::assertContains('project_passport', array_column($registry['tools'], 'id'));
     }
 

@@ -19,6 +19,7 @@
 <body>
 <section class="public-access" id="publicAccess" aria-label="Architex public access">
   <iframe id="publicLandingFrame" class="public-landing-frame" src="/preview3.html" title="Architex public landing"></iframe>
+  <div id="birdFlockTransition" class="bird-flock-transition" aria-hidden="true"></div>
   <div id="publicAuthMount" class="public-auth-mount" hidden></div>
 </section>
 <div class="app" id="app" inert aria-hidden="true">
@@ -81,6 +82,7 @@ const globalItems=[
  {id:"tools",label:"Workspace Tools",icon:"tools",tone:"lavender",meta:String(Object.keys(TOOLS).length)},
  {id:"inbox",label:"Mobile Decision Centre",icon:"action_centre",tone:"coral",meta:"LIVE"},
  {id:"documents",label:"Documents",icon:"document",tone:"core",meta:"128"},
+ {id:"knowledge",label:"Knowledge",icon:"knowledge",tone:"cobalt",meta:"Sources"},
  {id:"finance",label:"Finance & Payments",icon:"finance",tone:"amber",meta:"4"},
  {id:'cpd',label:'CPD Learning Hub',icon:'cpd_learning',tone:'cobalt',meta:'CPD'},
  {id:"feedback",label:"Feedback Intelligence",icon:"feedback",tone:"lavender",meta:"Loop"},
