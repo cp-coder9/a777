@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tools.deploy_php_ftps import deployment_token, probe_source, validate_release
+from tools.deploy_php_ftps import build_runtime_config, deployment_token, probe_source, validate_release
 from tools.repair_php_deployment import (
     DeploymentConfig,
     DeploymentFailure,
@@ -27,6 +28,7 @@ DEPLOYMENT_ID = "20260902-030000-deadbeef-0011223344556677"
 class FakeCpanel:
     def __init__(self, shared_events: list[str], *, active_runtime: bool = True, public_root: bool = True) -> None:
         self.events = shared_events
+        self.saved_content: dict[str, str] = {}
         self.paths = {ROOT}
         if active_runtime:
             self.paths.add(ROOT + "/.a777-runtime-active")
@@ -64,8 +66,14 @@ class FakeCpanel:
         self.paths.add(ROOT + "/php.architex.co.za.candidate-a777-" + token)
 
     def save_file(self, remote: str, content: str) -> None:
-        label = "probe" if "preflight" in remote else "runtime"
+        label = (
+            "probe" if "preflight" in remote
+            else "routing" if remote.endswith("/.htaccess")
+            else "entrypoint" if remote.endswith("/index.php")
+            else "runtime"
+        )
         self.events.append("save:" + label)
+        self.saved_content[remote] = content
         self.paths.add(remote)
 
     def rename(self, source: str, destination: str) -> None:
@@ -81,12 +89,15 @@ class FakeCpanel:
 
 
 class FakeHttp:
-    def __init__(self, shared_events: list[str], *, fail_live: bool = False) -> None:
+    def __init__(self, shared_events: list[str], *, fail_live: bool = False, transient_health_failures: int = 0) -> None:
         self.events = shared_events
         self.fail_live = fail_live
+        self.transient_health_failures = transient_health_failures
+        self.urls: list[str] = []
 
     def request(self, url: str) -> HttpCheck:
-        path = url.removeprefix(TARGET_URL)
+        self.urls.append(url)
+        path = urllib.parse.urlsplit(url).path
         if "preflight" in path:
             self.events.append("get:preflight")
             return HttpCheck(
@@ -105,7 +116,17 @@ class FakeHttp:
             )
         self.events.append("get:" + (path or "/"))
         if path == "/":
-            return HttpCheck(url, url, 200, "text/html", b"A777 c6ec61c1d7b11ca9991277156a8a7227c764b7b4")
+            return HttpCheck(url, url, 200, "text/html", b"Architex professional operating system")
+        if path == "/build-info.json":
+            return HttpCheck(url, url, 200, "application/json", json.dumps({
+                "format": "architex-build-info-v1",
+                "sourceCommit": "c6ec61c1d7b11ca9991277156a8a7227c764b7b4",
+                "php": "8.3",
+                "apiMode": "php-shared-hosting",
+            }).encode())
+        if path == "/api/v1/health" and self.transient_health_failures > 0:
+            self.transient_health_failures -= 1
+            return HttpCheck(url, url, 404, "application/json", b'{"error":"not_found"}')
         status = 503 if self.fail_live and path == "/api/v1/readiness" else 200
         return HttpCheck(url, url, status, "application/json", b'{"ok":true}')
 
@@ -116,6 +137,7 @@ def make_release(root: Path) -> Path:
     (release / "release.json").write_text(json.dumps({"sourceCommit": "c6ec61c1d7b11ca9991277156a8a7227c764b7b4"}))
     (release / "release-manifest.json").write_text(json.dumps({"format": "test"}))
     (release / "public" / "index.php").write_text("<?php")
+    (release / "public" / ".htaccess").write_text("RewriteEngine On\nRewriteRule ^ index.php [QSA,L]\n")
     return release
 
 
@@ -138,6 +160,7 @@ def deployment(release: Path, remote: FakeCpanel, http: FakeHttp) -> DeploymentO
         http,
         runtime_content=b"<?php return [];",
         archive_builder=archive_builder,
+        sleeper=lambda _seconds: None,
     )
 
 
@@ -164,6 +187,18 @@ class ReleaseHelperTest(unittest.TestCase):
 
 
 class DeploymentOrchestratorTest(unittest.TestCase):
+    def test_transient_live_routing_failure_is_retried(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            events: list[str] = []
+            release = make_release(Path(temporary))
+            remote = FakeCpanel(events)
+            http = FakeHttp(events, transient_health_failures=2)
+
+            result = deployment(release, remote, http).deploy()
+
+        self.assertEqual("deployed", result.status)
+        self.assertEqual(3, sum(1 for url in http.urls if "/api/v1/health?" in url))
+
     def test_preflight_happens_before_first_rename(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             events: list[str] = []
@@ -175,8 +210,20 @@ class DeploymentOrchestratorTest(unittest.TestCase):
 
         self.assertEqual("deployed", result.status)
         first_rename = next(index for index, event in enumerate(events) if event.startswith("rename:"))
+        final_rename = max(index for index, event in enumerate(events) if event.startswith("rename:"))
         self.assertLess(events.index("save:probe"), events.index("get:preflight"))
         self.assertLess(events.index("get:preflight"), first_rename)
+        self.assertGreater(events.index("save:routing"), final_rename)
+        self.assertGreater(events.index("save:entrypoint"), final_rename)
+        routing_trash = events.index("trash:.htaccess")
+        self.assertGreater(routing_trash, final_rename)
+        self.assertLess(routing_trash, events.index("save:routing"))
+        self.assertLess(events.index("save:routing"), events.index("get:/"))
+        self.assertIn(DEPLOYMENT_ID, remote.saved_content[DOCUMENT_ROOT + "/.htaccess"])
+        self.assertIn(DEPLOYMENT_ID, remote.saved_content[DOCUMENT_ROOT + "/index.php"])
+        self.assertIn("/.a777-runtime-active/public/index.php", remote.saved_content[DOCUMENT_ROOT + "/index.php"])
+        live_urls = [url for url in http.urls if "preflight" not in url]
+        self.assertTrue(all("__a777_release=c6ec61c1d7b11ca" in url for url in live_urls))
 
     def test_live_failure_restores_public_and_runtime_in_reverse_order(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -198,6 +245,23 @@ class DeploymentOrchestratorTest(unittest.TestCase):
 
 
 class DeploymentCliTest(unittest.TestCase):
+    def test_runtime_config_includes_optional_nvidia_key_for_wingman(self) -> None:
+        environment = {
+            "A777_DB_HOST": "database.example.test",
+            "A777_DB_NAME": "architex",
+            "A777_DB_USER": "architex",
+            "A777_DB_PASSWORD": "database-secret",
+            "A777_SMTP_HOST": "mail.example.test",
+            "A777_SMTP_USERNAME": "mailer@example.test",
+            "A777_SMTP_PASSWORD": "mail-secret",
+            "A777_SMTP_FROM_EMAIL": "mailer@example.test",
+            "A777_NVIDIA_API_KEY": "nvidia-secret",
+        }
+
+        runtime = build_runtime_config(TARGET_URL, ROOT + "/.a777-storage", environment).decode("utf-8")
+
+        self.assertIn("'NVIDIA_API_KEY' => 'nvidia-secret'", runtime)
+
     def test_inspect_parses_without_private_runtime_variables(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             release = make_release(Path(temporary))

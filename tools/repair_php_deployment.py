@@ -11,6 +11,7 @@ import re
 import ssl
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -208,6 +209,7 @@ class RecoveryPlan:
 
 
 ArchiveBuilder = Callable[[Path, Path, str, str, str], tuple[int, int]]
+Sleeper = Callable[[float], None]
 
 
 class DeploymentOrchestrator:
@@ -219,12 +221,16 @@ class DeploymentOrchestrator:
         *,
         runtime_content: bytes,
         archive_builder: ArchiveBuilder = build_transport_archive,
+        sleeper: Sleeper = time.sleep,
+        live_attempts: int = 6,
     ) -> None:
         self.config = config
         self.remote = remote
         self.http = http
         self.runtime_content = runtime_content
         self.archive_builder = archive_builder
+        self.sleeper = sleeper
+        self.live_attempts = live_attempts
         self.paths = DeploymentPaths.for_id(config, str(config.deployment_id))
         self.completed_renames: list[tuple[str, str]] = []
         self.endpoint_statuses: dict[str, int] = {}
@@ -239,6 +245,7 @@ class DeploymentOrchestrator:
             self._write_private_runtime()
             self._run_preflight()
             self._cutover()
+            self._refresh_routing()
             self._verify_live()
         except Exception as error:
             rollback_error: Exception | None = None
@@ -339,14 +346,54 @@ class DeploymentOrchestrator:
         self._rename(self.paths.document_root, self.paths.rollback_public)
         self._rename(self.paths.candidate_public, self.paths.document_root)
 
+    def _refresh_routing(self) -> None:
+        shim = (
+            "<?php\n\ndeclare(strict_types=1);\n\n"
+            f"// A777 deployment {self.config.deployment_id}\n"
+            f"require dirname(__DIR__) . '/{posixpath.basename(self.paths.active_runtime)}/public/index.php';\n"
+        )
+        rules = (self.config.release / "public" / ".htaccess").read_text(encoding="utf-8")
+        rules = rules.rstrip() + f"\n# A777 deployment {self.config.deployment_id}\n"
+        self.remote.save_file(posixpath.join(self.paths.document_root, "index.php"), shim)
+        live_rules = posixpath.join(self.paths.document_root, ".htaccess")
+        self.remote.trash(live_rules)
+        self.remote.save_file(live_rules, rules)
+
     def _verify_live(self) -> None:
-        landing = self.http.request(self.config.target_url + "/")
+        last_error: DeploymentFailure | None = None
+        for attempt in range(1, self.live_attempts + 1):
+            try:
+                self._verify_live_once(attempt)
+                return
+            except DeploymentFailure as error:
+                last_error = error
+                if attempt < self.live_attempts:
+                    self.sleeper(2.0)
+        assert last_error is not None
+        raise last_error
+
+    def _verify_live_once(self, attempt: int) -> None:
+        cache_buster = urllib.parse.urlencode({
+            "__a777_release": self.release_commit[:16],
+            "attempt": str(attempt),
+        })
+        live_url = lambda path: self.config.target_url + path + "?" + cache_buster
+        landing = self.http.request(live_url("/"))
         self.endpoint_statuses["/"] = landing.status
-        landing_text = landing.body.decode("utf-8", errors="replace")
-        if landing.status != 200 or (self.release_commit not in landing_text and "A777" not in landing_text):
-            raise DeploymentFailure("Live landing page did not expose the expected A777 release marker.")
+        if landing.status != 200 or "html" not in landing.content_type.lower():
+            raise DeploymentFailure("Live landing page did not return HTML with HTTP 200.")
+        build = self.http.request(live_url("/build-info.json"))
+        self.endpoint_statuses["/build-info.json"] = build.status
+        build_payload = build.json() if build.status == 200 and "json" in build.content_type.lower() else {}
+        if (
+            build_payload.get("format") != "architex-build-info-v1"
+            or build_payload.get("sourceCommit") != self.release_commit
+            or build_payload.get("php") != "8.3"
+            or build_payload.get("apiMode") != "php-shared-hosting"
+        ):
+            raise DeploymentFailure("Live build metadata did not match the staged PHP release.")
         for path in LIVE_JSON_PATHS:
-            check = self.http.request(self.config.target_url + path)
+            check = self.http.request(live_url(path))
             self.endpoint_statuses[path] = check.status
             if check.status != 200 or "json" not in check.content_type.lower():
                 raise DeploymentFailure(f"Live validation failed for {path} with HTTP {check.status}.")

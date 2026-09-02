@@ -58,6 +58,7 @@ def validate_release(release: Path) -> None:
         release / "release.json",
         release / "release-manifest.json",
         release / "public" / "index.php",
+        release / "public" / ".htaccess",
     )
     if not all(path.is_file() for path in required):
         fail("Release artifact is incomplete.")
@@ -152,6 +153,7 @@ def build_runtime_config(target_url: str, storage_path: str, environment: Mappin
         "SMTP_ENCRYPTION": environment.get("A777_SMTP_ENCRYPTION", "starttls"),
         "SMTP_USERNAME": required["A777_SMTP_USERNAME"], "SMTP_PASSWORD": required["A777_SMTP_PASSWORD"],
         "SMTP_FROM_EMAIL": required["A777_SMTP_FROM_EMAIL"], "SMTP_FROM_NAME": "Architex",
+        "NVIDIA_API_KEY": environment.get("A777_NVIDIA_API_KEY", "").strip(),
         "BACKUP_ARCHIVE_PASSWORD": environment.get("A777_BACKUP_ARCHIVE_PASSWORD", ""),
         "FILE_STORAGE_PATH": storage_path, "MAINTENANCE_ENABLED": "0", "MAINTENANCE_TOKEN": "",
         "MAINTENANCE_ALLOW_MIGRATIONS": "0", "LAST_VERIFIED_BACKUP_ID": "",

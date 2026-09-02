@@ -258,5 +258,6 @@
   }
 
   landing?.addEventListener('load', bindLandingActions);
+  bindLandingActions();
   window.ArchitexPublicAccess = Object.freeze({ showLanding, showAuth, showWorkspace });
 }());

@@ -161,6 +161,7 @@ class CpanelClientTest(unittest.TestCase):
             ["/home/archite4/public_html/php.architex.co.za"],
             parse_qs(parsed.query)["dir"],
         )
+        self.assertEqual(["1"], parse_qs(parsed.query)["show_hidden"])
 
     def test_failed_uapi_result_raises_without_secret(self) -> None:
         transport = FakeTransport([response({"result": {"status": 0, "errors": ["denied panel-secret"]}})])
@@ -213,7 +214,11 @@ class CpanelClientTest(unittest.TestCase):
         self.assertNotIn("database-secret", str(request["url"]))
         form = parse_qs(bytes(request["body"]).decode("utf-8"))
         self.assertEqual(
-            ["/home/archite4/public_html/php.architex.co.za/.a777-runtime.php"],
+            ["/home/archite4/public_html/php.architex.co.za"],
+            form["dir"],
+        )
+        self.assertEqual(
+            [".a777-runtime.php"],
             form["file"],
         )
         self.assertEqual(["<?php return ['password' => 'database-secret'];"], form["content"])
@@ -256,10 +261,22 @@ class CpanelClientTest(unittest.TestCase):
         second = parse_qs(urlparse(str(transport.requests[1]["url"])).query)
         self.assertEqual(["extract"], first["op"])
         self.assertEqual(["rename"], second["op"])
+        self.assertEqual(["/home/archite4/public_html/release.zip"], first["sourcefiles"])
+        self.assertEqual(["/public_html"], first["destfiles"])
+        self.assertEqual(["0"], first["doubledecode"])
+        self.assertEqual(["1"], first["filelist"])
+        self.assertEqual(["1"], first["multiform"])
         self.assertEqual(
             ["/home/archite4/public_html/php.architex.co.za"],
             second["destfiles"],
         )
+
+    def test_fileop_rejects_failed_data_row_even_when_event_succeeds(self) -> None:
+        transport = FakeTransport([api2_ok([{"result": 0, "err": "extract failed"}])])
+        client = configured_client(transport)
+
+        with self.assertRaisesRegex(CpanelError, "extract failed"):
+            client.extract_archive("/home/archite4/public_html/release.zip")
 
     def test_exists_matches_exact_basename(self) -> None:
         transport = FakeTransport([uapi_ok([{"name": "php.architex.co.za", "type": "dir"}])])

@@ -192,14 +192,37 @@ class CpanelClient:
         result = payload.get("cpanelresult")
         if not isinstance(result, dict) or not isinstance(result.get("event"), dict) or result["event"].get("result") != 1:
             raise CpanelError(redact_text(f"cPanel Fileman failure: {result}", self.config.secrets))
-        return result.get("data", [])
+        data = result.get("data", [])
+        if isinstance(data, list):
+            failed = [item for item in data if isinstance(item, dict) and "result" in item and item.get("result") not in (1, "1", True)]
+            failed.extend(
+                item for item in data
+                if isinstance(item, dict) and (
+                    bool(item.get("err"))
+                    or any(marker in str(item.get("output", "")).lower() for marker in ("permission denied", "unable to process", "cannot create"))
+                )
+            )
+            if failed:
+                raise CpanelError(redact_text(f"cPanel Fileman operation failed: {failed}", self.config.secrets))
+        return data
+
+    def _account_relative(self, path: str) -> str:
+        home = posixpath.normpath(self.config.account_home)
+        normalized = posixpath.normpath(path)
+        relative = posixpath.relpath(normalized, home)
+        if relative == ".." or relative.startswith("../"):
+            raise CpanelError("cPanel API 2 path is outside the account home.")
+        return relative
 
     def _api2_fileop(self, op: str, source: str, destination: str = "") -> object:
         return self._api2("fileop", {
             "op": op,
             "sourcefiles": source,
             "destfiles": destination,
-            "doubledecode": "1",
+            "doubledecode": "0",
+            "filelist": "1",
+            "multiform": "1",
+            "metadata": "undefined",
         })
 
     def account_home(self) -> str:
@@ -215,7 +238,7 @@ class CpanelClient:
 
     def list_files(self, path: str) -> list[dict[str, object]]:
         target = canonical_remote_path(self.config.allowed_root, path)
-        data = self._uapi("Fileman", "list_files", {"dir": target, "include_hidden": "1"})
+        data = self._uapi("Fileman", "list_files", {"dir": target, "show_hidden": "1"})
         if not isinstance(data, list):
             raise CpanelError("cPanel list_files returned an invalid data contract.")
         return [item for item in data if isinstance(item, dict)]
@@ -241,7 +264,11 @@ class CpanelClient:
 
     def save_file(self, remote: str, content: str) -> None:
         target = canonical_remote_path(self.config.allowed_root, remote)
-        body = urllib.parse.urlencode({"file": target, "content": content}).encode("utf-8")
+        body = urllib.parse.urlencode({
+            "dir": posixpath.dirname(target),
+            "file": posixpath.basename(target),
+            "content": content,
+        }).encode("utf-8")
         self._uapi(
             "Fileman",
             "save_file_content",
@@ -260,7 +287,9 @@ class CpanelClient:
         })
 
     def extract_archive(self, archive: str) -> None:
-        self._api2_fileop("extract", canonical_remote_path(self.config.allowed_root, archive))
+        target = canonical_remote_path(self.config.allowed_root, archive)
+        destination = "/" + self._account_relative(posixpath.dirname(target))
+        self._api2_fileop("extract", target, destination)
 
     def rename(self, source: str, destination: str) -> None:
         safe_source = canonical_remote_path(self.config.allowed_root, source)

@@ -47,4 +47,14 @@ final class PublicAccessUiTest extends TestCase
         self::assertStringContainsString('architexpublicaccess.showlanding', $javascript);
         self::assertStringContainsString('architexpublicaccess.showworkspace', $javascript);
     }
+
+    public function testLandingActionsBindWhenIframeLoadedBeforeController(): void
+    {
+        $javascript = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/public-access.js');
+
+        self::assertMatchesRegularExpression(
+            "/landing\\?\\.addEventListener\\('load', bindLandingActions\\);\\s*bindLandingActions\\(\\);/",
+            $javascript,
+        );
+    }
 }
