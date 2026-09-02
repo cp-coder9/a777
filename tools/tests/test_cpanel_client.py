@@ -93,6 +93,42 @@ class RedactionTest(unittest.TestCase):
 
 
 class CpanelClientTest(unittest.TestCase):
+    def test_session_auth_uses_validated_cpsess_prefix_without_authorization_header(self) -> None:
+        transport = FakeTransport([response({"status": 1, "errors": None, "data": {"home": "/home/archite4"}})])
+        client = CpanelClient(
+            CpanelConfig(
+                host="cpanel.example.test",
+                port=2083,
+                username="greg",
+                password="",
+                account_home="/home/archite4",
+                allowed_root="/home/archite4/public_html",
+                session_id="cpsess1234567890",
+                session_cookie="cpsession=greg%40example.test%3Aopaque",
+            ),
+            transport=transport,
+        )
+
+        client.account_home()
+
+        request = transport.requests[0]
+        self.assertEqual("/cpsess1234567890/execute/Variables/get_user_information", urlparse(str(request["url"])).path)
+        self.assertNotIn("Authorization", request["headers"])
+        self.assertEqual("cpsession=greg%40example.test%3Aopaque", request["headers"]["Cookie"])
+        with self.assertRaisesRegex(CpanelError, "session"):
+            CpanelClient(CpanelConfig(
+                host="cpanel.example.test", port=2083, username="greg", password="",
+                account_home="/home/archite4", allowed_root="/home/archite4/public_html",
+                session_id="../escape",
+                session_cookie="cpsession=opaque",
+            ))
+        with self.assertRaisesRegex(CpanelError, "cookie"):
+            CpanelClient(CpanelConfig(
+                host="cpanel.example.test", port=2083, username="greg", password="",
+                account_home="/home/archite4", allowed_root="/home/archite4/public_html",
+                session_id="cpsess1234567890",
+            ))
+
     def test_account_home_is_read_from_cpanel_and_must_match_configuration(self) -> None:
         transport = FakeTransport([
             uapi_ok({"home": "/home/archite4"}),
@@ -227,6 +263,14 @@ class CpanelClientTest(unittest.TestCase):
 
     def test_exists_matches_exact_basename(self) -> None:
         transport = FakeTransport([uapi_ok([{"name": "php.architex.co.za", "type": "dir"}])])
+        client = configured_client(transport)
+        self.assertTrue(client.exists("/home/archite4/public_html/php.architex.co.za"))
+
+    def test_exists_matches_current_uapi_fullpath_contract(self) -> None:
+        transport = FakeTransport([uapi_ok([{
+            "fullpath": "/home/archite4/public_html/php.architex.co.za",
+            "type": "dir",
+        }])])
         client = configured_client(transport)
         self.assertTrue(client.exists("/home/archite4/public_html/php.architex.co.za"))
 

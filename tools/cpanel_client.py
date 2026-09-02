@@ -7,6 +7,7 @@ import base64
 import json
 import mimetypes
 import posixpath
+import re
 import secrets
 import ssl
 import urllib.error
@@ -48,12 +49,14 @@ class CpanelConfig:
     password: str
     account_home: str
     allowed_root: str
+    session_id: str | None = None
+    session_cookie: str | None = None
     ca_file: str | None = None
     timeout: float = 45.0
 
     @property
     def secrets(self) -> tuple[str, ...]:
-        return (self.password,)
+        return (self.password, self.session_id or "", self.session_cookie or "")
 
 
 class UrllibTransport:
@@ -105,12 +108,25 @@ class CpanelClient:
     def __init__(self, config: CpanelConfig, transport: HttpTransport | None = None) -> None:
         self.config = config
         self.transport = transport or UrllibTransport(config.ca_file)
-        token = base64.b64encode(f"{config.username}:{config.password}".encode("utf-8")).decode("ascii")
-        self._authorization = f"Basic {token}"
+        if config.session_id is not None:
+            if re.fullmatch(r"cpsess\d{6,20}", config.session_id) is None:
+                raise CpanelError("Invalid cPanel session identifier.")
+            if config.session_cookie is None or re.fullmatch(r"cpsession=[A-Za-z0-9%._~-]+", config.session_cookie) is None:
+                raise CpanelError("Invalid or missing cPanel session cookie.")
+            self._path_prefix = "/" + config.session_id
+            self._authorization: str | None = None
+            self._session_cookie = config.session_cookie
+        else:
+            if not config.password:
+                raise CpanelError("A cPanel password or session identifier is required.")
+            token = base64.b64encode(f"{config.username}:{config.password}".encode("utf-8")).decode("ascii")
+            self._authorization = f"Basic {token}"
+            self._path_prefix = ""
+            self._session_cookie = None
 
     def _url(self, path: str, params: Mapping[str, str] | None = None) -> str:
         query = urllib.parse.urlencode(params or {})
-        base = f"https://{self.config.host}:{self.config.port}{path}"
+        base = f"https://{self.config.host}:{self.config.port}{self._path_prefix}{path}"
         return f"{base}?{query}" if query else base
 
     def _request_json(
@@ -122,11 +138,14 @@ class CpanelClient:
         headers: Mapping[str, str] | None = None,
     ) -> dict[str, object]:
         request_headers = {
-            "Authorization": self._authorization,
             "Accept": "application/json",
             "User-Agent": "Architex-cPanel-deployer/1",
             **dict(headers or {}),
         }
+        if self._authorization is not None:
+            request_headers["Authorization"] = self._authorization
+        if self._session_cookie is not None:
+            request_headers["Cookie"] = self._session_cookie
         try:
             response = self.transport.request(
                 method,
@@ -154,7 +173,8 @@ class CpanelClient:
         headers: Mapping[str, str] | None = None,
     ) -> object:
         payload = self._request_json("POST" if body is not None else "GET", f"/execute/{module}/{function}", params, body, headers)
-        result = payload.get("result")
+        wrapped = payload.get("result")
+        result = wrapped if isinstance(wrapped, dict) else payload
         if not isinstance(result, dict) or result.get("status") != 1:
             detail = result.get("errors") if isinstance(result, dict) else "malformed result"
             raise CpanelError(redact_text(f"cPanel UAPI failure: {detail}", self.config.secrets))
@@ -257,4 +277,8 @@ class CpanelClient:
         target = canonical_remote_path(self.config.allowed_root, path)
         parent = posixpath.dirname(target)
         name = posixpath.basename(target)
-        return any(str(item.get("name", "")) == name for item in self.list_files(parent))
+        return any(
+            str(item.get("name", "")) == name
+            or posixpath.basename(str(item.get("fullpath", ""))) == name
+            for item in self.list_files(parent)
+        )

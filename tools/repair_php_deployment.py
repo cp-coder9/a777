@@ -3,20 +3,32 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import posixpath
 import re
 import ssl
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Callable, Mapping, Protocol
 
-from tools.cpanel_client import CpanelClient, redact_text
-from tools.deploy_php_ftps import build_transport_archive, deployment_token, probe_source, validate_release
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.cpanel_client import CpanelClient, CpanelConfig, redact_text
+from tools.deploy_php_ftps import (
+    build_runtime_config,
+    build_transport_archive,
+    deployment_token,
+    probe_source,
+    validate_release,
+)
 
 
 DEPLOYMENT_ID_PATTERN = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{8}-[0-9a-f]{16}$")
@@ -170,6 +182,8 @@ class DeploymentResult:
     rollback_public: str = ""
     prior_runtime: str = ""
     endpoints: dict[str, int] = field(default_factory=dict)
+    observed: dict[str, object] = field(default_factory=dict)
+    remote_mutations: list[str] = field(default_factory=list)
     detail: str = ""
 
     def to_dict(self) -> dict[str, object]:
@@ -383,4 +397,187 @@ class DeploymentOrchestrator:
             deployment_id=plan.deployment_id,
             rollback_public=plan.paths.rollback_public,
             prior_runtime=plan.paths.prior_runtime,
+            remote_mutations=[
+                "active public moved to candidate",
+                "rollback public restored",
+                "active runtime moved to candidate",
+                "prior runtime restored",
+            ],
         )
+
+
+def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Repair the A777 PHP deployment through cPanel APIs.")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    def add_target_options(command: argparse.ArgumentParser, *, require_release: bool) -> None:
+        command.add_argument("--release", type=Path, required=require_release, default=Path.cwd())
+        command.add_argument("--target-url", default="https://php.architex.co.za")
+        command.add_argument("--document-root", default="/home/archite4/public_html/php.architex.co.za")
+        command.add_argument("--account-home")
+        command.add_argument("--ca-file")
+
+    inspect = commands.add_parser("inspect", help="Perform read-only account, path, release, and endpoint checks.")
+    add_target_options(inspect, require_release=True)
+    inspect.add_argument("--deployment-id")
+
+    deploy = commands.add_parser("deploy", help="Stage, preflight, atomically activate, and verify a release.")
+    add_target_options(deploy, require_release=True)
+    deploy.add_argument("--deployment-id")
+
+    recover = commands.add_parser("recover", help="Plan recovery, or apply it with an explicit flag.")
+    add_target_options(recover, require_release=False)
+    recover.add_argument("--deployment-id", required=True)
+    recover.add_argument("--apply-recovery", action="store_true")
+    return parser.parse_args(arguments)
+
+
+def _account_home(args: argparse.Namespace, environment: Mapping[str, str]) -> str:
+    explicit = (args.account_home or environment.get("A777_CPANEL_ACCOUNT_HOME", "")).strip()
+    if explicit:
+        return posixpath.normpath(explicit)
+    public_root = posixpath.dirname(posixpath.normpath(args.document_root))
+    if posixpath.basename(public_root) != "public_html":
+        raise DeploymentFailure("Account home cannot be derived from the document root.")
+    return posixpath.dirname(public_root)
+
+
+def _configured_remote(
+    args: argparse.Namespace,
+    environment: Mapping[str, str],
+    account_home: str,
+) -> CpanelClient:
+    required = {
+        "A777_CPANEL_HOST": environment.get("A777_CPANEL_HOST", "").strip(),
+        "A777_CPANEL_USER": environment.get("A777_CPANEL_USER", "").strip(),
+    }
+    missing = [name for name, value in required.items() if not value]
+    password = environment.get("A777_CPANEL_PASSWORD", "").strip()
+    session_id = environment.get("A777_CPANEL_SESSION", "").strip()
+    session_cookie = environment.get("A777_CPANEL_SESSION_COOKIE", "").strip()
+    if not password and not session_id:
+        missing.append("A777_CPANEL_PASSWORD or A777_CPANEL_SESSION")
+    if session_id and not session_cookie:
+        missing.append("A777_CPANEL_SESSION_COOKIE")
+    if missing:
+        raise DeploymentFailure("Missing cPanel environment keys: " + ", ".join(missing))
+    try:
+        port = int(environment.get("A777_CPANEL_PORT", "2083"))
+    except ValueError as error:
+        raise DeploymentFailure("A777_CPANEL_PORT must be an integer.") from error
+    return CpanelClient(CpanelConfig(
+        host=required["A777_CPANEL_HOST"],
+        port=port,
+        username=required["A777_CPANEL_USER"],
+        password=password,
+        account_home=account_home,
+        allowed_root=posixpath.dirname(posixpath.normpath(args.document_root)),
+        session_id=session_id or None,
+        session_cookie=session_cookie or None,
+        ca_file=args.ca_file,
+    ))
+
+
+def _configuration(args: argparse.Namespace, account_home: str) -> DeploymentConfig:
+    return DeploymentConfig(
+        release=args.release,
+        target_url=args.target_url,
+        document_root=args.document_root,
+        account_home=account_home,
+        deployment_id=args.deployment_id,
+    )
+
+
+def _inspect(
+    config: DeploymentConfig,
+    remote: CpanelClient,
+    http: HttpVerifier,
+) -> DeploymentResult:
+    validate_release(config.release)
+    if remote.account_home() != config.account_home:
+        raise DeploymentFailure("Authenticated cPanel account home does not match the deployment configuration.")
+    entries = remote.list_files(posixpath.dirname(config.document_root))
+    names = sorted(
+        str(item.get("name") or posixpath.basename(str(item.get("fullpath", ""))))
+        for item in entries
+        if item.get("name") or item.get("fullpath")
+    )
+    stale = [name for name in names if ".candidate-a777-" in name or ".pre-a777-" in name or name.startswith(".a777-runtime-")]
+    endpoints: dict[str, int] = {}
+    for path in ("/", *LIVE_JSON_PATHS):
+        endpoints[path] = http.request(config.target_url + path).status
+    return DeploymentResult(
+        status="inspected",
+        deployment_id=str(config.deployment_id),
+        endpoints=endpoints,
+        observed={
+            "accountHome": config.account_home,
+            "documentRootExists": remote.exists(config.document_root),
+            "staleDeploymentPaths": stale,
+        },
+    )
+
+
+def run_cli(
+    args: argparse.Namespace,
+    *,
+    environment: Mapping[str, str] | None = None,
+    remote: CpanelClient | None = None,
+    http: HttpVerifier | None = None,
+) -> DeploymentResult:
+    values = dict(os.environ if environment is None else environment)
+    account_home = _account_home(args, values)
+    config = _configuration(args, account_home)
+    client = remote or _configured_remote(args, values, account_home)
+    verifier = http or UrllibHttpVerifier(ca_file=args.ca_file)
+
+    if args.command == "inspect":
+        return _inspect(config, client, verifier)
+    if args.command == "deploy":
+        try:
+            runtime = build_runtime_config(config.target_url, posixpath.join(posixpath.dirname(config.document_root), ".a777-storage"), values)
+        except RuntimeError as error:
+            raise DeploymentFailure(str(error)) from error
+        return DeploymentOrchestrator(config, client, verifier, runtime_content=runtime).deploy()
+    if args.command == "recover":
+        orchestrator = DeploymentOrchestrator(config, client, verifier, runtime_content=b"")
+        plan = orchestrator.recovery_plan(str(args.deployment_id))
+        if not args.apply_recovery:
+            return DeploymentResult(
+                status="recovery_planned",
+                deployment_id=str(args.deployment_id),
+                observed=dict(plan.observed),
+            )
+        return orchestrator.apply_recovery(plan)
+    raise DeploymentFailure("Unsupported deployment command.")
+
+
+def render_failure(error: Exception, secrets: tuple[str, ...] = ()) -> str:
+    return json.dumps(
+        {"status": "failed", "detail": redact_text(str(error), secrets)},
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+
+
+def _environment_secrets(environment: Mapping[str, str]) -> tuple[str, ...]:
+    secret_markers = ("PASSWORD", "PASS", "TOKEN", "SECRET", "APP_KEY")
+    return tuple(
+        value for name, value in environment.items()
+        if value and any(marker in name.upper() for marker in secret_markers)
+    )
+
+
+def main(arguments: list[str] | None = None) -> int:
+    environment = dict(os.environ)
+    try:
+        result = run_cli(parse_args(arguments), environment=environment)
+    except Exception as error:
+        print(render_failure(error, _environment_secrets(environment)), file=sys.stderr)
+        return 1
+    print(json.dumps(result.to_dict(), separators=(",", ":"), sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

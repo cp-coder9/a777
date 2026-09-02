@@ -12,6 +12,9 @@ from tools.repair_php_deployment import (
     DeploymentFailure,
     DeploymentOrchestrator,
     HttpCheck,
+    parse_args,
+    render_failure,
+    run_cli,
 )
 
 
@@ -36,6 +39,15 @@ class FakeCpanel:
 
     def exists(self, path: str) -> bool:
         return path in self.paths
+
+    def list_files(self, path: str) -> list[dict[str, object]]:
+        prefix = path.rstrip("/") + "/"
+        names = {
+            candidate[len(prefix):].split("/", 1)[0]
+            for candidate in self.paths
+            if candidate.startswith(prefix) and candidate != path
+        }
+        return [{"name": name} for name in sorted(names)]
 
     def mkdir(self, path: str, permissions: str = "0755") -> None:
         self.events.append("mkdir:" + Path(path).name)
@@ -184,6 +196,75 @@ class DeploymentOrchestratorTest(unittest.TestCase):
         backward = events.index("rename:php.architex.co.za->php.architex.co.za.candidate-a777-" + DEPLOYMENT_ID, forward)
         self.assertGreater(backward, forward)
 
+
+class DeploymentCliTest(unittest.TestCase):
+    def test_inspect_parses_without_private_runtime_variables(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = make_release(Path(temporary))
+            args = parse_args([
+                "inspect",
+                "--release", str(release),
+                "--target-url", TARGET_URL,
+                "--document-root", DOCUMENT_ROOT,
+            ])
+        self.assertEqual("inspect", args.command)
+
+    def test_inspect_is_read_only_and_reports_current_endpoint_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = make_release(Path(temporary))
+            remote = FakeCpanel([])
+            args = parse_args([
+                "inspect",
+                "--release", str(release),
+                "--target-url", TARGET_URL,
+                "--document-root", DOCUMENT_ROOT,
+                "--deployment-id", DEPLOYMENT_ID,
+            ])
+
+            result = run_cli(args, environment={}, remote=remote, http=FakeHttp([]))
+
+        self.assertEqual("inspected", result.status)
+        self.assertTrue(result.observed["documentRootExists"])
+        self.assertEqual(200, result.endpoints["/api/v1/health"])
+        self.assertFalse(any(event.startswith(("rename:", "save:", "upload:", "trash:")) for event in remote.events))
+
+    def test_deploy_requires_all_private_runtime_variables(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = make_release(Path(temporary))
+            args = parse_args([
+                "deploy",
+                "--release", str(release),
+                "--target-url", TARGET_URL,
+                "--document-root", DOCUMENT_ROOT,
+                "--deployment-id", DEPLOYMENT_ID,
+            ])
+            with self.assertRaisesRegex(DeploymentFailure, "Missing private runtime environment keys"):
+                run_cli(args, environment={"A777_CPANEL_PASSWORD": "panel-only"}, remote=FakeCpanel([]), http=FakeHttp([]))
+
+    def test_failure_output_is_one_redacted_json_object(self) -> None:
+        output = render_failure(DeploymentFailure("password=secret-value"), secrets=("secret-value",))
+        payload = json.loads(output)
+        self.assertEqual("failed", payload["status"])
+        self.assertNotIn("secret-value", output)
+        self.assertNotIn("\n", output)
+
+    def test_recover_is_dry_run_without_apply_recovery(self) -> None:
+        remote = FakeCpanel([])
+        args = parse_args([
+            "recover",
+            "--deployment-id", DEPLOYMENT_ID,
+            "--target-url", TARGET_URL,
+            "--document-root", DOCUMENT_ROOT,
+        ])
+
+        result = run_cli(args, environment={}, remote=remote, http=FakeHttp([]))
+
+        self.assertEqual("recovery_planned", result.status)
+        self.assertEqual([], result.remote_mutations)
+        self.assertFalse(any(event.startswith("rename:") for event in remote.events))
+
+
+class DeploymentStateMachineAdditionalTest(unittest.TestCase):
     def test_failed_preflight_never_renames(self) -> None:
         class FailedPreflight(FakeHttp):
             def request(self, url: str) -> HttpCheck:
