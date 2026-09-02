@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+"""Fail-closed staged deployment repair for A777 on cPanel shared hosting."""
+
+from __future__ import annotations
+
+import json
+import posixpath
+import re
+import ssl
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Callable, Protocol
+
+from tools.cpanel_client import CpanelClient, redact_text
+from tools.deploy_php_ftps import build_transport_archive, deployment_token, probe_source, validate_release
+
+
+DEPLOYMENT_ID_PATTERN = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{8}-[0-9a-f]{16}$")
+LIVE_JSON_PATHS = (
+    "/api/v1/health",
+    "/api/v1/readiness",
+    "/api/v1/legal-notices/signup",
+)
+
+
+class DeploymentFailure(RuntimeError):
+    """A deployment stopped or rolled back without exposing credentials."""
+
+
+@dataclass(frozen=True)
+class HttpCheck:
+    url: str
+    final_url: str
+    status: int
+    content_type: str
+    body: bytes
+
+    def json(self) -> dict[str, object]:
+        try:
+            payload = json.loads(self.body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise DeploymentFailure(f"Endpoint {self.url} did not return valid JSON.") from error
+        if not isinstance(payload, dict):
+            raise DeploymentFailure(f"Endpoint {self.url} did not return a JSON object.")
+        return payload
+
+
+class HttpVerifier(Protocol):
+    def request(self, url: str) -> HttpCheck:
+        """Fetch one exact deployment endpoint without cross-host redirects."""
+
+
+class SameHostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, new_url):  # type: ignore[no-untyped-def]
+        source = urllib.parse.urlsplit(request.full_url)
+        destination = urllib.parse.urlsplit(new_url)
+        if (source.scheme, source.netloc) != (destination.scheme, destination.netloc):
+            raise urllib.error.HTTPError(new_url, code, "Cross-host redirect refused", headers, fp)
+        return super().redirect_request(request, fp, code, message, headers, new_url)
+
+
+class UrllibHttpVerifier:
+    def __init__(self, timeout: float = 45.0, ca_file: str | None = None) -> None:
+        context = ssl.create_default_context(cafile=ca_file)
+        self.opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=context),
+            SameHostRedirectHandler(),
+        )
+        self.timeout = timeout
+
+    def request(self, url: str) -> HttpCheck:
+        request = urllib.request.Request(url, headers={"User-Agent": "Architex-release-verifier/2"})
+        try:
+            with self.opener.open(request, timeout=self.timeout) as response:
+                return HttpCheck(
+                    url=url,
+                    final_url=response.geturl(),
+                    status=response.status,
+                    content_type=response.headers.get_content_type(),
+                    body=response.read(),
+                )
+        except urllib.error.HTTPError as error:
+            return HttpCheck(
+                url=url,
+                final_url=error.geturl(),
+                status=error.code,
+                content_type=error.headers.get_content_type() if error.headers else "",
+                body=error.read(),
+            )
+
+
+@dataclass(frozen=True)
+class DeploymentConfig:
+    release: Path
+    target_url: str
+    document_root: str
+    account_home: str
+    deployment_id: str | None = None
+
+    def __post_init__(self) -> None:
+        release = self.release.resolve()
+        target_url = self.target_url.rstrip("/")
+        parsed = urllib.parse.urlsplit(target_url)
+        if parsed.scheme != "https" or not parsed.netloc or parsed.path:
+            raise DeploymentFailure("Target URL must be an HTTPS origin without a path.")
+        if not self.document_root.startswith("/") or posixpath.normpath(self.document_root) == "/":
+            raise DeploymentFailure("Document root must be an absolute contained path.")
+        identifier = self.deployment_id or deployment_token(release)
+        if not DEPLOYMENT_ID_PATTERN.fullmatch(identifier):
+            raise DeploymentFailure("Deployment ID does not match the required format.")
+        object.__setattr__(self, "release", release)
+        object.__setattr__(self, "target_url", target_url)
+        object.__setattr__(self, "document_root", posixpath.normpath(self.document_root))
+        object.__setattr__(self, "account_home", posixpath.normpath(self.account_home))
+        object.__setattr__(self, "deployment_id", identifier)
+
+
+@dataclass(frozen=True)
+class DeploymentPaths:
+    parent: str
+    document_root: str
+    active_runtime: str
+    candidate_runtime: str
+    prior_runtime: str
+    storage: str
+    candidate_public: str
+    rollback_public: str
+    archive: str
+    probe: str
+
+    @classmethod
+    def for_id(cls, config: DeploymentConfig, deployment_id: str) -> "DeploymentPaths":
+        if not DEPLOYMENT_ID_PATTERN.fullmatch(deployment_id):
+            raise DeploymentFailure("Recovery deployment ID does not match the required format.")
+        parent = posixpath.dirname(config.document_root)
+        target_name = posixpath.basename(config.document_root)
+        return cls(
+            parent=parent,
+            document_root=config.document_root,
+            active_runtime=posixpath.join(parent, ".a777-runtime-active"),
+            candidate_runtime=posixpath.join(parent, f".a777-runtime-candidate-{deployment_id}"),
+            prior_runtime=posixpath.join(parent, f".a777-runtime-prior-{deployment_id}"),
+            storage=posixpath.join(parent, ".a777-storage"),
+            candidate_public=posixpath.join(parent, f"{target_name}.candidate-a777-{deployment_id}"),
+            rollback_public=posixpath.join(parent, f"{target_name}.pre-a777-{deployment_id}"),
+            archive=posixpath.join(parent, f".a777-package-{deployment_id}.zip"),
+            probe=posixpath.join(config.document_root, f"__a777_preflight_{deployment_id}.php"),
+        )
+
+    def recovery_targets(self) -> dict[str, str]:
+        return {
+            "document_root": self.document_root,
+            "rollback_public": self.rollback_public,
+            "candidate_public": self.candidate_public,
+            "active_runtime": self.active_runtime,
+            "prior_runtime": self.prior_runtime,
+            "candidate_runtime": self.candidate_runtime,
+        }
+
+
+@dataclass(frozen=True)
+class DeploymentResult:
+    status: str
+    deployment_id: str
+    release_commit: str = ""
+    rollback_public: str = ""
+    prior_runtime: str = ""
+    endpoints: dict[str, int] = field(default_factory=dict)
+    detail: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RecoveryPlan:
+    deployment_id: str
+    paths: DeploymentPaths
+    observed: dict[str, bool]
+
+    def require_unambiguous(self) -> None:
+        required = ("document_root", "rollback_public", "active_runtime", "prior_runtime")
+        missing = [name for name in required if not self.observed.get(name)]
+        collisions = [name for name in ("candidate_public", "candidate_runtime") if self.observed.get(name)]
+        if missing or collisions:
+            raise DeploymentFailure(
+                "Recovery state is ambiguous; missing=" + ",".join(missing or ("none",))
+                + "; collisions=" + ",".join(collisions or ("none",))
+            )
+
+
+ArchiveBuilder = Callable[[Path, Path, str, str, str], tuple[int, int]]
+
+
+class DeploymentOrchestrator:
+    def __init__(
+        self,
+        config: DeploymentConfig,
+        remote: CpanelClient,
+        http: HttpVerifier,
+        *,
+        runtime_content: bytes,
+        archive_builder: ArchiveBuilder = build_transport_archive,
+    ) -> None:
+        self.config = config
+        self.remote = remote
+        self.http = http
+        self.runtime_content = runtime_content
+        self.archive_builder = archive_builder
+        self.paths = DeploymentPaths.for_id(config, str(config.deployment_id))
+        self.completed_renames: list[tuple[str, str]] = []
+        self.endpoint_statuses: dict[str, int] = {}
+        self.release_commit = ""
+        self._temporary: tempfile.TemporaryDirectory[str] | None = None
+
+    def deploy(self) -> DeploymentResult:
+        try:
+            self._verify_local_release()
+            self._verify_account_and_paths()
+            self._stage_archive()
+            self._write_private_runtime()
+            self._run_preflight()
+            self._cutover()
+            self._verify_live()
+        except Exception as error:
+            rollback_error: Exception | None = None
+            if self.completed_renames:
+                try:
+                    self._rollback()
+                except Exception as caught:
+                    rollback_error = caught
+            self._cleanup_temporary_files()
+            detail = str(error)
+            if rollback_error is not None:
+                detail += f" Rollback also failed: {rollback_error}"
+            raise DeploymentFailure(detail) from error
+        self._cleanup_temporary_files()
+        return DeploymentResult(
+            status="deployed",
+            deployment_id=str(self.config.deployment_id),
+            release_commit=self.release_commit,
+            rollback_public=self.paths.rollback_public,
+            prior_runtime=self.paths.prior_runtime,
+            endpoints=dict(self.endpoint_statuses),
+        )
+
+    def _verify_local_release(self) -> None:
+        validate_release(self.config.release)
+        try:
+            metadata = json.loads((self.config.release / "release.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise DeploymentFailure("Release metadata is not valid JSON.") from error
+        commit = metadata.get("sourceCommit") if isinstance(metadata, dict) else None
+        if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{7,64}", commit):
+            raise DeploymentFailure("Release metadata does not contain a valid source commit.")
+        self.release_commit = commit
+
+    def _verify_account_and_paths(self) -> None:
+        if self.remote.account_home() != self.config.account_home:
+            raise DeploymentFailure("Authenticated cPanel account home does not match the deployment configuration.")
+        expected_root = posixpath.join(self.config.account_home, "public_html")
+        if self.paths.parent != expected_root:
+            raise DeploymentFailure("Document root must be a direct child of the authenticated public_html root.")
+        if not self.remote.exists(self.paths.document_root):
+            raise DeploymentFailure("The configured document root does not exist for preflight.")
+        collisions = (
+            self.paths.candidate_runtime,
+            self.paths.prior_runtime,
+            self.paths.candidate_public,
+            self.paths.rollback_public,
+            self.paths.archive,
+            self.paths.probe,
+        )
+        if any(self.remote.exists(path) for path in collisions):
+            raise DeploymentFailure("A deployment candidate or rollback path already exists for this deployment ID.")
+        if not self.remote.exists(self.paths.storage):
+            self.remote.mkdir(self.paths.storage)
+
+    def _stage_archive(self) -> None:
+        self._temporary = tempfile.TemporaryDirectory(prefix="a777-cpanel-")
+        local_archive = Path(self._temporary.name) / posixpath.basename(self.paths.archive)
+        self.archive_builder(
+            self.config.release,
+            local_archive,
+            posixpath.basename(self.paths.candidate_runtime),
+            posixpath.basename(self.paths.candidate_public),
+            posixpath.basename(self.paths.active_runtime),
+        )
+        self.remote.upload_file(local_archive, self.paths.archive)
+        self.remote.extract_archive(self.paths.archive)
+        if not self.remote.exists(self.paths.candidate_runtime) or not self.remote.exists(self.paths.candidate_public):
+            raise DeploymentFailure("cPanel extraction did not create both release candidates.")
+
+    def _write_private_runtime(self) -> None:
+        target = posixpath.join(self.paths.candidate_runtime, "config", "runtime.php")
+        self.remote.save_file(target, self.runtime_content.decode("utf-8"))
+
+    def _run_preflight(self) -> None:
+        source = probe_source(posixpath.basename(self.paths.candidate_runtime)).decode("utf-8")
+        self.remote.save_file(self.paths.probe, source)
+        try:
+            check = self.http.request(self.config.target_url + "/" + posixpath.basename(self.paths.probe))
+            payload = check.json()
+            required_true = ("ok", "php", "database", "migrations", "mail")
+            valid = check.status == 200 and all(payload.get(name) is True for name in required_true)
+            valid = valid and isinstance(payload.get("phpVersionId"), int) and int(payload["phpVersionId"]) >= 80300
+            if not valid:
+                raise DeploymentFailure("Private runtime preflight did not confirm PHP 8.3, database, migrations, and mail readiness.")
+        finally:
+            if self.remote.exists(self.paths.probe):
+                self.remote.trash(self.paths.probe)
+
+    def _rename(self, source: str, destination: str) -> None:
+        self.remote.rename(source, destination)
+        self.completed_renames.append((source, destination))
+
+    def _cutover(self) -> None:
+        if self.remote.exists(self.paths.active_runtime):
+            self._rename(self.paths.active_runtime, self.paths.prior_runtime)
+        self._rename(self.paths.candidate_runtime, self.paths.active_runtime)
+        self._rename(self.paths.document_root, self.paths.rollback_public)
+        self._rename(self.paths.candidate_public, self.paths.document_root)
+
+    def _verify_live(self) -> None:
+        landing = self.http.request(self.config.target_url + "/")
+        self.endpoint_statuses["/"] = landing.status
+        landing_text = landing.body.decode("utf-8", errors="replace")
+        if landing.status != 200 or (self.release_commit not in landing_text and "A777" not in landing_text):
+            raise DeploymentFailure("Live landing page did not expose the expected A777 release marker.")
+        for path in LIVE_JSON_PATHS:
+            check = self.http.request(self.config.target_url + path)
+            self.endpoint_statuses[path] = check.status
+            if check.status != 200 or "json" not in check.content_type.lower():
+                raise DeploymentFailure(f"Live validation failed for {path} with HTTP {check.status}.")
+            check.json()
+
+    def _rollback(self) -> None:
+        while self.completed_renames:
+            source, destination = self.completed_renames.pop()
+            self.remote.rename(destination, source)
+
+    def _cleanup_temporary_files(self) -> None:
+        for path in (self.paths.probe, self.paths.archive):
+            try:
+                if self.remote.exists(path):
+                    self.remote.trash(path)
+            except Exception:
+                pass
+        if self._temporary is not None:
+            self._temporary.cleanup()
+            self._temporary = None
+
+    def failure_result(self, error: Exception, secrets: tuple[str, ...] = ()) -> DeploymentResult:
+        return DeploymentResult(
+            status="failed",
+            deployment_id=str(self.config.deployment_id),
+            release_commit=self.release_commit,
+            detail=redact_text(str(error), secrets),
+        )
+
+    def recovery_plan(self, deployment_id: str) -> RecoveryPlan:
+        paths = DeploymentPaths.for_id(self.config, deployment_id)
+        observed = {name: self.remote.exists(path) for name, path in paths.recovery_targets().items()}
+        return RecoveryPlan(deployment_id=deployment_id, paths=paths, observed=observed)
+
+    def apply_recovery(self, plan: RecoveryPlan) -> DeploymentResult:
+        expected = DeploymentPaths.for_id(self.config, plan.deployment_id)
+        if plan.paths != expected:
+            raise DeploymentFailure("Recovery plan paths do not match the configured target root.")
+        plan.require_unambiguous()
+        self.remote.rename(plan.paths.document_root, plan.paths.candidate_public)
+        self.remote.rename(plan.paths.rollback_public, plan.paths.document_root)
+        self.remote.rename(plan.paths.active_runtime, plan.paths.candidate_runtime)
+        self.remote.rename(plan.paths.prior_runtime, plan.paths.active_runtime)
+        if not self.remote.exists(plan.paths.document_root) or not self.remote.exists(plan.paths.active_runtime):
+            raise DeploymentFailure("Recovered deployment paths could not be verified.")
+        return DeploymentResult(
+            status="recovered",
+            deployment_id=plan.deployment_id,
+            rollback_public=plan.paths.rollback_public,
+            prior_runtime=plan.paths.prior_runtime,
+        )

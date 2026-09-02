@@ -15,13 +15,16 @@ import json
 import os
 import posixpath
 import re
+import secrets
 import shutil
 import ssl
 import sys
 import time
 import urllib.request
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Mapping
 
 
 REQUIRED_RUNTIME_KEYS = (
@@ -48,6 +51,23 @@ def env_file_values(path: Path) -> dict[str, str]:
 
 def remote_join(*parts: str) -> str:
     return posixpath.normpath(posixpath.join(*parts))
+
+
+def validate_release(release: Path) -> None:
+    required = (
+        release / "release.json",
+        release / "release-manifest.json",
+        release / "public" / "index.php",
+    )
+    if not all(path.is_file() for path in required):
+        fail("Release artifact is incomplete.")
+
+
+def deployment_token(release: Path, now: datetime | None = None) -> str:
+    instant = now or datetime.now(timezone.utc)
+    stamp = instant.strftime("%Y%m%d-%H%M%S")
+    suffix = hashlib.sha256(f"{release.resolve()}:{stamp}".encode("utf-8")).hexdigest()[:8]
+    return f"{stamp}-{suffix}-{secrets.token_hex(8)}"
 
 
 class Ftps:
@@ -115,24 +135,24 @@ def upload_tree(client: Ftps, source: Path, destination: str, exclude: set[str] 
     return count
 
 
-def runtime_config(args: argparse.Namespace, storage_path: str) -> bytes:
-    required = {key: os.environ.get(key, "").strip() for key in REQUIRED_RUNTIME_KEYS}
+def build_runtime_config(target_url: str, storage_path: str, environment: Mapping[str, str]) -> bytes:
+    required = {key: environment.get(key, "").strip() for key in REQUIRED_RUNTIME_KEYS}
     missing = [key for key, value in required.items() if not value]
     if missing:
         fail("Missing private runtime environment keys: " + ", ".join(missing))
-    app_key = os.environ.get("A777_APP_KEY", "").strip()
+    app_key = environment.get("A777_APP_KEY", "").strip()
     if not app_key:
         app_key = hashlib.sha256(os.urandom(64)).digest().hex()
         app_key = __import__("base64").b64encode(bytes.fromhex(app_key)).decode("ascii")
     values = {
-        "APP_ENV": "production", "APP_DEBUG": "false", "APP_URL": args.target_url.rstrip("/"), "APP_KEY": app_key,
-        "DB_HOST": required["A777_DB_HOST"], "DB_PORT": os.environ.get("A777_DB_PORT", "3306"),
+        "APP_ENV": "production", "APP_DEBUG": "false", "APP_URL": target_url.rstrip("/"), "APP_KEY": app_key,
+        "DB_HOST": required["A777_DB_HOST"], "DB_PORT": environment.get("A777_DB_PORT", "3306"),
         "DB_NAME": required["A777_DB_NAME"], "DB_USER": required["A777_DB_USER"], "DB_PASSWORD": required["A777_DB_PASSWORD"],
-        "SMTP_HOST": required["A777_SMTP_HOST"], "SMTP_PORT": os.environ.get("A777_SMTP_PORT", "587"),
-        "SMTP_ENCRYPTION": os.environ.get("A777_SMTP_ENCRYPTION", "starttls"),
+        "SMTP_HOST": required["A777_SMTP_HOST"], "SMTP_PORT": environment.get("A777_SMTP_PORT", "587"),
+        "SMTP_ENCRYPTION": environment.get("A777_SMTP_ENCRYPTION", "starttls"),
         "SMTP_USERNAME": required["A777_SMTP_USERNAME"], "SMTP_PASSWORD": required["A777_SMTP_PASSWORD"],
         "SMTP_FROM_EMAIL": required["A777_SMTP_FROM_EMAIL"], "SMTP_FROM_NAME": "Architex",
-        "BACKUP_ARCHIVE_PASSWORD": os.environ.get("A777_BACKUP_ARCHIVE_PASSWORD", ""),
+        "BACKUP_ARCHIVE_PASSWORD": environment.get("A777_BACKUP_ARCHIVE_PASSWORD", ""),
         "FILE_STORAGE_PATH": storage_path, "MAINTENANCE_ENABLED": "0", "MAINTENANCE_TOKEN": "",
         "MAINTENANCE_ALLOW_MIGRATIONS": "0", "LAST_VERIFIED_BACKUP_ID": "",
     }
@@ -144,22 +164,33 @@ def runtime_config(args: argparse.Namespace, storage_path: str) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
+def runtime_config(args: argparse.Namespace, storage_path: str) -> bytes:
+    return build_runtime_config(args.target_url, storage_path, os.environ)
+
+
 def probe_source(runtime_name: str) -> bytes:
     return f"""<?php
 declare(strict_types=1);
 require dirname(__DIR__) . '/{runtime_name}/bootstrap.php';
 use Architex\\Infrastructure\\Config\\AppConfig;
 use Architex\\Infrastructure\\Database\\ConnectionFactory;
+use Architex\\Infrastructure\\Database\\MigrationRunner;
 use Architex\\Infrastructure\\Mail\\MailRuntime;
 try {{
     $env = getenv();
     $env = is_array($env) ? $env : [];
     $pdo = ConnectionFactory::create(AppConfig::fromEnvironment($env));
+    $php = PHP_VERSION_ID >= 80300;
     $db = (int) $pdo->query('SELECT 1')->fetchColumn() === 1;
+    $migrations = (new MigrationRunner($pdo, dirname(__DIR__) . '/{runtime_name}/database/migrations'))->status()->isCurrent();
     $mail = MailRuntime::fromEnvironment($pdo, $env)->isReady();
     header('Content-Type: application/json');
-    echo json_encode(['ok' => $db && $mail, 'database' => $db, 'mail' => $mail], JSON_THROW_ON_ERROR);
-}} catch (Throwable) {{ http_response_code(503); echo '{{"ok":false}}'; }}
+    echo json_encode(['ok' => $php && $db && $migrations && $mail, 'php' => $php, 'phpVersionId' => PHP_VERSION_ID, 'database' => $db, 'migrations' => $migrations, 'mail' => $mail], JSON_THROW_ON_ERROR);
+}} catch (Throwable) {{
+    http_response_code(503);
+    header('Content-Type: application/json');
+    echo json_encode(['ok' => false, 'php' => PHP_VERSION_ID >= 80300, 'phpVersionId' => PHP_VERSION_ID, 'database' => false, 'migrations' => false, 'mail' => false]);
+}}
 """.encode("utf-8")
 
 
@@ -218,8 +249,7 @@ def main() -> int:
     parser.add_argument("--target-url", required=True)
     args = parser.parse_args()
     release = args.release.resolve()
-    if not (release / "release.json").is_file() or not (release / "public" / "index.php").is_file():
-        fail("Release artifact is incomplete.")
+    validate_release(release)
     ftp_values = env_file_values(args.ftp_env)
     for key in ("FTP_HOST", "FTP_USER", "FTP_PASS"):
         if not ftp_values.get(key):
