@@ -38,9 +38,9 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
                 ['prompt'=>'Who retains professional responsibility?', 'type'=>'single_choice', 'points'=>1, 'options'=>[['text'=>'The registered professional','correct'=>true],['text'=>'The AI system','correct'=>false]]],
                 ['prompt'=>'Explain the required human sign-off.', 'type'=>'text_review', 'points'=>1],
             ],
-            'generatedWithAi'=>true,
+            'generatedWithAi'=>false,
         ]);
-        self::assertTrue($assessment['generatedWithAi']);
+        self::assertFalse($assessment['generatedWithAi']);
         self::assertSame('human_review_required', $assessment['status']);
 
         $assessment = $service->reviewAssessment($organisation, $admin, 'owner', $assessment['id'], [

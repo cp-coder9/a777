@@ -16,6 +16,12 @@ final class CPDAssessmentWorkspaceTest extends TestCase
         foreach(['/cpd/workspace','/cpd/profile','/cpd/content','/cpd/assessments','/cpd/accreditation','/cpd/courses','/cpd/entitlements','/cpd/attempts','/cpd/certificates','/cpd/commercial-settings','/cpd/referrals']as$route)self::assertStringContainsString($route,$shell);
         self::assertStringContainsString('Download PDF',$shell);
         self::assertStringContainsString('configuredProviders',$shell);
+        self::assertStringContainsString('Generate with Nemotron',$shell);
+        self::assertStringContainsString("document.title='CPD Learning Hub — Architex OS'",$shell);
+        self::assertStringContainsString('canReviewAssessments',$shell);
+        self::assertStringContainsString('canDecideAccreditation',$shell);
+        self::assertStringContainsString('canAssignRoles',$shell);
+        self::assertStringContainsString('profile.elements.popiaConsent.checked=Boolean(cpdState.profile.popiaConsentAt)',$shell);
         self::assertStringContainsString("openGlobal('cpd')",$app);
         self::assertStringContainsString("id:'cpd'",$app);
         self::assertStringContainsString("if(id==='cpd')",$shell.$app);

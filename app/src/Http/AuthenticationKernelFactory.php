@@ -397,7 +397,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
         (new CPDRoutes(
-            new CPDController(new CPDAssessmentService($this->pdo)),
+            new CPDController(new CPDAssessmentService($this->pdo,$wingmanModel)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'tools.use'),
             new PermissionMiddleware(new PermissionService(),'verification.review'),

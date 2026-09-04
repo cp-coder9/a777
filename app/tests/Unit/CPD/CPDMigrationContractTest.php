@@ -12,9 +12,11 @@ final class CPDMigrationContractTest extends TestCase
     {
         $base = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0045_cpd_assessment_platform.sql');
         $commerce = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0047_cpd_commercial_ledger.sql');
+        $governance = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0060_cpd_assessment_governance.sql');
         self::assertIsString($base);
         self::assertIsString($commerce);
-        $sql=$base.$commerce;
+        self::assertIsString($governance);
+        $sql=$base.$commerce.$governance;
         foreach ([
             'cpd_professional_body_rules', 'cpd_professional_profiles', 'cpd_content_items',
             'cpd_assessments', 'cpd_questions', 'cpd_accreditation_applications', 'cpd_courses',
@@ -31,5 +33,8 @@ final class CPDMigrationContractTest extends TestCase
         self::assertStringContainsString('provider_event_id', $sql);
         self::assertStringContainsString('verification_code', $sql);
         self::assertStringContainsString('rule_snapshot', $sql);
+        foreach (['supersedes_assessment_id','generation_model','generation_request_id','generation_usage','risk_flags','learning_outcome','source_reference','difficulty','model_answer','expires_at'] as $column) {
+            self::assertStringContainsString($column, $governance, $column);
+        }
     }
 }

@@ -14,6 +14,7 @@ final class CPDRoutesContractTest extends TestCase
         foreach([
             "get('/api/v1/cpd/workspace'", "get('/api/v1/cpd/professional-bodies'", "post('/api/v1/cpd/profile'",
             "post('/api/v1/cpd/content'", "post('/api/v1/cpd/assessments'", "post('/api/v1/cpd/assessments/{assessmentId}/review'",
+            "post('/api/v1/cpd/content/{contentId}/assessment-generation'", "post('/api/v1/cpd/participants/{userId}/role'",
             "post('/api/v1/cpd/accreditation'", "post('/api/v1/cpd/accreditation/{applicationId}/decision'", "post('/api/v1/cpd/courses'",
             "post('/api/v1/cpd/entitlements/manual'", "post('/api/v1/cpd/entitlements/{entitlementId}/review'", "post('/api/v1/cpd/courses/{courseId}/attempts'",
             "post('/api/v1/cpd/commercial-settings'", "post('/api/v1/cpd/referrals'", "get('/api/v1/cpd/certificates/{certificateId}/download'",
