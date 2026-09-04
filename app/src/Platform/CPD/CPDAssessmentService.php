@@ -173,6 +173,14 @@ final class CPDAssessmentService
         $this->audit($o,$u,'cpd.entitlement_requested','entitlement',$id,['paymentMethod'=>$method,'paymentReference'=>$reference]);return$this->entitlement($o,$id);
     }
 
+    /** @return array<string,mixed> */
+    public function createFreeEntitlement(string$o,string$u,string$role,string$courseId):array
+    {
+        $this->membership($o,$u,$role);$course=$this->courseRow($o,$courseId);$this->assertCourseLive($course);if((int)$course['price_cents']!==0)throw new CPDAssessmentException('cpd_payment_required');
+        $existing=$this->pdo->prepare('SELECT LOWER(HEX(id)) id,payment_method,status FROM cpd_entitlements WHERE organisation_id=UNHEX(:o) AND course_id=UNHEX(:course) AND learner_user_id=UNHEX(:u)');$existing->execute(['o'=>$o,'course'=>$courseId,'u'=>$u]);$row=$existing->fetch();if(is_array($row)){if($row['payment_method']==='free'&&$row['status']==='active')return$this->entitlement($o,$row['id']);throw new CPDAssessmentException('cpd_entitlement_already_exists');}
+        $id=Identifier::generate();return$this->transaction(function()use($o,$u,$courseId,$course,$id):array{$this->pdo->prepare("INSERT INTO cpd_entitlements(id,organisation_id,course_id,learner_user_id,payment_method,amount_cents,currency,status,activated_at) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:course),UNHEX(:u),'free',0,:currency,'active',UTC_TIMESTAMP(6))")->execute(['id'=>$id,'o'=>$o,'course'=>$courseId,'u'=>$u,'currency'=>$course['currency']]);$this->recordPurchase($o,$id,[]);$this->audit($o,$u,'cpd.entitlement_activated','entitlement',$id,['paymentMethod'=>'free','amountCents'=>0]);return$this->entitlement($o,$id);});
+    }
+
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function reviewManualEntitlement(string$o,string$u,string$role,string$id,array$input):array
     {

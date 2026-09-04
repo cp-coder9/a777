@@ -24,6 +24,7 @@ final readonly class CPDRoutes
         $router->post('/api/v1/cpd/accreditation',fn(Request $request):Response=>$this->write->process($request,$this->controller->createAccreditation(...)));
         $router->post('/api/v1/cpd/accreditation/{applicationId}/decision',fn(Request $request):Response=>$this->write->process($request,$this->controller->decideAccreditation(...)));
         $router->post('/api/v1/cpd/courses',fn(Request $request):Response=>$this->write->process($request,$this->controller->publishCourse(...)));
+        $router->post('/api/v1/cpd/entitlements',fn(Request $request):Response=>$this->write->process($request,$this->controller->createFreeEntitlement(...)));
         $router->post('/api/v1/cpd/entitlements/manual',fn(Request $request):Response=>$this->write->process($request,$this->controller->createManualEntitlement(...)));
         $router->post('/api/v1/cpd/entitlements/{entitlementId}/review',fn(Request $request):Response=>$this->write->process($request,$this->controller->reviewEntitlement(...)));
         $router->post('/api/v1/cpd/commercial-settings',fn(Request $request):Response=>$this->write->process($request,$this->controller->configureCommercialSettings(...)));

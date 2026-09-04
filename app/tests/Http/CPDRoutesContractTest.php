@@ -16,7 +16,7 @@ final class CPDRoutesContractTest extends TestCase
             "post('/api/v1/cpd/content'", "post('/api/v1/cpd/assessments'", "post('/api/v1/cpd/assessments/{assessmentId}/review'",
             "post('/api/v1/cpd/content/{contentId}/assessment-generation'", "post('/api/v1/cpd/participants/{userId}/role'",
             "post('/api/v1/cpd/accreditation'", "post('/api/v1/cpd/accreditation/{applicationId}/decision'", "post('/api/v1/cpd/courses'",
-            "post('/api/v1/cpd/entitlements/manual'", "post('/api/v1/cpd/entitlements/{entitlementId}/review'", "post('/api/v1/cpd/courses/{courseId}/attempts'",
+            "post('/api/v1/cpd/entitlements'", "post('/api/v1/cpd/entitlements/manual'", "post('/api/v1/cpd/entitlements/{entitlementId}/review'", "post('/api/v1/cpd/courses/{courseId}/attempts'",
             "post('/api/v1/cpd/commercial-settings'", "post('/api/v1/cpd/referrals'", "get('/api/v1/cpd/certificates/{certificateId}/download'",
             "post('/api/v1/cpd/attempts/{attemptId}/submit'", "post('/api/v1/cpd/attempts/{attemptId}/review'", "post('/api/v1/cpd/attempts/{attemptId}/certificate'",
             "get('/api/v1/cpd/certificates/verify/{verificationCode}'",

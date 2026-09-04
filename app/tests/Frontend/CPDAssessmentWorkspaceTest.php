@@ -24,6 +24,8 @@ final class CPDAssessmentWorkspaceTest extends TestCase
         self::assertStringContainsString('profile.elements.popiaConsent.checked=Boolean(cpdState.profile.popiaConsentAt)',$shell);
         self::assertStringContainsString("question.questionType==='multiple_choice'?'checkbox':'radio'",$shell);
         self::assertStringContainsString('selectedOptionIds:values.getAll(`q_${question.id}`)',$shell);
+        self::assertStringContainsString("course.priceCents===0?'Enrol free':'Request EFT access'",$shell);
+        self::assertStringContainsString("cpdApi.post('/cpd/entitlements',{courseId})",$shell);
         self::assertStringContainsString("openGlobal('cpd')",$app);
         self::assertStringContainsString("id:'cpd'",$app);
         self::assertStringContainsString("if(id==='cpd')",$shell.$app);
