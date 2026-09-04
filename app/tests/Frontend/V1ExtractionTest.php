@@ -19,6 +19,8 @@ final class V1ExtractionTest extends TestCase
         self::assertStringContainsString('name="viewport" content="width=device-width, initial-scale=1.0"', $html);
         self::assertStringContainsString('name="projectSelector" aria-label="Active project"', $html);
         self::assertStringContainsString('name="feedback" aria-label="Feedback description"', $html);
+        self::assertStringContainsString('id="datumZoom" name="datumZoom" aria-label="Datum zoom"', $html);
+        self::assertStringContainsString('id="roleLens" name="roleLens" aria-label="Viewing role"', $html);
         self::assertStringContainsString('href="/assets/css/community.css"', $html);
         self::assertStringContainsString('href="/assets/css/demo-sandbox.css"', $html);
         self::assertStringContainsString('src="/assets/js/demo-sandbox.js"', $html);
@@ -28,6 +30,10 @@ final class V1ExtractionTest extends TestCase
         self::assertIsString($css);
         self::assertStringContainsString('/* Release 2 project-team workspace */', $css);
         self::assertStringContainsString('/* Release 13 standalone tool tiles */', $css);
+        $extractor = file_get_contents($root . '/app/bin/extract-v1-assets.php');
+        self::assertIsString($extractor);
+        self::assertStringContainsString('name="datumZoom" aria-label="Datum zoom"', $extractor);
+        self::assertStringContainsString('name="roleLens" aria-label="Viewing role"', $extractor);
         $registry = json_decode((string) file_get_contents($root . '/app/public/assets/tool-registry.json'), true, flags: JSON_THROW_ON_ERROR);
         self::assertCount(49, $registry['tools']);
         self::assertContains('project_passport', array_column($registry['tools'], 'id'));

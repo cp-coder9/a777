@@ -110,3 +110,20 @@ Inspected screenshots:
 - No SMTP result was fabricated and no remote shared-hosting claim is made.
 - `v1.html` and `packs/` remained untouched, untracked and excluded from commits.
 - This evidence is local development and staged-release evidence. It is not FTP upload, target-MariaDB, SMTP, staging-domain or production-domain certification.
+
+## 2026-09-04 current re-certification
+
+- Focused Pack 21 MariaDB, HTTP, frontend and kernel suite: 42 tests, 760 assertions, zero failures, errors or skips.
+- Authorization matrix: 7 tests, 11 assertions, zero failures, errors or skips.
+- V1 extraction and Demo workspace regression after the accessibility correction: 3 tests, 85 assertions, zero failures, errors or skips.
+- Final exact-tree connected aggregate: 440 tests, 5,295 assertions, zero failures, errors or skips in 26:12.659 on PHP 8.3.32 and local MariaDB 11.4.
+- The aggregate run also corrected two stale test-harness contracts: the authenticated toolbox now verifies all 49 unique registry IDs, and the backup/restore rehearsal removes and restores test-only seed baselines around the production backup boundary. The production backup validator remains fail-closed.
+- Chrome DevTools MCP exercised all 22 role lenses through the live role selector and API. The visible project counts were unchanged from the table above, and each selected key, visible label, heading and card count agreed.
+- A reload retained the selected CPD Officer lens. A second isolated browser context changed to Contractor while the first context remained CPD Officer. Cross-sandbox access returned HTTP 404 with `demo_project_not_visible`.
+- The visible reset confirmation created Generation 2 and restored the Architect lens. The sandbox state remained MariaDB-backed with 12 projects, 22 personas, 54 seed records and 18 learning records.
+- Under `APP_MODE=production`, `/api/v1/demo/sandbox` and `/demo` returned HTTP 404, while authenticated `/app` reported production mode with no role controls, status rails or active demo state.
+- Fresh geometry checks found one owner each for rail, navigator, main and inspector at 1440 px. At 390 x 844, document width remained 390 px with zero horizontal overflow.
+- A pre-hydration accessibility audit exposed unlabeled V1 zoom and role-lens controls. The source extractor and generated shell now give them stable `id`, `name` and `aria-label` attributes. A post-fix mutation audit found no unlabeled instances of those controls.
+- The persistent Demo route also exposed an unhandled compliance-hydration promise when the initial V1 tool workspace was replaced before its requests completed. A red frontend contract was added; the hydrator now checks that its captured root is still connected before rendering either success or error state. The focused post-fix frontend gate passed 4 tests and 106 assertions, and a cache-bypassing Chrome reload produced no console errors or warnings.
+- The four committed Pack 21 screenshots listed above were re-opened and visually inspected for the V1 shell, desktop, mobile, role-matrix and reset states. The committed Lighthouse reports are retained as historical evidence; no new Lighthouse score is claimed by this re-certification.
+- Public registration continued to fail closed with HTTP 503 because SMTP is not configured. No mail-delivery, remote database or shared-host deployment claim is made.

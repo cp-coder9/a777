@@ -63,6 +63,8 @@ $headAssets = '<link rel="icon" href="/assets/icons/community.svg">' . "\n" . '<
 $generated = str_replace('</head>', $headAssets . "\n</head>", $generated);
 $generated = str_replace('<select class="project-select">', '<select class="project-select" name="projectSelector" aria-label="Active project">', $generated);
 $generated = str_replace('<textarea id="feedbackText"', '<textarea id="feedbackText" name="feedback" aria-label="Feedback description"', $generated);
+$generated = str_replace('<input id="datumZoom" type="range"', '<input id="datumZoom" name="datumZoom" aria-label="Datum zoom" type="range"', $generated);
+$generated = str_replace('<select onchange="setRole(this.value)">', '<select id="roleLens" name="roleLens" aria-label="Viewing role" onchange="setRole(this.value)">', $generated);
 $scripts = '<script src="/assets/js/api-client.js"></script><script src="/assets/js/project-datum.js"></script><script src="/assets/js/tool-registry.js"></script><script src="/assets/js/shell.js"></script><script src="/assets/js/demo-sandbox.js"></script>';
 $generated = str_replace('</body>', $scripts . "\n</body>", $generated);
 $existingCss = is_file($assets . '/css/architex-v1.css') ? (string) file_get_contents($assets . '/css/architex-v1.css') : '';

@@ -53,7 +53,9 @@ final class AuthenticationHttpTest extends MariaDbTestCase
         $readHeaders = ['Cookie'=>$cookie,'X-Organisation-Id'=>$organisationId];
         self::assertCount(1, $kernel->handle(Request::json('GET', '/api/v1/projects', $readHeaders))->json()['data']);
         self::assertSame('Live Project', $kernel->handle(Request::json('GET', '/api/v1/projects/' . $projectId, $readHeaders))->json()['data']['name']);
-        self::assertSame(45, count($kernel->handle(Request::json('GET', '/api/v1/tools', $readHeaders))->json()['data']));
+        $tools = $kernel->handle(Request::json('GET', '/api/v1/tools', $readHeaders))->json()['data'];
+        self::assertSame(49, count($tools));
+        self::assertSame(count($tools), count(array_unique(array_column($tools, 'id'))));
         self::assertSame([], $kernel->handle(Request::json('GET', '/api/v1/inbox', $readHeaders))->json()['data']);
         $missingCsrf = $kernel->handle(Request::json('DELETE', '/api/v1/session', ['Cookie'=>$cookie])->withAttribute('remoteIp', '127.0.0.1'));
         self::assertSame(419, $missingCsrf->status());

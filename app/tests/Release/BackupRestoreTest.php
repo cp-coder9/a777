@@ -20,6 +20,8 @@ use RecursiveIteratorIterator;
 
 final class BackupRestoreTest extends MariaDbTestCase
 {
+    private const SEED_TABLES = ['form_templates','community_channels','community_channel_governance','drawing_compliance_sources','cpd_professional_body_rules'];
+    private const BASELINE_PREFIX = '__architex_test_baseline_';
     private string $workRoot;
     private string $targetDatabase = 'architex_task12_f00dbabe_test';
 
@@ -54,7 +56,12 @@ final class BackupRestoreTest extends MariaDbTestCase
         file_put_contents($fixture, "%PDF-1.4\nbackup-evidence\n%%EOF");
         $stored = (new FileService($this->pdo, $sourceStorage))->upload($organisation, $user, $project, UploadedFile::forTesting('backup.pdf', $fixture));
         $key = base64_encode(str_repeat('b', 32));
-        $backup = (new BackupService($this->pdo, $this->workRoot . '/source-files', 'correct horse archive password', $key))->create($this->workRoot . '/rehearsal');
+        $this->dropTestBaselines();
+        try {
+            $backup = (new BackupService($this->pdo, $this->workRoot . '/source-files', 'correct horse archive password', $key))->create($this->workRoot . '/rehearsal');
+        } finally {
+            $this->restoreTestBaselines();
+        }
 
         $report = (new RestoreService(dirname(__DIR__, 2) . '/database/migrations', 'correct horse archive password', $key))->restore(
             $backup->path,
@@ -70,6 +77,22 @@ final class BackupRestoreTest extends MariaDbTestCase
         self::assertSame(1, (int)$target->query('SELECT active_slot FROM project_team_members')->fetchColumn());
         $download = (new FileService($target, new LocalFileStorage($this->workRoot . '/restored-files')))->download($organisation, $user, $stored->id);
         self::assertSame("%PDF-1.4\nbackup-evidence\n%%EOF", $download->contents);
+    }
+
+    private function dropTestBaselines(): void
+    {
+        foreach (self::SEED_TABLES as $table) {
+            $this->pdo->exec('DROP TABLE IF EXISTS `' . self::BASELINE_PREFIX . $table . '`');
+        }
+    }
+
+    private function restoreTestBaselines(): void
+    {
+        foreach (self::SEED_TABLES as $table) {
+            $baseline = self::BASELINE_PREFIX . $table;
+            $this->pdo->exec("CREATE TABLE `$baseline` LIKE `$table`");
+            $this->pdo->exec("INSERT INTO `$baseline` SELECT * FROM `$table`");
+        }
     }
 
     /** @return array<string,string> */
