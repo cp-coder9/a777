@@ -22,6 +22,8 @@ final class CPDAssessmentWorkspaceTest extends TestCase
         self::assertStringContainsString('canDecideAccreditation',$shell);
         self::assertStringContainsString('canAssignRoles',$shell);
         self::assertStringContainsString('profile.elements.popiaConsent.checked=Boolean(cpdState.profile.popiaConsentAt)',$shell);
+        self::assertStringContainsString("question.questionType==='multiple_choice'?'checkbox':'radio'",$shell);
+        self::assertStringContainsString('selectedOptionIds:values.getAll(`q_${question.id}`)',$shell);
         self::assertStringContainsString("openGlobal('cpd')",$app);
         self::assertStringContainsString("id:'cpd'",$app);
         self::assertStringContainsString("if(id==='cpd')",$shell.$app);
