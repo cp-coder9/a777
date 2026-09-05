@@ -79,6 +79,12 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         $freeLearner=Identifier::generate();
         $this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),'free-learner-cpd@example.test','hash','active',UTC_TIMESTAMP(6))")->execute(['id'=>$freeLearner]);
         $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'member','active')")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$freeLearner]);
+        $service->saveProfile($organisation, $freeLearner, 'member', [
+            'fullName'=>'Free Learner Architect', 'profession'=>'Architect', 'professionalBody'=>'SACAP',
+            'registrationNumber'=>'SACAP-FREE-1', 'registrationCategory'=>'Professional Architect',
+            'cycleStart'=>'2026-01-01', 'cycleEnd'=>'2030-12-31', 'participationRole'=>'learner',
+            'popiaConsent'=>true,
+        ]);
         $this->pdo->prepare('UPDATE cpd_courses SET price_cents=0 WHERE id=UNHEX(:id)')->execute(['id'=>$course['id']]);
         self::assertTrue(method_exists($service,'createFreeEntitlement'),'The CPD service must expose zero-cost enrollment.');
         $freeEntitlement=$service->createFreeEntitlement($organisation,$freeLearner,'member',$course['id']);
@@ -95,7 +101,8 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         $result = $service->submitAttempt($organisation, $learner, 'member', $attempt['id'], [
             'answers'=>[
                 ['questionId'=>$assessment['questions'][0]['id'], 'selectedOptionIds'=>[$assessment['questions'][0]['options'][0]['id']]],
-                ['questionId'=>$assessment['questions'][1]['id'], 'text'=>'A registered professional checks and signs the output.'],
+                ['questionId'=>$assessment['questions'][1]['id'], 'selectedOptionIds'=>[$assessment['questions'][1]['options'][1]['id']]],
+                ['questionId'=>$assessment['questions'][2]['id'], 'text'=>'A registered professional checks and signs the output.'],
             ],
             'humanConfirmed'=>true,
         ]);
@@ -110,8 +117,8 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         $reviewQueue=$service->workspace($organisation,$freeLearner,'member')['attempts'];
         self::assertCount(1,$reviewQueue);
         self::assertSame($result['id'],$reviewQueue[0]['id']);
-        self::assertCount(2,$reviewQueue[0]['reviewAnswers']);
-        self::assertNotEmpty($reviewQueue[0]['reviewAnswers'][1]['answerText']);
+        self::assertCount(3,$reviewQueue[0]['reviewAnswers']);
+        self::assertNotEmpty($reviewQueue[0]['reviewAnswers'][2]['answerText']);
         $this->pdo->prepare("UPDATE cpd_courses SET status='suspended' WHERE id=UNHEX(:id)")->execute(['id'=>$course['id']]);
         try {
             $service->reviewAttempt($organisation,$admin,'owner',$result['id'],['decision'=>'pass','reason'=>'Check atomic eligibility failure.','humanConfirmed'=>true]);
@@ -177,7 +184,7 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertSame(1,$automatic['certificateIssueCount']);
         self::assertCount(1,$automatic['questionPerformance']);
         self::assertSame('insufficient_data',$automatic['questionPerformance'][0]['qualityIndicator']);
-        self::assertSame('CPD Central',$analytics['providerAnalytics'][0]['providerName']);
+        self::assertContains('Architex',array_column($analytics['providerAnalytics'],'providerName'));
     }
 
     public function testPublishingAndExternalPaymentFailClosed(): void
@@ -251,6 +258,155 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         ]);
         self::assertSame('other_built_environment_professional', $other['profession']);
         self::assertSame('SACPVP', $other['professionalBody']);
+    }
+
+    public function testFreeEntitlementRequiresLearnerProfileToMatchCourseBody(): void
+    {
+        [$organisation, $admin, $learner] = $this->tenant();
+        $service = new CPDAssessmentService($this->pdo);
+        $service->saveProfile($organisation, $learner, 'member', [
+            'fullName' => 'Architect Learner', 'profession' => 'Architect', 'professionalBody' => 'SACAP',
+            'registrationNumber' => 'SACAP-ELIGIBILITY-1', 'registrationCategory' => 'Professional Architect',
+            'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+            'popiaConsent' => true,
+        ]);
+        $course = $this->accreditedFreeCourse($service, $organisation, $admin, 'ECSA');
+
+        try {
+            $service->createFreeEntitlement($organisation, $learner, 'member', $course['id']);
+            self::fail('A learner must not receive an entitlement for a course accredited to another professional body.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_course_professional_body_mismatch', $exception->reason);
+        }
+    }
+
+    public function testManualEntitlementReviewRechecksLearnerProfileBody(): void
+    {
+        [$organisation, $admin, $learner] = $this->tenant();
+        $service = new CPDAssessmentService($this->pdo);
+        $this->saveECSAProfile($service, $organisation, $learner);
+        $course = $this->accreditedFreeCourse($service, $organisation, $admin, 'ECSA');
+        $entitlement = $service->createManualEntitlement($organisation, $learner, 'member', $course['id'], [
+            'paymentMethod' => 'manual_eft', 'paymentReference' => 'EFT-BODY-RECHECK-1', 'humanConfirmed' => true,
+        ]);
+        $this->saveSACAPProfile($service, $organisation, $learner);
+
+        try {
+            $service->reviewManualEntitlement($organisation, $admin, 'owner', $entitlement['id'], [
+                'decision' => 'grant', 'reason' => 'Payment evidence matched.', 'humanConfirmed' => true,
+            ]);
+            self::fail('Manual payment review must recheck the learner profile body before activation.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_course_professional_body_mismatch', $exception->reason);
+        }
+    }
+
+    public function testAttemptStartRechecksLearnerProfileBodyAfterEntitlement(): void
+    {
+        [$organisation, $admin, $learner] = $this->tenant();
+        $service = new CPDAssessmentService($this->pdo);
+        $this->saveECSAProfile($service, $organisation, $learner);
+        $course = $this->accreditedFreeCourse($service, $organisation, $admin, 'ECSA');
+        $service->createFreeEntitlement($organisation, $learner, 'member', $course['id']);
+        $this->saveSACAPProfile($service, $organisation, $learner);
+
+        try {
+            $service->startAttempt($organisation, $learner, 'member', $course['id']);
+            self::fail('Attempt start must recheck a profile body that changed after entitlement.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_course_professional_body_mismatch', $exception->reason);
+        }
+    }
+
+    public function testCertificateIssueRollsBackWhenLearnerProfileBodyChanges(): void
+    {
+        [$organisation, $admin, $learner] = $this->tenant();
+        $service = new CPDAssessmentService($this->pdo);
+        $this->saveECSAProfile($service, $organisation, $learner);
+        $course = $this->accreditedFreeCourse($service, $organisation, $admin, 'ECSA');
+        $service->createFreeEntitlement($organisation, $learner, 'member', $course['id']);
+        $attempt = $service->startAttempt($organisation, $learner, 'member', $course['id']);
+        $this->saveSACAPProfile($service, $organisation, $learner);
+
+        try {
+            $service->submitAttempt($organisation, $learner, 'member', $attempt['id'], [
+                'answers' => [['questionId' => $this->assessmentQuestionId($course['id']), 'selectedOptionIds' => [$this->assessmentCorrectOptionId($course['id'])]]],
+                'humanConfirmed' => true,
+            ]);
+            self::fail('Certificate issuance must reject a mismatched learner profile and roll back the passing attempt.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_course_professional_body_mismatch', $exception->reason);
+        }
+        self::assertSame('in_progress', $this->pdo->query('SELECT status FROM cpd_attempts')->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn());
+    }
+
+    /** @return array<string,mixed> */
+    private function accreditedFreeCourse(CPDAssessmentService $service, string $organisation, string $admin, string $professionalBody): array
+    {
+        $content = $service->createContent($organisation, $admin, 'owner', [
+            'title' => 'Body-specific CPD eligibility course', 'contentType' => 'course', 'providerName' => 'Architex',
+            'durationMinutes' => 60, 'permissionStatus' => 'owned',
+            'learningOutcomes' => ['Retain professional-body-specific accreditation evidence.'],
+            'sourceText' => 'Rights-cleared source material for an accredited CPD eligibility test course.',
+            'targetBodies' => [$professionalBody], 'humanConfirmed' => true,
+        ]);
+        $assessment = $service->createAssessmentDraft($organisation, $admin, 'owner', $content['id'], [
+            'title' => 'Eligibility assessment', 'passPercent' => 70, 'attemptLimit' => 1,
+            'questions' => [[
+                'prompt' => 'Who confirms professional-body accreditation?', 'type' => 'single_choice', 'points' => 1,
+                'options' => [['text' => 'The accrediting authority', 'correct' => true], ['text' => 'The learner', 'correct' => false]],
+            ]], 'generatedWithAi' => false,
+        ]);
+        $service->reviewAssessment($organisation, $admin, 'owner', $assessment['id'], [
+            'decision' => 'approved_for_accreditation', 'reason' => 'Human review complete.', 'humanConfirmed' => true,
+        ]);
+        $application = $service->createAccreditationApplication($organisation, $admin, 'owner', $assessment['id'], [
+            'professionalBody' => $professionalBody, 'connectorMode' => 'document_export', 'providerName' => 'Accreditation Partner',
+            'requestedCategory' => 'engineering_category_1_developmental_activity', 'requestedCredits' => '0.1', 'humanConfirmed' => true,
+        ]);
+        $application = $service->decideAccreditation($organisation, $admin, 'owner', $application['id'], [
+            'decision' => 'accredited', 'approvedCategory' => 'engineering_category_1_developmental_activity', 'approvedCredits' => '0.1',
+            'reference' => 'ECSA-ELIGIBILITY-1', 'validFrom' => '2026-01-01', 'validUntil' => '2027-12-31',
+            'reason' => 'Accreditation evidence recorded.', 'humanConfirmed' => true,
+        ]);
+        return $service->publishCourse($organisation, $admin, 'owner', $application['id'], [
+            'priceCents' => 0, 'currency' => 'ZAR', 'commercialModel' => 'free_funnel', 'humanConfirmed' => true,
+        ]);
+    }
+
+    private function saveECSAProfile(CPDAssessmentService $service, string $organisation, string $learner): void
+    {
+        $service->saveProfile($organisation, $learner, 'member', [
+            'fullName' => 'Engineer Learner', 'profession' => 'structural_engineer', 'professionalBody' => 'ECSA',
+            'registrationNumber' => 'ECSA-ELIGIBILITY-1', 'registrationCategory' => 'Professional Engineer',
+            'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+            'popiaConsent' => true,
+        ]);
+    }
+
+    private function saveSACAPProfile(CPDAssessmentService $service, string $organisation, string $learner): void
+    {
+        $service->saveProfile($organisation, $learner, 'member', [
+            'fullName' => 'Architect Learner', 'profession' => 'Architect', 'professionalBody' => 'SACAP',
+            'registrationNumber' => 'SACAP-ELIGIBILITY-1', 'registrationCategory' => 'Professional Architect',
+            'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+            'popiaConsent' => true,
+        ]);
+    }
+
+    private function assessmentQuestionId(string $courseId): string
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(q.id)) FROM cpd_courses c JOIN cpd_questions q ON q.assessment_id=c.assessment_id WHERE c.id=UNHEX(:course) ORDER BY q.sequence_no LIMIT 1');
+        $statement->execute(['course' => $courseId]);
+        return (string) $statement->fetchColumn();
+    }
+
+    private function assessmentCorrectOptionId(string $courseId): string
+    {
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(o.id)) FROM cpd_courses c JOIN cpd_questions q ON q.assessment_id=c.assessment_id JOIN cpd_question_options o ON o.question_id=q.id AND o.is_correct=TRUE WHERE c.id=UNHEX(:course) ORDER BY q.sequence_no,o.sequence_no LIMIT 1');
+        $statement->execute(['course' => $courseId]);
+        return (string) $statement->fetchColumn();
     }
 
     /** @return array{string,string,string} */
