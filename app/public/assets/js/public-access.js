@@ -40,6 +40,7 @@
   let transitionTimer = null;
   let authMode = 'signin';
   let signupNotices = null;
+  let landingTrigger = null;
 
   function buildBirdFlock() {
     if (!birdFlock || birdFlock.childElementCount > 0) return;
@@ -93,6 +94,7 @@
       workspace.setAttribute('aria-hidden', 'true');
     }
     setState('public');
+    landingTrigger?.focus();
   }
 
   function brand() {
@@ -245,14 +247,27 @@
     const document = landing?.contentDocument;
     if (!document || document.documentElement.dataset.architexAccessBound === 'true') return;
     document.documentElement.dataset.architexAccessBound = 'true';
+    const bird = document.querySelector('.bird-orbit');
+    if (bird) {
+      bird.setAttribute('role', 'button');
+      bird.setAttribute('tabindex', '0');
+      bird.setAttribute('aria-label', 'Request access to Architex');
+      bird.style.cursor = 'pointer';
+      bird.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        bird.click();
+      });
+    }
     document.addEventListener('click', event => {
       const trigger = event.target?.closest?.('a,button,[role="button"]');
       if (!trigger) return;
       const label = String(trigger.textContent || trigger.getAttribute('aria-label') || '').trim().toLowerCase();
       const birdActivated = Boolean(trigger.closest('.bird-orbit'));
-      if (!birdActivated && !['sign in', 'sign up', 'create account'].some(action => label.includes(action))) return;
+      if (!birdActivated && !['sign in', 'sign up', 'create account', 'request access'].some(action => label.includes(action))) return;
       event.preventDefault();
       event.stopImmediatePropagation();
+      landingTrigger = trigger;
       showAuth(birdActivated ? 'sign in' : label);
     }, true);
   }
