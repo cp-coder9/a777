@@ -74,6 +74,18 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertSame(500,(int)$this->pdo->query('SELECT platform_fee_cents FROM cpd_purchase_ledger')->fetchColumn());
         self::assertSame(4500,(int)$this->pdo->query('SELECT payout_cents FROM cpd_payouts')->fetchColumn());
 
+        $freeLearner=Identifier::generate();
+        $this->pdo->prepare("INSERT INTO users(id,email,password_hash,status,email_verified_at) VALUES(UNHEX(:id),'free-learner-cpd@example.test','hash','active',UTC_TIMESTAMP(6))")->execute(['id'=>$freeLearner]);
+        $this->pdo->prepare("INSERT INTO organisation_memberships(id,organisation_id,user_id,role,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),'member','active')")->execute(['id'=>Identifier::generate(),'o'=>$organisation,'u'=>$freeLearner]);
+        $this->pdo->prepare('UPDATE cpd_courses SET price_cents=0 WHERE id=UNHEX(:id)')->execute(['id'=>$course['id']]);
+        self::assertTrue(method_exists($service,'createFreeEntitlement'),'The CPD service must expose zero-cost enrollment.');
+        $freeEntitlement=$service->createFreeEntitlement($organisation,$freeLearner,'member',$course['id']);
+        self::assertSame('active',$freeEntitlement['status']);
+        self::assertSame('free',$freeEntitlement['paymentMethod']);
+        self::assertSame(0,$freeEntitlement['amountCents']);
+        self::assertSame($freeEntitlement['id'],$service->createFreeEntitlement($organisation,$freeLearner,'member',$course['id'])['id']);
+        self::assertSame(1,(int)$this->pdo->query("SELECT COUNT(*) FROM cpd_purchase_ledger WHERE gross_cents=0 AND platform_fee_cents=0 AND content_owner_net_cents=0")->fetchColumn());
+
         $workspace=$service->workspace($organisation,$learner,'member');
         self::assertArrayNotHasKey('isCorrect',$workspace['assessments'][0]['questions'][0]['options'][0]);
 
