@@ -41,6 +41,7 @@
   let authMode = 'signin';
   let signupNotices = null;
   let landingTrigger = null;
+  let pausedLandingAnimations = [];
 
   function buildBirdFlock() {
     if (!birdFlock || birdFlock.childElementCount > 0) return;
@@ -85,8 +86,12 @@
   function showLanding() {
     if (transitionTimer !== null) window.clearTimeout(transitionTimer);
     access?.classList.remove('is-flocking', 'is-auth-ready');
+    if (landing) landing.inert = false;
+    pausedLandingAnimations.forEach(animation => animation.play());
+    pausedLandingAnimations = [];
     if (authMount) {
       authMount.hidden = true;
+      authMount.inert = true;
       authMount.replaceChildren();
     }
     if (workspace) {
@@ -219,14 +224,19 @@
     access?.classList.remove('is-auth-ready');
     access?.classList.add('is-flocking');
     buildBirdFlock();
+    if (landing) landing.inert = true;
+    pausedLandingAnimations = [...pausedLandingAnimations, ...(landing?.contentDocument?.getAnimations().filter(animation => animation.playState === 'running') || [])];
+    pausedLandingAnimations.forEach(animation => animation.pause());
     if (authMount) {
       authMount.hidden = false;
+      authMount.inert = true;
       authMount.innerHTML = authMarkup();
       bindAuth();
     }
     const finish = () => {
       access?.classList.remove('is-flocking');
       access?.classList.add('is-auth-ready');
+      if (authMount) authMount.inert = false;
       authMount?.querySelector('h1')?.setAttribute('tabindex', '-1');
       authMount?.querySelector('h1')?.focus();
     };
