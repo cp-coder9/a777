@@ -32,6 +32,14 @@ learner and accreditation-partner browser sessions did not receive the draft
 assessment or any of its answer-key/rubric content; neither role received the
 creator builder or review approval control.
 
+The same browser check found an empty review-queue heading in learner and
+partner navigation. It is now capability-gated with the queue itself. After a
+cache-bypassing reload, learner navigation contained only Professional profile,
+Course catalogue and My CPD record; partner navigation contained Accreditation
+and CPD analytics but no review queue; reviewer navigation contained Human
+review and the review disclosure. Computed-style checks found no rendered
+restricted elements.
+
 ## Boundary
 
 This is local browser and targeted-test evidence for the question-bank slice.
