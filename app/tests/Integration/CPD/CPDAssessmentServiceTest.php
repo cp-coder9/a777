@@ -168,6 +168,16 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_professional_records')->fetchColumn());
         $service->issueCertificate($organisation,$learner,'member',$autoAttempt['id'],'');
         self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn());
+
+        $analytics=$service->workspace($organisation,$admin,'owner')['analytics'];
+        self::assertSame(2,$analytics['certificateIssueCount']);
+        self::assertCount(2,$analytics['assessmentAnalytics']);
+        $automatic=array_values(array_filter($analytics['assessmentAnalytics'],fn(array $item):bool=>$item['assessmentId']===$auto['id']))[0];
+        self::assertSame(1,$automatic['attemptCount']);
+        self::assertSame(1,$automatic['certificateIssueCount']);
+        self::assertCount(1,$automatic['questionPerformance']);
+        self::assertSame('insufficient_data',$automatic['questionPerformance'][0]['qualityIndicator']);
+        self::assertSame('CPD Central',$analytics['providerAnalytics'][0]['providerName']);
     }
 
     public function testPublishingAndExternalPaymentFailClosed(): void

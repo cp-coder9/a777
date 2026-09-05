@@ -80,6 +80,23 @@ Executed checks after the correction:
   independently signed-in reviewer received its review disclosure and approval
   action.
 
+## Attempt analytics extension
+
+The workspace now derives CPD analytics from MariaDB attempts, answers and
+certificates. Authorised creator, reviewer, partner and administrator roles
+receive per-assessment attempts, distinct learner counts, pass rate, average
+score, failed/expired count, certificate count, question-level correct rate and
+an explicit quality signal. Provider summaries use distinct learner counts per
+provider rather than adding per-assessment counts. Learner identities and answer
+content are not included in the analytics projection.
+
+Chrome DevTools reloaded the real local reviewer and creator sessions. The
+reviewer saw persisted attempt/certificate data, question-performance
+disclosures and provider summary data. The creator saw its analytics navigation
+and dashboard without any learner email/name. A separately authenticated
+learner saw no analytics navigation item, the analytics panel was hidden and
+computed-style checks found no rendered restricted element.
+
 ## Boundary
 
 This is local browser and targeted-test evidence for the question-bank slice.
