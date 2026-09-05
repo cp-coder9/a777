@@ -16,6 +16,21 @@ final class CPDAssessmentService
 {
     private const BODIES = ['SACAP','ECSA','SACQSP','SACPCMP','SACPLAN','SACLAP','SAGC','SACPVP'];
     private const GOVERNORS = ['owner','admin'];
+    private const ROLE_BODY_MAPPINGS = [
+        'architectural_professional' => ['label'=>'Architectural professional','professionalBody'=>'SACAP','registrationCategoryExamples'=>['Professional Architect','Professional Senior Architectural Technologist','Professional Architectural Technologist','Professional Architectural Draughtsperson'],'defaultApprovedCategory'=>'category_1_developmental_activity','workflowImplication'=>'Use SACAP body-specific cycle and category evidence.','aliases'=>['architect','architectural professional']],
+        'structural_engineer' => ['label'=>'Structural engineer','professionalBody'=>'ECSA','registrationCategoryExamples'=>['Professional Engineer','Professional Engineering Technologist','Professional Certificated Engineer','Professional Engineering Technician'],'defaultApprovedCategory'=>'engineering_category_1_developmental_activity','workflowImplication'=>'Use ECSA engineering CPD workflow and verified provider evidence.','aliases'=>['structural engineer']],
+        'civil_engineer' => ['label'=>'Civil engineer','professionalBody'=>'ECSA','registrationCategoryExamples'=>['Professional Engineer','Professional Engineering Technologist','Professional Engineering Technician'],'defaultApprovedCategory'=>'engineering_category_1_developmental_activity','workflowImplication'=>'Use ECSA engineering CPD workflow and category distribution checks.','aliases'=>['civil engineer']],
+        'electrical_engineer' => ['label'=>'Electrical engineer','professionalBody'=>'ECSA','registrationCategoryExamples'=>['Professional Engineer','Professional Engineering Technologist','Professional Engineering Technician'],'defaultApprovedCategory'=>'engineering_category_1_developmental_activity','workflowImplication'=>'Use ECSA engineering CPD workflow and category distribution checks.','aliases'=>['electrical engineer']],
+        'mechanical_engineer' => ['label'=>'Mechanical engineer','professionalBody'=>'ECSA','registrationCategoryExamples'=>['Professional Engineer','Professional Engineering Technologist','Professional Engineering Technician'],'defaultApprovedCategory'=>'engineering_category_1_developmental_activity','workflowImplication'=>'Use ECSA engineering CPD workflow and category distribution checks.','aliases'=>['mechanical engineer']],
+        'quantity_surveyor' => ['label'=>'Quantity surveyor','professionalBody'=>'SACQSP','registrationCategoryExamples'=>['Professional Quantity Surveyor','Candidate Quantity Surveyor'],'defaultApprovedCategory'=>'quantity_surveying_category_1','workflowImplication'=>'Use SACQSP body-specific hours and evidence workflow.','aliases'=>['quantity surveyor']],
+        'construction_project_manager' => ['label'=>'Construction project manager','professionalBody'=>'SACPCMP','registrationCategoryExamples'=>['Professional Construction Project Manager','Professional Construction Manager','Candidate Construction Project Manager'],'defaultApprovedCategory'=>'sacpcmp_professional_practice','workflowImplication'=>'Use SACPCMP body-specific cycle and category evidence.','aliases'=>['construction project manager']],
+        'construction_manager' => ['label'=>'Construction manager','professionalBody'=>'SACPCMP','registrationCategoryExamples'=>['Professional Construction Manager','Candidate Construction Manager'],'defaultApprovedCategory'=>'sacpcmp_professional_practice','workflowImplication'=>'Use SACPCMP body-specific cycle and category evidence.','aliases'=>['construction manager']],
+        'professional_planner' => ['label'=>'Professional planner','professionalBody'=>'SACPLAN','registrationCategoryExamples'=>['Professional Planner','Technical Planner'],'defaultApprovedCategory'=>'planning_category_a_professional_knowledge','workflowImplication'=>'Use SACPLAN body-specific points and category workflow.','aliases'=>['professional planner','town planner']],
+        'landscape_architectural_professional' => ['label'=>'Landscape architectural professional','professionalBody'=>'SACLAP','registrationCategoryExamples'=>['Landscape Architect','Landscape Technologist','Landscape Technician','Landscape Technical Assistant','Landscape Manager'],'defaultApprovedCategory'=>'landscape_category_1_personal_professional_development','workflowImplication'=>'Use SACLAP body-specific category and accreditation workflow.','aliases'=>['landscape architect','landscape architectural professional']],
+        'geomatics_practitioner' => ['label'=>'Geomatics practitioner','professionalBody'=>'SAGC','registrationCategoryExamples'=>['Professional Geomatics Practitioner','Geomatics Technologist','Geomatics Technician'],'defaultApprovedCategory'=>'geomatics_category_1_developmental_activity','workflowImplication'=>'Use SAGC body-specific development and ethics evidence.','aliases'=>['geomatics practitioner','land surveyor']],
+        'property_valuer' => ['label'=>'Property valuer','professionalBody'=>'SACPVP','registrationCategoryExamples'=>['Professional Valuer','Professional Associated Valuer','Single Residential Property Assessor'],'defaultApprovedCategory'=>'valuation_compliance_status_only','workflowImplication'=>'Use manual SACPVP verification; no numeric approval is inferred.','aliases'=>['property valuer']],
+        'other_built_environment_professional' => ['label'=>'Other built-environment professional','professionalBody'=>null,'registrationCategoryExamples'=>[],'defaultApprovedCategory'=>'body_specific_category_to_be_confirmed','workflowImplication'=>'Select the applicable body manually and confirm its current rules before CPD claims are issued.','aliases'=>['other built environment professional','other'],'manualBodyConfirmationRequired'=>true],
+    ];
 
     public function __construct(private readonly PDO $pdo, private readonly ?WingmanModel $assessmentModel = null) {}
 
@@ -26,14 +41,33 @@ final class CPDAssessmentService
         return array_map(fn(array $row): array => $this->row($row, ['category_rules']), $rows);
     }
 
+    /** @return list<array<string,mixed>> */
+    public function professionalRoleMappings(): array
+    {
+        $mappings=[];
+        foreach(self::ROLE_BODY_MAPPINGS as $role=>$mapping)$mappings[]=[
+            'role'=>$role,
+            'label'=>$mapping['label'],
+            'professionalBody'=>$mapping['professionalBody'],
+            'registrationCategoryExamples'=>$mapping['registrationCategoryExamples'],
+            'defaultApprovedCategory'=>$mapping['defaultApprovedCategory'],
+            'workflowImplication'=>$mapping['workflowImplication'],
+            'manualBodyConfirmationRequired'=>$mapping['manualBodyConfirmationRequired']??false,
+        ];
+        return $mappings;
+    }
+
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function saveProfile(string $organisationId, string $userId, string $role, array $input): array
     {
         $this->membership($organisationId, $userId, $role);
         if (($input['popiaConsent'] ?? false) !== true) throw new CPDAssessmentException('cpd_profile_consent_required');
         $fullName=$this->text($input['fullName']??null,220,'cpd_profile_name_required');
-        $profession=$this->text($input['profession']??null,160,'cpd_profile_profession_required');
+        $roleMapping=$this->professionalRoleMapping($input['profession']??null);
+        $profession=$roleMapping['role'];
         $body=$this->choice($input['professionalBody']??null,self::BODIES,'cpd_professional_body_invalid');
+        if($roleMapping['professionalBody']!==null&&$body!==$roleMapping['professionalBody'])throw new CPDAssessmentException('cpd_professional_role_body_mismatch');
+        if(($roleMapping['manualBodyConfirmationRequired']??false)===true&&($input['manualBodyConfirmation']??false)!==true)throw new CPDAssessmentException('cpd_professional_role_manual_confirmation_required');
         $number=$this->text($input['registrationNumber']??null,180,'cpd_registration_number_required');
         $category=$this->text($input['registrationCategory']??null,120,'cpd_registration_category_required');
         $start=$this->date($input['cycleStart']??null,'cpd_cycle_start_invalid');
@@ -44,7 +78,7 @@ final class CPDAssessmentService
         $existing->execute(['o'=>$organisationId,'u'=>$userId]);$existingRow=$existing->fetch();$id=is_array($existingRow)?$existingRow['id']:Identifier::generate();
         if(!in_array($role,self::GOVERNORS,true)&&$participation!=='learner'&&(!is_array($existingRow)||$existingRow['participation_role']!==$participation))throw new CPDAssessmentException('cpd_profile_role_forbidden');
         $this->pdo->prepare("INSERT INTO cpd_professional_profiles(id,organisation_id,user_id,full_name,profession,professional_body,registration_number,registration_category,cycle_start,cycle_end,participation_role,popia_consent_at,status) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),:name,:profession,:body,:number,:category,:start,:end,:participation,UTC_TIMESTAMP(6),'active') ON DUPLICATE KEY UPDATE full_name=VALUES(full_name),profession=VALUES(profession),professional_body=VALUES(professional_body),registration_number=VALUES(registration_number),registration_category=VALUES(registration_category),cycle_start=VALUES(cycle_start),cycle_end=VALUES(cycle_end),participation_role=VALUES(participation_role),popia_consent_at=VALUES(popia_consent_at),status='active'")->execute(['id'=>$id,'o'=>$organisationId,'u'=>$userId,'name'=>$fullName,'profession'=>$profession,'body'=>$body,'number'=>$number,'category'=>$category,'start'=>$start,'end'=>$end,'participation'=>$participation]);
-        $this->audit($organisationId,$userId,'cpd.profile_saved','professional_profile',$id,['professionalBody'=>$body,'participationRole'=>$participation]);
+        $this->audit($organisationId,$userId,'cpd.profile_saved','professional_profile',$id,['professionalRole'=>$profession,'professionalBody'=>$body,'manualBodyConfirmation'=>($roleMapping['manualBodyConfirmationRequired']??false)===true,'participationRole'=>$participation]);
         return $this->profile($organisationId,$userId);
     }
 
@@ -352,7 +386,7 @@ final class CPDAssessmentService
         unset($reviewAttempt);
         $analytics=$this->workspaceAnalytics($o,$u,$participation);
         $participants=$capabilities['canAssignRoles']?$this->all("SELECT p.*,LOWER(HEX(p.id)) id,LOWER(HEX(p.user_id)) user_id,u.email FROM cpd_professional_profiles p JOIN users u ON u.id=p.user_id WHERE p.organisation_id=UNHEX(:o) ORDER BY p.full_name",['o'=>$o]):[];
-        return['professionalBodies'=>$this->professionalBodyRules(),'profile'=>$this->optionalProfile($o,$u),'participationRole'=>$participation,'participants'=>$participants,'courses'=>$courses,'contentItems'=>$contents,'assessments'=>$assessments,'accreditationApplications'=>$accreditations,'entitlements'=>$entitlements,'attempts'=>$attempts,'records'=>$records,'commercialSettings'=>$this->commercialSettings($o),'analytics'=>$analytics,'capabilities'=>$capabilities,'boundaries'=>['accreditationAutomated'=>false,'estimatedCreditsAreApproved'=>false,'providerPaymentConfigured'=>false,'certificateRequiresAccreditedPassingAttempt'=>true,'aiDraftRequiresHumanReview'=>true]];
+        return['professionalBodies'=>$this->professionalBodyRules(),'professionalRoleMappings'=>$this->professionalRoleMappings(),'profile'=>$this->optionalProfile($o,$u),'participationRole'=>$participation,'participants'=>$participants,'courses'=>$courses,'contentItems'=>$contents,'assessments'=>$assessments,'accreditationApplications'=>$accreditations,'entitlements'=>$entitlements,'attempts'=>$attempts,'records'=>$records,'commercialSettings'=>$this->commercialSettings($o),'analytics'=>$analytics,'capabilities'=>$capabilities,'boundaries'=>['accreditationAutomated'=>false,'estimatedCreditsAreApproved'=>false,'providerPaymentConfigured'=>false,'certificateRequiresAccreditedPassingAttempt'=>true,'aiDraftRequiresHumanReview'=>true]];
     }
 
     /** @return array<string,mixed> */
@@ -436,6 +470,7 @@ final class CPDAssessmentService
     /** @param array<string,mixed> $r @return array<string,mixed> */ private function certificateRow(array$r,string$base):array{$row=$this->row($r);$row['valid']=$r['revoked_at']===null;$row['verificationUrl']=CertificateVerificationUrl::build($base,$r['verification_code']);return$row;}
     /** @return array<string,mixed> */ private function bodyRule(string$body):array{$s=$this->pdo->prepare('SELECT * FROM cpd_professional_body_rules WHERE body_code=:body');$s->execute(['body'=>$body]);$r=$s->fetch();if(!is_array($r))throw new CPDAssessmentException('cpd_professional_body_rules_unavailable');return$this->row($r,['category_rules']);}
     /** @param array<string,mixed> $course */ private function assertCourseLive(array$course):void{$today=(new DateTimeImmutable('today'))->format('Y-m-d');if($course['status']!=='live'||$course['valid_from']>$today||$course['valid_until']<$today)throw new CPDAssessmentException('cpd_course_not_live');}
+    /** @return array<string,mixed> */ private function professionalRoleMapping(mixed$value):array{if(!is_string($value)||trim($value)==='')throw new CPDAssessmentException('cpd_profile_profession_required');$normalised=trim((string)preg_replace('/[^a-z0-9]+/','_',strtolower(trim($value))),'_');foreach(self::ROLE_BODY_MAPPINGS as$role=>$mapping){$aliases=array_map(static fn(string$alias):string=>trim((string)preg_replace('/[^a-z0-9]+/','_',strtolower($alias)),'_'),$mapping['aliases']);if($normalised===$role||in_array($normalised,$aliases,true))return['role'=>$role]+$mapping;}throw new CPDAssessmentException('cpd_professional_role_invalid');}
     private function membership(string$o,string$u,string$role):void{$s=$this->pdo->prepare("SELECT role FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u) AND status='active'");$s->execute(['o'=>$o,'u'=>$u]);$actual=$s->fetchColumn();if(!is_string($actual)||$actual!==$role)throw new CPDAssessmentException('cpd_membership_required');}
     private function membershipRole(string$o,string$u):string{$s=$this->pdo->prepare("SELECT role FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u) AND status='active'");$s->execute(['o'=>$o,'u'=>$u]);$actual=$s->fetchColumn();if(!is_string($actual))throw new CPDAssessmentException('cpd_membership_required');return$actual;}
     private function requireCapability(string$o,string$u,string$role,string$capability,string$error):void{$this->membership($o,$u,$role);$participation=$this->participationRole($o,$u,$role);$map=['content.create'=>'canCreateContent','assessment.draft'=>'canDraftAssessments','assessment.review'=>'canReviewAssessments','attempt.review'=>'canReviewAttempts','accreditation.submit'=>'canSubmitAccreditation','accreditation.decide'=>'canDecideAccreditation','course.publish'=>'canPublishCourses','commercial.manage'=>'canManageCommercial','roles.assign'=>'canAssignRoles'];$key=$map[$capability]??null;if($key===null||!($this->capabilities($participation)[$key]??false))throw new CPDAssessmentException($error);}

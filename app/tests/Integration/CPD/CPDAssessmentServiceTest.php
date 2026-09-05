@@ -199,6 +199,60 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertNotSame($admin, $learner);
     }
 
+    public function testProfessionalRoleBodyMappingIsGovernedAndOtherRequiresManualConfirmation(): void
+    {
+        [$organisation, $admin, $learner] = $this->tenant();
+        $service = new CPDAssessmentService($this->pdo);
+
+        $mappings = $service->professionalRoleMappings();
+        self::assertCount(13, $mappings);
+        self::assertSame('SACAP', $mappings[0]['professionalBody']);
+        self::assertSame('architectural_professional', $mappings[0]['role']);
+        self::assertTrue($mappings[12]['manualBodyConfirmationRequired']);
+
+        $profile = $service->saveProfile($organisation, $learner, 'member', [
+            'fullName' => 'Mapped Architect', 'profession' => 'Architect', 'professionalBody' => 'SACAP',
+            'registrationNumber' => 'SACAP-MAP-1', 'registrationCategory' => 'Professional Architect',
+            'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+            'popiaConsent' => true,
+        ]);
+        self::assertSame('architectural_professional', $profile['profession']);
+        self::assertSame('SACAP', $profile['professionalBody']);
+
+        try {
+            $service->saveProfile($organisation, $learner, 'member', [
+                'fullName' => 'Mapped Architect', 'profession' => 'architectural_professional', 'professionalBody' => 'ECSA',
+                'registrationNumber' => 'SACAP-MAP-1', 'registrationCategory' => 'Professional Architect',
+                'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+                'popiaConsent' => true,
+            ]);
+            self::fail('A mapped role must not be saved under a different professional body.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_professional_role_body_mismatch', $exception->reason);
+        }
+
+        try {
+            $service->saveProfile($organisation, $admin, 'owner', [
+                'fullName' => 'Other Professional', 'profession' => 'other_built_environment_professional', 'professionalBody' => 'SACPVP',
+                'registrationNumber' => 'OTHER-1', 'registrationCategory' => 'Manual category',
+                'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+                'popiaConsent' => true,
+            ]);
+            self::fail('Other professional roles require an explicit manual body confirmation.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_professional_role_manual_confirmation_required', $exception->reason);
+        }
+
+        $other = $service->saveProfile($organisation, $admin, 'owner', [
+            'fullName' => 'Other Professional', 'profession' => 'other_built_environment_professional', 'professionalBody' => 'SACPVP',
+            'registrationNumber' => 'OTHER-1', 'registrationCategory' => 'Manual category',
+            'cycleStart' => '2026-01-01', 'cycleEnd' => '2030-12-31', 'participationRole' => 'learner',
+            'manualBodyConfirmation' => true, 'popiaConsent' => true,
+        ]);
+        self::assertSame('other_built_environment_professional', $other['profession']);
+        self::assertSame('SACPVP', $other['professionalBody']);
+    }
+
     /** @return array{string,string,string} */
     private function tenant(): array
     {
