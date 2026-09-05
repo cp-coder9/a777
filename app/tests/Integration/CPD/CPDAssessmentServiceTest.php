@@ -130,7 +130,12 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         $certificate = $service->issueCertificate($organisation, $learner, 'member', $result['id'], 'https://example.test');
         self::assertSame('CPD-2026-001', $certificate['accreditationReference']);
         self::assertSame('0.1', $certificate['creditsAwarded']);
-        self::assertSame($certificate['id'], $service->verifyCertificate($certificate['verificationCode'])['id']);
+        $verified=$service->verifyCertificate($certificate['verificationCode']);
+        self::assertSame($certificate['verificationCode'], $verified['verificationCode']);
+        self::assertTrue($verified['valid']);
+        self::assertArrayNotHasKey('learnerUserId',$verified);
+        self::assertArrayNotHasKey('organisationId',$verified);
+        self::assertArrayNotHasKey('registrationNumber',$verified);
         $pdf=$service->certificatePdf($organisation,$learner,'member',$certificate['id']);
         self::assertStringStartsWith('%PDF-1.4',$pdf['content']);
         self::assertSame('application/pdf',$pdf['mimeType']);

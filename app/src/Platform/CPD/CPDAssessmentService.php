@@ -302,7 +302,18 @@ final class CPDAssessmentService
     public function verifyCertificate(string$verificationCode):array
     {
         if(preg_match('/\A[A-F0-9]{32}\z/',$verificationCode)!==1)throw new CPDAssessmentException('cpd_certificate_not_found');
-        $s=$this->pdo->prepare('SELECT *,LOWER(HEX(id)) id FROM cpd_certificates WHERE verification_code=:code');$s->execute(['code'=>$verificationCode]);$row=$s->fetch();if(!is_array($row))throw new CPDAssessmentException('cpd_certificate_not_found');return$this->certificateRow($row,'');
+        $s=$this->pdo->prepare('SELECT verification_code,learner_name,professional_body,approved_category,credits_awarded,accreditation_reference,provider_name,issued_at,revoked_at FROM cpd_certificates WHERE verification_code=:code');
+        $s->execute(['code'=>$verificationCode]);
+        $row=$s->fetch();
+        if(!is_array($row))throw new CPDAssessmentException('cpd_certificate_not_found');
+        // Public lookup is award evidence, not an authenticated certificate record.
+        // Keep an explicit allowlist even if future query changes add private fields.
+        $public=$this->row(array_intersect_key($row,array_flip([
+            'verification_code','learner_name','professional_body','approved_category',
+            'credits_awarded','accreditation_reference','provider_name','issued_at',
+        ])));
+        $public['valid']=$row['revoked_at']===null;
+        return $public;
     }
 
     /** @param array<string,mixed> $payload @return array<string,mixed> */
