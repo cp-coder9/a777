@@ -40,6 +40,23 @@ and CPD analytics but no review queue; reviewer navigation contained Human
 review and the review disclosure. Computed-style checks found no rendered
 restricted elements.
 
+At a Chrome-emulated 390 x 844 mobile viewport, the creator question bank
+rendered at 264px within a 292px form; document width remained 390px and no
+interactive question-bank element extended beyond the viewport. Adding two
+questions and changing them to scenario and text-review retained the expected
+three-card sequence with option counts `2, 2, 0`. The local fixture uses demo
+application mode, so its global demo-sandbox bootstrap correctly returned 403
+for an ordinary member; the CPD workspace request itself returned 200. This is
+not a CPD error or a production-mode console claim.
+
+Finally, an independently authenticated platform-administrator browser session
+rendered Content studio, the dynamic Assessment builder, Human review,
+Accreditation, Commercial controls and the role manager. The administrator
+navigation contained all eight relevant destinations and the builder rendered
+its initial question card. This completes the browser role-visibility evidence
+for learner, creator, reviewer, accreditation partner and platform
+administrator for this slice.
+
 ## Boundary
 
 This is local browser and targeted-test evidence for the question-bank slice.
