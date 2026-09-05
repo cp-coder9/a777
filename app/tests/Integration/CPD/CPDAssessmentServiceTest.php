@@ -138,6 +138,10 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertArrayNotHasKey('registrationNumber',$verified);
         $pdf=$service->certificatePdf($organisation,$learner,'member',$certificate['id']);
         self::assertStringStartsWith('%PDF-1.4',$pdf['content']);
+        self::assertStringContainsString('(Course: Responsible AI in professional)',$pdf['content']);
+        self::assertStringContainsString('(practice)',$pdf['content']);
+        self::assertStringContainsString('(Assessment status: passed)',$pdf['content']);
+        self::assertStringContainsString('/Subtype /Link',$pdf['content']);
         self::assertSame('application/pdf',$pdf['mimeType']);
         $service->captureReferral($organisation,$learner,['source'=>'cpd_central','campaign'=>'launch','eventType'=>'completed','courseId'=>$course['id'],'consented'=>true]);
         self::assertSame(1,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_referral_events')->fetchColumn());

@@ -293,9 +293,17 @@ final class CPDAssessmentService
     }
 
     /** @return array{content:string,mimeType:string,filename:string,sha256:string} */
-    public function certificatePdf(string$o,string$u,string$role,string$certificateId):array
+    public function certificatePdf(string$o,string$u,string$role,string$certificateId,string$verificationBaseUrl=''):array
     {
-        $this->membership($o,$u,$role);$s=$this->pdo->prepare('SELECT *,LOWER(HEX(id)) id,LOWER(HEX(learner_user_id)) learner_user_id FROM cpd_certificates WHERE organisation_id=UNHEX(:o) AND id=UNHEX(:id)');$s->execute(['o'=>$o,'id'=>$certificateId]);$certificate=$s->fetch();if(!is_array($certificate))throw new CPDAssessmentException('cpd_certificate_not_found');if($certificate['learner_user_id']!==$u&&!in_array($role,self::GOVERNORS,true))throw new CPDAssessmentException('cpd_certificate_forbidden');$lines=['ARCHITEX CPD CERTIFICATE','Learner: '.$certificate['learner_name'],'Professional body: '.$certificate['professional_body'],'Registration: '.$certificate['registration_number'],'Category: '.$certificate['approved_category'],'Credits / units: '.$this->decimalString((string)$certificate['credits_awarded']),'Accreditation: '.$certificate['accreditation_reference'],'Provider: '.$certificate['provider_name'],'Verification code: '.$certificate['verification_code'],'Issued: '.$certificate['issued_at'],'Verification status: '.($certificate['revoked_at']===null?'valid':'revoked')];$content=$this->pdf($lines);return['content'=>$content,'mimeType'=>'application/pdf','filename'=>'architex-cpd-certificate-'.$certificate['verification_code'].'.pdf','sha256'=>hash('sha256',$content)];
+        $this->membership($o,$u,$role);
+        $s=$this->pdo->prepare('SELECT c.*,LOWER(HEX(c.id)) id,LOWER(HEX(c.learner_user_id)) learner_user_id,r.activity_title FROM cpd_certificates c JOIN cpd_professional_records r ON r.certificate_id=c.id AND r.organisation_id=c.organisation_id WHERE c.organisation_id=UNHEX(:o) AND c.id=UNHEX(:id)');
+        $s->execute(['o'=>$o,'id'=>$certificateId]);
+        $certificate=$s->fetch();
+        if(!is_array($certificate))throw new CPDAssessmentException('cpd_certificate_not_found');
+        if($certificate['learner_user_id']!==$u&&!in_array($role,self::GOVERNORS,true))throw new CPDAssessmentException('cpd_certificate_forbidden');
+        $lines=['Course: '.$certificate['activity_title'],'Learner: '.$certificate['learner_name'],'Professional body: '.$certificate['professional_body'],'Registration: '.$certificate['registration_number'],'Category: '.$certificate['approved_category'],'Credits / units: '.$this->decimalString((string)$certificate['credits_awarded']),'Accreditation: '.$certificate['accreditation_reference'],'Provider: '.$certificate['provider_name'],'Assessment status: passed','Verification code: '.$certificate['verification_code'],'Issued: '.$certificate['issued_at'],'Verification status: '.($certificate['revoked_at']===null?'valid':'revoked')];
+        $content=CPDCertificatePdf::render($lines,CertificateVerificationUrl::build($verificationBaseUrl,$certificate['verification_code']));
+        return['content'=>$content,'mimeType'=>'application/pdf','filename'=>'architex-cpd-certificate-'.$certificate['verification_code'].'.pdf','sha256'=>hash('sha256',$content)];
     }
 
     /** @return array<string,mixed> */
@@ -355,7 +363,6 @@ final class CPDAssessmentService
 
     /** @return array<string,mixed> */ private function commercialSettings(string$o):array{$row=$this->commercialSettingsRow($o);return['platformFeeBasisPoints'=>(int)$row['platform_fee_basis_points'],'minimumPlatformFeeCents'=>(int)$row['minimum_platform_fee_cents'],'payoutEnabled'=>(bool)$row['payout_enabled'],'configuredProviders'=>$this->decode($row['configured_providers']),'updatedAt'=>$row['updated_at']??null];}
     /** @return array<string,mixed> */ private function commercialSettingsRow(string$o):array{$s=$this->pdo->prepare('SELECT * FROM cpd_commercial_settings WHERE organisation_id=UNHEX(:o)');$s->execute(['o'=>$o]);$r=$s->fetch();return is_array($r)?$r:['organisation_id'=>hex2bin($o),'platform_fee_basis_points'=>1000,'minimum_platform_fee_cents'=>100,'payout_enabled'=>0,'configured_providers'=>'["manual_eft"]','updated_by'=>null,'updated_at'=>null];}
-    /** @param list<string> $lines */ private function pdf(array$lines):string{$stream="BT\n/F1 14 Tf\n72 760 Td\n";foreach($lines as$index=>$line){$safe=preg_replace('/[^\x20-\x7E]/','?',(string)$line)??'';$safe=str_replace(['\\','(',')'],['\\\\','\\(','\\)'],$safe);$stream.='('.$safe.") Tj\n".($index<count($lines)-1?"0 -24 Td\n":'');}$stream.="ET\n";$objects=[1=>'<< /Type /Catalog /Pages 2 0 R >>',2=>'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',3=>'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',4=>'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',5=>'<< /Length '.strlen($stream)." >>\nstream\n".$stream.'endstream'];$pdf="%PDF-1.4\n";$offsets=[0=>0];foreach($objects as$number=>$object){$offsets[$number]=strlen($pdf);$pdf.=$number." 0 obj\n".$object."\nendobj\n";}$xref=strlen($pdf);$pdf.="xref\n0 6\n0000000000 65535 f \n";for($i=1;$i<=5;$i++)$pdf.=sprintf("%010d 00000 n \n",$offsets[$i]);return$pdf."trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF\n";}
 
     /**
      * @param list<array<string,mixed>> $questions
