@@ -98,6 +98,18 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
             'humanConfirmed'=>true,
         ]);
         self::assertSame('manual_review_required', $result['status']);
+        self::assertArrayNotHasKey('reviewAnswers',$service->workspace($organisation,$learner,'member')['attempts'][0]);
+        self::assertCount(0,$service->workspace($organisation,$freeLearner,'member')['attempts']);
+        $service->saveProfile($organisation,$freeLearner,'member',[
+            'fullName'=>'Independent Reviewer','profession'=>'Architect','professionalBody'=>'SACAP',
+            'registrationNumber'=>'REVIEWER-1','registrationCategory'=>'PrArch','cycleStart'=>'2026-01-01','cycleEnd'=>'2030-12-31','participationRole'=>'learner','popiaConsent'=>true,
+        ]);
+        $service->assignParticipationRole($organisation,$admin,'owner',$freeLearner,['participationRole'=>'cpd_reviewer','reason'=>'Verified assessment reviewer.','humanConfirmed'=>true]);
+        $reviewQueue=$service->workspace($organisation,$freeLearner,'member')['attempts'];
+        self::assertCount(1,$reviewQueue);
+        self::assertSame($result['id'],$reviewQueue[0]['id']);
+        self::assertCount(2,$reviewQueue[0]['reviewAnswers']);
+        self::assertNotEmpty($reviewQueue[0]['reviewAnswers'][1]['answerText']);
         $this->pdo->prepare("UPDATE cpd_courses SET status='suspended' WHERE id=UNHEX(:id)")->execute(['id'=>$course['id']]);
         try {
             $service->reviewAttempt($organisation,$admin,'owner',$result['id'],['decision'=>'pass','reason'=>'Check atomic eligibility failure.','humanConfirmed'=>true]);
