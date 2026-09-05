@@ -13,9 +13,11 @@ final class CPDMigrationContractTest extends TestCase
         $base = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0045_cpd_assessment_platform.sql');
         $commerce = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0047_cpd_commercial_ledger.sql');
         $governance = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0060_cpd_assessment_governance.sql');
+        $trueFalse = file_get_contents(dirname(__DIR__, 3) . '/database/migrations/0061_cpd_true_false_questions.sql');
         self::assertIsString($base);
         self::assertIsString($commerce);
         self::assertIsString($governance);
+        self::assertIsString($trueFalse);
         $sql=$base.$commerce.$governance;
         foreach ([
             'cpd_professional_body_rules', 'cpd_professional_profiles', 'cpd_content_items',
@@ -33,6 +35,7 @@ final class CPDMigrationContractTest extends TestCase
         self::assertStringContainsString('provider_event_id', $sql);
         self::assertStringContainsString('verification_code', $sql);
         self::assertStringContainsString('rule_snapshot', $sql);
+        self::assertStringContainsString("ENUM('single_choice','multiple_choice','scenario','true_false','text_review')", $trueFalse);
         foreach (['supersedes_assessment_id','generation_model','generation_request_id','generation_usage','risk_flags','learning_outcome','source_reference','difficulty','model_answer','expires_at'] as $column) {
             self::assertStringContainsString($column, $governance, $column);
         }

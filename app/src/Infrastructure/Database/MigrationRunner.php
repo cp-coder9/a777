@@ -218,7 +218,7 @@ final class MigrationRunner
         try {
             foreach ($migration['statements'] as $statement) {
                 $this->pdo->exec($statement);
-                if ($migration['mode'] === 'ddl') {
+                if ($migration['mode'] === 'ddl' && preg_match('/^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b/is', $this->lexer->withoutLeadingComments($statement)) === 1) {
                     $this->ddlValidator->assertCreateTableMatches($statement);
                 }
             }

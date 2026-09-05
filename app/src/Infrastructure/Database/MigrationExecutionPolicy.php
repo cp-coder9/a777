@@ -18,7 +18,9 @@ final readonly class MigrationExecutionPolicy
         if ($mode === 'ddl') {
             foreach ($statements as $statement) {
                 $sql = $this->lexer->withoutLeadingComments($statement);
-                if (preg_match('/^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b/is', $sql) !== 1) {
+                $createTable = preg_match('/^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b/is', $sql) === 1;
+                $cpdTrueFalseEnumExtension = preg_match("/^ALTER\\s+TABLE\\s+`?cpd_questions`?\\s+MODIFY\\s+(?:COLUMN\\s+)?`?question_type`?\\s+ENUM\\s*\\(\\s*'single_choice'\\s*,\\s*'multiple_choice'\\s*,\\s*'scenario'\\s*,\\s*'true_false'\\s*,\\s*'text_review'\\s*\\)\\s+NOT\\s+NULL\\s*$/is", $sql) === 1;
+                if (!$createTable && !$cpdTrueFalseEnumExtension) {
                     throw new RuntimeException('DDL migration contains a statement outside the retry-safe policy');
                 }
             }

@@ -57,6 +57,29 @@ its initial question card. This completes the browser role-visibility evidence
 for learner, creator, reviewer, accreditation partner and platform
 administrator for this slice.
 
+## True / false extension
+
+The Pack 22 source also requires true/false questions. A new browser contract
+test initially failed with `Question 4 type is invalid`; the corresponding
+MariaDB request then exposed that the original `cpd_questions.question_type`
+enum lacked `true_false`. Migration `0061_cpd_true_false_questions.sql`
+extends only that enum. Its migration-policy test first failed, because the
+platform intentionally blocks generic `ALTER TABLE`; the policy now allows
+only this exact forward CPD enum extension while its existing generic-ALTER
+rejection remains in place.
+
+Executed checks after the correction:
+
+- CPD migration contract plus migration-policy tests: 16 tests, 72 assertions,
+  0 failures.
+- Question-bank browser contract: 4 tests, 0 failures.
+- PHP syntax checks passed for the CPD service and migration infrastructure.
+- Local browser fixture migration: one migration applied, status current;
+  schema inspection reported `true_false` in `cpd_questions.question_type`.
+- A creator saved **Browser true-false question-bank assessment** and an
+  independently signed-in reviewer received its review disclosure and approval
+  action.
+
 ## Boundary
 
 This is local browser and targeted-test evidence for the question-bank slice.

@@ -18,6 +18,13 @@ final class MigrationExecutionPolicyTest extends TestCase
         ]));
     }
 
+    public function testDdlModeAllowsOnlyTheForwardCpdTrueFalseEnumExtension(): void
+    {
+        self::assertFalse((new MigrationExecutionPolicy())->isTransactional('ddl', [
+            "ALTER TABLE cpd_questions MODIFY question_type ENUM('single_choice','multiple_choice','scenario','true_false','text_review') NOT NULL",
+        ]));
+    }
+
     /** @param list<string> $statements */
     #[DataProvider('unsafeDdlProvider')]
     public function testDdlModeRejectsNonRetrySafeOrAdministrativeStatements(array $statements): void

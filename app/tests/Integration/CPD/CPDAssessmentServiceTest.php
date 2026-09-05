@@ -36,12 +36,14 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
             'title'=>'Responsible AI assessment', 'passPercent'=>70, 'attemptLimit'=>3,
             'questions'=>[
                 ['prompt'=>'Who retains professional responsibility?', 'type'=>'single_choice', 'points'=>1, 'options'=>[['text'=>'The registered professional','correct'=>true],['text'=>'The AI system','correct'=>false]]],
+                ['prompt'=>'A professional may delegate final responsibility to an AI system.', 'type'=>'true_false', 'points'=>1, 'options'=>[['text'=>'True','correct'=>false],['text'=>'False','correct'=>true]]],
                 ['prompt'=>'Explain the required human sign-off.', 'type'=>'text_review', 'points'=>1],
             ],
             'generatedWithAi'=>false,
         ]);
         self::assertFalse($assessment['generatedWithAi']);
         self::assertSame('human_review_required', $assessment['status']);
+        self::assertSame('true_false', $assessment['questions'][1]['questionType']);
 
         $assessment = $service->reviewAssessment($organisation, $admin, 'owner', $assessment['id'], [
             'decision'=>'approved_for_accreditation', 'reason'=>'Human reviewer checked every question.', 'humanConfirmed'=>true,

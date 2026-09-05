@@ -17,10 +17,11 @@ test('serialises all supported question types without inventing options',()=>{
     {...source,type:'single_choice',prompt:'Who signs off?',points:'1',options:[{text:'Registered professional',correct:true},{text:'AI',correct:false}]},
     {...source,type:'multiple_choice',prompt:'Select duties',points:'2.5',options:[{text:'Review',correct:true},{text:'Keep evidence',correct:true},{text:'Delegate responsibility',correct:false}]},
     {...source,type:'scenario',prompt:'What is the next step?',points:3,options:[{text:'Escalate evidence gap',correct:true},{text:'Ignore it',correct:false}]},
+    {...source,type:'true_false',prompt:'A professional may delegate final responsibility to an AI system.',points:1,options:[{text:'True',correct:false},{text:'False',correct:true}]},
     {...source,type:'text_review',prompt:'Explain accountable review',points:4,options:[{text:'must be ignored',correct:true}]},
   ]);
-  assert.deepEqual(result.map(question=>question.type),['single_choice','multiple_choice','scenario','text_review']);
-  assert.equal(result[3].options.length,0);
+  assert.deepEqual(result.map(question=>question.type),['single_choice','multiple_choice','scenario','true_false','text_review']);
+  assert.equal(result[4].options.length,0);
   assert.equal(result[1].points,2.5);
 });
 
