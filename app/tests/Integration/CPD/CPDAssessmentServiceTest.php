@@ -98,10 +98,22 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
             'humanConfirmed'=>true,
         ]);
         self::assertSame('manual_review_required', $result['status']);
+        $this->pdo->prepare("UPDATE cpd_courses SET status='suspended' WHERE id=UNHEX(:id)")->execute(['id'=>$course['id']]);
+        try {
+            $service->reviewAttempt($organisation,$admin,'owner',$result['id'],['decision'=>'pass','reason'=>'Check atomic eligibility failure.','humanConfirmed'=>true]);
+            self::fail('An ineligible certificate must roll back the passing review.');
+        } catch (CPDAssessmentException $exception) {
+            self::assertSame('cpd_course_not_live',$exception->reason);
+        }
+        self::assertSame('manual_review_required',$this->pdo->query('SELECT status FROM cpd_attempts')->fetchColumn());
+        self::assertSame(0,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn());
+        $this->pdo->prepare("UPDATE cpd_courses SET status='live' WHERE id=UNHEX(:id)")->execute(['id'=>$course['id']]);
         $result = $service->reviewAttempt($organisation, $admin, 'owner', $result['id'], [
             'decision'=>'pass', 'reason'=>'Text response demonstrates the outcome.', 'humanConfirmed'=>true,
         ]);
         self::assertTrue($result['passed']);
+        self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn(), 'A reviewed pass must issue its certificate automatically.');
+        self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_professional_records')->fetchColumn());
 
         $certificate = $service->issueCertificate($organisation, $learner, 'member', $result['id'], 'https://example.test');
         self::assertSame('CPD-2026-001', $certificate['accreditationReference']);
@@ -114,6 +126,23 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertSame(1,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_referral_events')->fetchColumn());
         self::assertSame(1, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_professional_records')->fetchColumn());
         self::assertGreaterThanOrEqual(10, (int)$this->pdo->query('SELECT COUNT(*) FROM cpd_audit_events')->fetchColumn());
+
+        $auto=$service->createAssessmentDraft($organisation,$admin,'owner',$content['id'],[
+            'title'=>'Automatically scored assessment','passPercent'=>70,'attemptLimit'=>3,
+            'questions'=>[['prompt'=>'Who signs off?','type'=>'single_choice','points'=>1,'options'=>[['text'=>'Professional','correct'=>true],['text'=>'Model','correct'=>false]]]],'generatedWithAi'=>false,
+        ]);
+        $service->reviewAssessment($organisation,$admin,'owner',$auto['id'],['decision'=>'approved_for_accreditation','reason'=>'Checked source and answers.','humanConfirmed'=>true]);
+        $autoApplication=$service->createAccreditationApplication($organisation,$admin,'owner',$auto['id'],['professionalBody'=>'SACAP','connectorMode'=>'document_export','requestedCategory'=>'category_1','requestedCredits'=>'0.1','providerName'=>'CPD Central','humanConfirmed'=>true]);
+        $service->decideAccreditation($organisation,$admin,'owner',$autoApplication['id'],['decision'=>'accredited','approvedCategory'=>'category_1','approvedCredits'=>'0.1','reference'=>'CPD-AUTO-002','validFrom'=>date('Y-m-d',strtotime('-1 day')),'validUntil'=>date('Y-m-d',strtotime('+1 year')),'reason'=>'Evidence verified.','humanConfirmed'=>true]);
+        $autoCourse=$service->publishCourse($organisation,$admin,'owner',$autoApplication['id'],['priceCents'=>0,'currency'=>'ZAR','commercialModel'=>'free_funnel','humanConfirmed'=>true]);
+        $service->createFreeEntitlement($organisation,$learner,'member',$autoCourse['id']);
+        $autoAttempt=$service->startAttempt($organisation,$learner,'member',$autoCourse['id']);
+        $autoResult=$service->submitAttempt($organisation,$learner,'member',$autoAttempt['id'],['answers'=>[['questionId'=>$auto['questions'][0]['id'],'selectedOptionIds'=>[$auto['questions'][0]['options'][0]['id']]]],'humanConfirmed'=>true]);
+        self::assertSame('passed',$autoResult['status']);
+        self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn());
+        self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_professional_records')->fetchColumn());
+        $service->issueCertificate($organisation,$learner,'member',$autoAttempt['id'],'');
+        self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM cpd_certificates')->fetchColumn());
     }
 
     public function testPublishingAndExternalPaymentFailClosed(): void

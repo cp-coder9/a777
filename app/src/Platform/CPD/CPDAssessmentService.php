@@ -246,30 +246,50 @@ final class CPDAssessmentService
             }
             $assessment=$this->assessmentRow($o,bin2hex($attempt['assessment_id']));$auto=$total>0?round($earned/$total*100,2):0.0;$passed=!$manual&&$auto>=(float)$assessment['pass_percent'];$status=$manual?'manual_review_required':($passed?'passed':'failed');
             $this->pdo->prepare('UPDATE cpd_attempts SET status=:status,auto_score=:score,final_score=:final,passed=:passed,manual_review_required=:manual,submitted_at=UTC_TIMESTAMP(6) WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:o)')->execute(['status'=>$status,'score'=>$auto,'final'=>$manual?null:$auto,'passed'=>$manual?null:($passed?1:0),'manual'=>$manual?1:0,'id'=>$id,'o'=>$o]);$this->pdo->prepare('UPDATE cpd_attempt_timing SET last_activity_at=UTC_TIMESTAMP(6) WHERE attempt_id=UNHEX(:id)')->execute(['id'=>$id]);
-            $this->audit($o,$u,'cpd.attempt_submitted','attempt',$id,['status'=>$status,'autoScore'=>$auto,'manualReviewRequired'=>$manual]);return$this->attempt($o,$id);
+            $this->audit($o,$u,'cpd.attempt_submitted','attempt',$id,['status'=>$status,'autoScore'=>$auto,'manualReviewRequired'=>$manual]);
+            if($passed)$this->issuePassingCertificate($o,$u,$id,'',$u);
+            return$this->attempt($o,$id);
         });
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function reviewAttempt(string$o,string$u,string$role,string$id,array$input):array
     {
-        $this->requireCapability($o,$u,$role,'attempt.review','cpd_attempt_review_forbidden');$this->confirmed($input);$attempt=$this->attemptRow($o,$id);if($attempt['status']!=='manual_review_required')throw new CPDAssessmentException('cpd_attempt_review_state_invalid');
+        $this->requireCapability($o,$u,$role,'attempt.review','cpd_attempt_review_forbidden');$this->confirmed($input);
+        return $this->transaction(function()use($o,$u,$id,$input):array {
+        $this->lockAttempt($o,$id);
+        $attempt=$this->attemptRow($o,$id);if($attempt['status']!=='manual_review_required')throw new CPDAssessmentException('cpd_attempt_review_state_invalid');
         $decision=$this->choice($input['decision']??null,['pass','fail'],'cpd_attempt_decision_invalid');$reason=$this->text($input['reason']??null,2000,'cpd_review_reason_required');$passed=$decision==='pass';$score=$passed?100:((float)$attempt['auto_score']);$status=$passed?'passed':'failed';
         $this->pdo->prepare('UPDATE cpd_attempts SET status=:status,final_score=:score,passed=:passed,reviewed_by=UNHEX(:u),review_reason=:reason,reviewed_at=UTC_TIMESTAMP(6) WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:o)')->execute(['status'=>$status,'score'=>$score,'passed'=>$passed?1:0,'u'=>$u,'reason'=>$reason,'id'=>$id,'o'=>$o]);
-        $this->audit($o,$u,'cpd.attempt_reviewed','attempt',$id,['decision'=>$decision,'reason'=>$reason]);return$this->attempt($o,$id);
+        $this->audit($o,$u,'cpd.attempt_reviewed','attempt',$id,['decision'=>$decision,'reason'=>$reason]);
+        if($passed)$this->issuePassingCertificate($o,bin2hex($attempt['learner_user_id']),$id,'',$u);
+        return$this->attempt($o,$id);
+        });
     }
 
     /** @return array<string,mixed> */
     public function issueCertificate(string$o,string$u,string$role,string$attemptId,string$verificationBaseUrl):array
     {
-        $this->membership($o,$u,$role);$attempt=$this->attemptRow($o,$attemptId);if(bin2hex($attempt['learner_user_id'])!==$u)throw new CPDAssessmentException('cpd_certificate_forbidden');if($attempt['status']!=='passed'||(int)$attempt['passed']!==1)throw new CPDAssessmentException('cpd_passing_attempt_required');
+        $this->membership($o,$u,$role);
+        return $this->transaction(fn():array=>$this->issuePassingCertificate($o,$u,$attemptId,$verificationBaseUrl,$u));
+    }
+
+    private function lockAttempt(string$o,string$id):void
+    {
+        $lock=$this->pdo->prepare('SELECT id FROM cpd_attempts WHERE organisation_id=UNHEX(:o) AND id=UNHEX(:id) FOR UPDATE');
+        $lock->execute(['o'=>$o,'id'=>$id]);
+    }
+
+    /** Called only inside the caller-owned transaction. @return array<string,mixed> */
+    private function issuePassingCertificate(string$o,string$u,string$attemptId,string$verificationBaseUrl,string$actor):array
+    {
+        $this->lockAttempt($o,$attemptId);
+        $attempt=$this->attemptRow($o,$attemptId);if(bin2hex($attempt['learner_user_id'])!==$u)throw new CPDAssessmentException('cpd_certificate_forbidden');if($attempt['status']!=='passed'||(int)$attempt['passed']!==1)throw new CPDAssessmentException('cpd_passing_attempt_required');
         $existing=$this->pdo->prepare('SELECT LOWER(HEX(id)) FROM cpd_certificates WHERE attempt_id=UNHEX(:attempt)');$existing->execute(['attempt'=>$attemptId]);$certificateId=$existing->fetchColumn();if(is_string($certificateId))return$this->certificate($o,$certificateId,$verificationBaseUrl);
         $course=$this->courseRow($o,bin2hex($attempt['course_id']));$this->assertCourseLive($course);$profile=$this->profileRow($o,$u);$application=$this->accreditationRow($o,bin2hex($course['accreditation_application_id']));$rule=$this->decode($application['rule_snapshot']);$id=Identifier::generate();$code=strtoupper(bin2hex(random_bytes(16)));
-        return$this->transaction(function()use($o,$u,$attemptId,$course,$profile,$application,$rule,$id,$code,$verificationBaseUrl):array{
             $this->pdo->prepare('INSERT INTO cpd_certificates(id,organisation_id,attempt_id,learner_user_id,course_id,verification_code,learner_name,professional_body,registration_number,approved_category,credits_awarded,accreditation_reference,provider_name) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:attempt),UNHEX(:u),UNHEX(:course),:code,:name,:body,:number,:category,:credits,:reference,:provider)')->execute(['id'=>$id,'o'=>$o,'attempt'=>$attemptId,'u'=>$u,'course'=>$course['id'],'code'=>$code,'name'=>$profile['full_name'],'body'=>$profile['professional_body'],'number'=>$profile['registration_number'],'category'=>$course['approved_category'],'credits'=>$course['approved_credits'],'reference'=>$course['accreditation_reference'],'provider'=>$course['provider_name']]);
             $this->pdo->prepare('INSERT INTO cpd_professional_records(id,organisation_id,learner_user_id,certificate_id,attempt_id,professional_body,registration_number,activity_title,completed_on,approved_category,credits_awarded,accreditation_reference,rule_snapshot) VALUES(UNHEX(:id),UNHEX(:o),UNHEX(:u),UNHEX(:certificate),UNHEX(:attempt),:body,:number,:title,UTC_DATE(),:category,:credits,:reference,:snapshot)')->execute(['id'=>Identifier::generate(),'o'=>$o,'u'=>$u,'certificate'=>$id,'attempt'=>$attemptId,'body'=>$profile['professional_body'],'number'=>$profile['registration_number'],'title'=>$course['title'],'category'=>$course['approved_category'],'credits'=>$course['approved_credits'],'reference'=>$course['accreditation_reference'],'snapshot'=>$this->json($rule)]);
-            $this->audit($o,$u,'cpd.certificate_issued','certificate',$id,['attemptId'=>$attemptId,'accreditationReference'=>$course['accreditation_reference']]);return$this->certificate($o,$id,$verificationBaseUrl);
-        });
+            $this->audit($o,$actor,'cpd.certificate_issued','certificate',$id,['attemptId'=>$attemptId,'learnerUserId'=>$u,'accreditationReference'=>$course['accreditation_reference']]);return$this->certificate($o,$id,$verificationBaseUrl);
     }
 
     /** @return array{content:string,mimeType:string,filename:string,sha256:string} */
