@@ -136,7 +136,10 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertArrayNotHasKey('learnerUserId',$verified);
         self::assertArrayNotHasKey('organisationId',$verified);
         self::assertArrayNotHasKey('registrationNumber',$verified);
+        $this->pdo->exec("UPDATE cpd_professional_body_rules SET unit_label='changed after issue' WHERE body_code='SACAP'");
         $pdf=$service->certificatePdf($organisation,$learner,'member',$certificate['id']);
+        self::assertStringContainsString('(CPD award: 0.1 credits)',$pdf['content']);
+        self::assertStringNotContainsString('changed after issue',$pdf['content']);
         self::assertStringStartsWith('%PDF-1.4',$pdf['content']);
         self::assertStringContainsString('(Course: Responsible AI in professional)',$pdf['content']);
         self::assertStringContainsString('(practice)',$pdf['content']);

@@ -6,6 +6,14 @@ namespace Architex\Platform\CPD;
 
 final class CPDCertificatePdf
 {
+    /** @param array<string,mixed> $ruleSnapshot */
+    public static function awardField(string $amount, array $ruleSnapshot): string
+    {
+        if(($ruleSnapshot['calculationPolicy']??null)==='manual_compliance_only'||($ruleSnapshot['unitLabel']??null)==='compliance record')return 'CPD award: compliance record';
+        $unit=$ruleSnapshot['unitLabel']??null;
+        return 'CPD award: '.$amount.' '.(is_string($unit)&&trim($unit)!==''?$unit:'(unit pending confirmation)');
+    }
+
     /** @param list<string> $fields */
     public static function render(array $fields, string $verificationUrl): string
     {

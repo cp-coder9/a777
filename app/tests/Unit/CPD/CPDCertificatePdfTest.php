@@ -9,6 +9,16 @@ use PHPUnit\Framework\TestCase;
 
 final class CPDCertificatePdfTest extends TestCase
 {
+    public function testAwardFieldUsesTheIssuedRuleSnapshot(): void
+    {
+        self::assertTrue(method_exists(CPDCertificatePdf::class,'awardField'));
+        self::assertSame('CPD award: 1.5 points',CPDCertificatePdf::awardField('1.5',['unitLabel'=>'points']));
+        self::assertSame('CPD award: 2 hours',CPDCertificatePdf::awardField('2',['unitLabel'=>'hours']));
+        self::assertSame('CPD award: 0.1 credits',CPDCertificatePdf::awardField('0.1',['unitLabel'=>'credits']));
+        self::assertSame('CPD award: compliance record',CPDCertificatePdf::awardField('0',['unitLabel'=>'compliance record','calculationPolicy'=>'manual_compliance_only']));
+        self::assertSame('CPD award: 2 (unit pending confirmation)',CPDCertificatePdf::awardField('2',[]));
+    }
+
     public function testCertificateHasSafeClickableVerificationAndPaginatedLongFields(): void
     {
         self::assertTrue(class_exists(CPDCertificatePdf::class), 'Certificate PDF renderer is required');

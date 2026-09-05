@@ -296,12 +296,12 @@ final class CPDAssessmentService
     public function certificatePdf(string$o,string$u,string$role,string$certificateId,string$verificationBaseUrl=''):array
     {
         $this->membership($o,$u,$role);
-        $s=$this->pdo->prepare('SELECT c.*,LOWER(HEX(c.id)) id,LOWER(HEX(c.learner_user_id)) learner_user_id,r.activity_title FROM cpd_certificates c JOIN cpd_professional_records r ON r.certificate_id=c.id AND r.organisation_id=c.organisation_id WHERE c.organisation_id=UNHEX(:o) AND c.id=UNHEX(:id)');
+        $s=$this->pdo->prepare('SELECT c.*,LOWER(HEX(c.id)) id,LOWER(HEX(c.learner_user_id)) learner_user_id,r.activity_title,r.rule_snapshot FROM cpd_certificates c JOIN cpd_professional_records r ON r.certificate_id=c.id AND r.organisation_id=c.organisation_id WHERE c.organisation_id=UNHEX(:o) AND c.id=UNHEX(:id)');
         $s->execute(['o'=>$o,'id'=>$certificateId]);
         $certificate=$s->fetch();
         if(!is_array($certificate))throw new CPDAssessmentException('cpd_certificate_not_found');
         if($certificate['learner_user_id']!==$u&&!in_array($role,self::GOVERNORS,true))throw new CPDAssessmentException('cpd_certificate_forbidden');
-        $lines=['Course: '.$certificate['activity_title'],'Learner: '.$certificate['learner_name'],'Professional body: '.$certificate['professional_body'],'Registration: '.$certificate['registration_number'],'Category: '.$certificate['approved_category'],'Credits / units: '.$this->decimalString((string)$certificate['credits_awarded']),'Accreditation: '.$certificate['accreditation_reference'],'Provider: '.$certificate['provider_name'],'Assessment status: passed','Verification code: '.$certificate['verification_code'],'Issued: '.$certificate['issued_at'],'Verification status: '.($certificate['revoked_at']===null?'valid':'revoked')];
+        $lines=['Course: '.$certificate['activity_title'],'Learner: '.$certificate['learner_name'],'Professional body: '.$certificate['professional_body'],'Registration: '.$certificate['registration_number'],'Category: '.$certificate['approved_category'],CPDCertificatePdf::awardField($this->decimalString((string)$certificate['credits_awarded']),$this->decode($certificate['rule_snapshot'])),'Accreditation: '.$certificate['accreditation_reference'],'Provider: '.$certificate['provider_name'],'Assessment status: passed','Verification code: '.$certificate['verification_code'],'Issued: '.$certificate['issued_at'],'Verification status: '.($certificate['revoked_at']===null?'valid':'revoked')];
         $content=CPDCertificatePdf::render($lines,CertificateVerificationUrl::build($verificationBaseUrl,$certificate['verification_code']));
         return['content'=>$content,'mimeType'=>'application/pdf','filename'=>'architex-cpd-certificate-'.$certificate['verification_code'].'.pdf','sha256'=>hash('sha256',$content)];
     }
