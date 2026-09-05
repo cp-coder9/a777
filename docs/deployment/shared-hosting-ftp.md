@@ -26,7 +26,14 @@ The builder installs production-only Composer dependencies inside the candidate.
 6. Create writable private directories `storage/files`, `storage/logs`, and `storage/tmp`; deny web access. The configured document root must remain the candidate's `public/` directory.
 7. Point a staging subdomain at `<candidate>/public` and require TLS.
 
-Required PHP extensions: `json`, `openssl`, `pdo`, `pdo_mysql`, `fileinfo`, and `zip`. Required PHP limits must exceed the application limit: `upload_max_filesize >= 25M`, `post_max_size >= 26M`, and a suitable request timeout.
+Required PHP extensions: `curl`, `json`, `mbstring`, `openssl`, `pdo`, `pdo_mysql`, `fileinfo`, `zip`, and `zlib`. Required PHP limits must exceed the application limit: `upload_max_filesize >= 25M`, `post_max_size >= 26M`, and a suitable request timeout.
+
+CPD certificate PDFs require the production `setasign/tfpdf` dependency and its
+bundled `font/unifont/DejaVuSansCondensed.ttf` font. Preserve the complete vendor
+package and its licence files in the FTP candidate; do not upload just the PHP
+renderer. Font metrics can be computed with a read-only vendor directory.
+Run `composer check-platform-reqs --no-dev` locally; confirm `mbstring` and `zlib`
+are enabled in the host's PHP 8.3 extension selector before promotion.
 
 ## 3. Protected preflight and migration
 

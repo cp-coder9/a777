@@ -7,7 +7,7 @@ require dirname(__DIR__,2).'/vendor/autoload.php';
 
 echo \Architex\Platform\CPD\CPDCertificatePdf::render([
     'Course: '.str_repeat('Long professional development course title ',6),
-    'Learner: '.str_repeat('Example learner ',15),
+    'Learner: Zoë Šimek – Αθήνα '.str_repeat('Example learner ',15),
     'Professional body: SACPLAN',
     'Registration: '.str_repeat('A',180),
     'Category: '.str_repeat('Long category ',13),

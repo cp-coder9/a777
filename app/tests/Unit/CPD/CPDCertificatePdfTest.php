@@ -9,6 +9,13 @@ use PHPUnit\Framework\TestCase;
 
 final class CPDCertificatePdfTest extends TestCase
 {
+    public function testUnicodeNamesAreEncodedWithAnEmbeddedFont(): void
+    {
+        $pdf=CPDCertificatePdf::render(['Learner: Zoë Šimek – Αθήνα'], 'https://example.test/verify');
+        self::assertStringContainsString('/FontFile2',$pdf);
+        self::assertStringContainsString(mb_convert_encoding('Zoë Šimek – Αθήνα','UTF-16BE','UTF-8'),$pdf);
+    }
+
     public function testAwardFieldUsesTheIssuedRuleSnapshot(): void
     {
         self::assertTrue(method_exists(CPDCertificatePdf::class,'awardField'));
@@ -25,10 +32,10 @@ final class CPDCertificatePdfTest extends TestCase
         $url='https://example.test/api/v1/cpd/certificates/verify/'.str_repeat('A',32);
         $pdf=CPDCertificatePdf::render(['Course: Saved course title','Assessment status: passed',str_repeat('Long field ',300)],$url);
         self::assertStringStartsWith('%PDF-1.4',$pdf);
-        self::assertStringContainsString('(Course: Saved course title)',$pdf);
-        self::assertStringContainsString('(Assessment status: passed)',$pdf);
+        self::assertStringContainsString(mb_convert_encoding('Course: Saved course title','UTF-16BE','UTF-8'),$pdf);
+        self::assertStringContainsString(mb_convert_encoding('Assessment status: passed','UTF-16BE','UTF-8'),$pdf);
         self::assertStringContainsString('/Subtype /Link',$pdf);
         self::assertStringContainsString('/URI ('.$url.')',$pdf);
-        self::assertGreaterThan(1,substr_count($pdf,'/Type /Page '));
+        self::assertGreaterThan(1,preg_match_all('/\/Type\s*\/Page\b/',$pdf));
     }
 }

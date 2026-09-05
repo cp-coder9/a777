@@ -138,12 +138,11 @@ final class CPDAssessmentServiceTest extends MariaDbTestCase
         self::assertArrayNotHasKey('registrationNumber',$verified);
         $this->pdo->exec("UPDATE cpd_professional_body_rules SET unit_label='changed after issue' WHERE body_code='SACAP'");
         $pdf=$service->certificatePdf($organisation,$learner,'member',$certificate['id']);
-        self::assertStringContainsString('(CPD award: 0.1 credits)',$pdf['content']);
-        self::assertStringNotContainsString('changed after issue',$pdf['content']);
+        self::assertStringContainsString(mb_convert_encoding('CPD award: 0.1 credits','UTF-16BE','UTF-8'),$pdf['content']);
+        self::assertStringNotContainsString(mb_convert_encoding('changed after issue','UTF-16BE','UTF-8'),$pdf['content']);
         self::assertStringStartsWith('%PDF-1.4',$pdf['content']);
-        self::assertStringContainsString('(Course: Responsible AI in professional)',$pdf['content']);
-        self::assertStringContainsString('(practice)',$pdf['content']);
-        self::assertStringContainsString('(Assessment status: passed)',$pdf['content']);
+        self::assertStringContainsString(mb_convert_encoding('Course: Responsible AI in professional practice','UTF-16BE','UTF-8'),$pdf['content']);
+        self::assertStringContainsString(mb_convert_encoding('Assessment status: passed','UTF-16BE','UTF-8'),$pdf['content']);
         self::assertStringContainsString('/Subtype /Link',$pdf['content']);
         self::assertSame('application/pdf',$pdf['mimeType']);
         $service->captureReferral($organisation,$learner,['source'=>'cpd_central','campaign'=>'launch','eventType'=>'completed','courseId'=>$course['id'],'consented'=>true]);
