@@ -151,6 +151,7 @@ final readonly class AuthenticationKernelFactory
         private ?string $fileStorageRoot = null,
         private string $appMode = 'production',
         private ?WingmanModel $wingmanModel = null,
+        private string $appUrl = '',
     ) {}
 
     public function create(): Kernel
@@ -397,7 +398,7 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.write'),
         ))->register($router);
         (new CPDRoutes(
-            new CPDController(new CPDAssessmentService($this->pdo,$wingmanModel)),
+            new CPDController(new CPDAssessmentService($this->pdo,$wingmanModel),$this->appUrl),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'tools.use'),
             new PermissionMiddleware(new PermissionService(),'verification.review'),

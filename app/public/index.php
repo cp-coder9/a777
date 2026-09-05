@@ -63,7 +63,7 @@ try {
         static fn (): bool => $runtime->isReady(),
     );
     $fileStorageRoot = is_string($environment['FILE_STORAGE_PATH'] ?? null) && trim($environment['FILE_STORAGE_PATH']) !== '' ? trim($environment['FILE_STORAGE_PATH']) : null;
-    $kernel = (new AuthenticationKernelFactory($pdo, $runtime->registrationNotifier, $runtime->passwordResetNotifier, $readiness, $fileStorageRoot, $config->appMode))->create();
+    $kernel = (new AuthenticationKernelFactory($pdo, $runtime->registrationNotifier, $runtime->passwordResetNotifier, $readiness, $fileStorageRoot, $config->appMode, appUrl: $runtime->appUrl))->create();
 } catch (Throwable) {
     $router = new Router();
     if ($request->path() === '/api/v1/readiness') {
