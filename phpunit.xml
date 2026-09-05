@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php" colors="true" cacheDirectory=".phpunit.cache">
   <testsuites>
-    <testsuite name="unit"><directory>app/tests/Unit</directory><directory>app/tests/Requirements</directory><directory>app/tests/Http</directory></testsuite>
+    <testsuite name="unit"><directory>app/tests/Unit</directory><directory>app/tests/Requirements</directory><directory>app/tests/Http</directory><directory>app/tests/Frontend</directory></testsuite>
     <testsuite name="integration"><directory>app/tests/Integration</directory></testsuite>
     <testsuite name="security"><directory>app/tests/Security</directory></testsuite>
   </testsuites>
