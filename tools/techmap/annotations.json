@@ -1,0 +1,29 @@
+{
+  "_comment": "Optional, source-grounded notes for the Architex capability map. Rebuild with python tools/techmap/generate_techmap_v3.py. Notes are explanatory, not independent verification of capabilities or integrations. The map builds without this file.",
+  "_schema": {
+    "stickies": [{ "text": "free-floating note shown at the foot of the map" }],
+    "links": [{ "from": "tool-id", "to": "tool-id", "planned": false, "label": "optional" }],
+    "nodeNotes": { "tool-id": "cursive note drawn beside that node" }
+  },
+
+  "notes": [
+    {
+      "style": "card",
+      "tilt": -1,
+      "text": "Module status and evidence come from the project registry. Live describes the registry's declaration; this map is not a fresh audit or professional compliance sign-off."
+    },
+    {
+      "style": "card",
+      "tilt": -1,
+      "text": "Payments & Escrow needs a configured money-movement provider. Remote Desktop needs its host agent, broker, viewer and allowlist. Both are marked integration_required in the registry."
+    },
+    {
+      "style": "pen",
+      "tilt": -1,
+      "text": "Columns follow the primary route placement. A module may support additional stages: open its details for the registry's wider stage coverage. Bands show workflow coverage, not verified data connections."
+    }
+  ],
+
+  "links": [],
+  "nodeNotes": {}
+}

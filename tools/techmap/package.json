@@ -1,0 +1,12 @@
+{
+  "name": "architex-technology-radar-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline browser verification for the generated Architex radar",
+  "scripts": {
+    "test": "node verify_techmap.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.0"
+  }
+}
