@@ -1,0 +1,51 @@
+name: Technology radar
+
+on:
+  pull_request:
+    paths:
+      - 'tools/techmap/**'
+      - 'docs/techmap/**'
+      - 'app/public/assets/techmap/**'
+      - 'app/public/assets/tool-registry.json'
+      - 'app/public/assets/route-placement.json'
+      - '.github/workflows/technology-radar.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'tools/techmap/**'
+      - 'docs/techmap/**'
+      - 'app/public/assets/techmap/**'
+      - 'app/public/assets/tool-registry.json'
+      - 'app/public/assets/route-placement.json'
+      - '.github/workflows/technology-radar.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/techmap/package-lock.json
+      - name: Verify generated artifacts
+        run: python tools/techmap/generate_radar.py --check
+      - name: Verify source contracts and geometry
+        run: python -m unittest discover -s tools/techmap -p 'test_*.py' -v
+      - name: Install browser proof dependencies
+        run: npm ci --ignore-scripts --prefix tools/techmap
+      - name: Install Chromium
+        working-directory: tools/techmap
+        run: npx playwright install --with-deps chromium
+      - name: Verify desktop and mobile interactions
+        env:
+          ARCHITEX_BROWSER_CHANNEL: bundled
+        run: node tools/techmap/verify_techmap.cjs

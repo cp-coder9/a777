@@ -1,0 +1,9 @@
+{
+  "live_url": "https://cp-coder9.github.io/architex-technology-radar/",
+  "repository_url": "https://github.com/cp-coder9/architex-technology-radar",
+  "branch": "main",
+  "expires": null,
+  "sha256": "9bdbd7274fa82df74876c8cb4a60475394568c5e4743c10f854458aa4591d5f0",
+  "http_status": 200,
+  "artifact": "docs/techmap/architex-radar.html"
+}

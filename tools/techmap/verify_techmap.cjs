@@ -1,0 +1,121 @@
+// Offline browser proof; uses the project's existing Playwright installation.
+let playwrightPath;
+try { playwrightPath = require.resolve('playwright'); }
+catch (error) {
+  if (error.code !== 'MODULE_NOT_FOUND') throw error;
+  playwrightPath = require.resolve('../v1-clone/node_modules/playwright');
+}
+const { chromium } = require(playwrightPath);
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+(async () => {
+  const root = path.resolve(__dirname, '../..');
+  const out = path.join(root, 'docs/evidence/techmap');
+  fs.mkdirSync(out, { recursive: true });
+  const browserOptions = { headless: true };
+  if (process.env.ARCHITEX_BROWSER_CHANNEL !== 'bundled') browserOptions.channel = process.env.ARCHITEX_BROWSER_CHANNEL || 'chrome';
+  const browser = await chromium.launch(browserOptions);
+  try {
+    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    const targetUrl = process.argv[2] || pathToFileURL(path.join(root, 'docs/techmap/architex-techmap.html')).href;
+    await page.goto(targetUrl);
+    await page.waitForFunction(() => document.querySelector('#map').style.transform);
+    await page.locator('#map-tab').focus();
+    for (const [key, view, panel] of [['ArrowRight','list','list-view'],['End','coverage','coverage-view'],['Home','map','stage'],['ArrowLeft','coverage','coverage-view'],['ArrowRight','map','stage']]) {
+      await page.keyboard.press(key);
+      assert.equal(await page.locator(`#${view}-tab`).getAttribute('aria-selected'), 'true');
+      assert.equal(await page.locator(`#${view}-tab`).evaluate(el => el === document.activeElement && el.tabIndex === 0), true);
+      assert.equal(await page.locator(`#${panel}`).getAttribute('role'), 'tabpanel');
+      assert.equal(await page.locator(`#${view}-tab`).getAttribute('aria-controls'), panel);
+      assert.equal(await page.locator(`#${panel}`).isVisible(), true);
+    }
+    const tools = JSON.parse(fs.readFileSync(path.join(root, 'app/public/assets/tool-registry.json'), 'utf8')).tools;
+    assert.equal(await page.locator('.node').count(), tools.length);
+    await page.locator('.key-item[data-open-tool="payments_escrow"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('#details').evaluate(d => d.open), true);
+    assert.equal(await page.locator('#connections-toggle').getAttribute('aria-pressed'), 'true');
+    assert.notEqual(await page.locator('#relationship-layer').evaluate(el => el.style.display), 'none');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.getElementById('connections-toggle').getAttribute('aria-pressed') === 'false');
+    assert.equal(await page.locator('#connections-toggle').getAttribute('aria-pressed'), 'false');
+    await page.keyboard.press('/');
+    assert.equal(await page.locator('#search').evaluate(el => el === document.activeElement), true);
+    for (const view of ['map', 'list']) {
+      await page.locator(`#${view}-tab`).click();
+      await page.locator('#search').fill('Payments');
+      assert.match(await page.locator('#match-count').innerText(), /^1 of 49/);
+      const target = view === 'map' ? '.node[data-tool-id="payments_escrow"]' : '.tool-row[data-tool-id="payments_escrow"]';
+      await page.locator(target).dispatchEvent('click');
+      assert.equal(await page.locator('#details').evaluate(d => d.open), true);
+      assert.match(await page.locator('#details').innerText(), /configured provider/);
+      await page.locator('#detail-close').click();
+      await page.locator(target).focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await page.locator('#details').evaluate(d => d.open), true);
+      await page.keyboard.press('Escape');
+    }
+    await page.locator('#search').fill('no-match-techmap-proof');
+    assert.match(await page.locator('#match-count').innerText(), /^0 of 49/);
+    await page.locator('#search').fill('');
+    await page.locator('#coverage-tab').click();
+    assert.equal(await page.locator('#coverage-view').isVisible(), true);
+    assert.equal(await page.locator('.tab[aria-selected="true"]').count(), 1);
+    assert.equal(await page.locator('.coverage-card').count(), tools.length);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'tools/techmap/coverage.json'), 'utf8'));
+    await page.locator('[data-coverage-tab="connections"]').click();
+    assert.equal(await page.locator('#coverage-connections .relationship-card').count(), manifest.relationships.length);
+    await page.locator('[data-coverage-tab="groups"]').click();
+    assert.equal(await page.locator('#coverage-groups .group-card').count(), manifest.groups.length);
+    const group = page.locator('#coverage-groups .group-card').first();
+    await group.locator(':scope > summary').click();
+    await group.locator('[data-open-tool]').first().click();
+    assert.match(await page.locator('#details').innerText(), /Replacement evidence/);
+    assert.match(await page.locator('#details').innerText(), /Usage note/);
+    await page.locator('#detail-close').click();
+    await page.locator('[data-coverage-tab="workflow"]').click();
+    assert.equal(await page.locator('.workflow-table tbody tr').count(), tools.length);
+    assert.ok(await page.locator('.stage-cell.covered').count() > tools.length);
+    await page.screenshot({ path: path.join(out, 'workflow.png') });
+    await page.locator('[data-coverage-tab="notes"]').click();
+    await page.locator('#search').fill('Payments');
+    assert.equal(await page.locator('.coverage-card:visible').count(), 1);
+    await page.locator('#search').fill('');
+    await page.screenshot({ path: path.join(out, 'coverage.png') });
+    await page.locator('#map-tab').click();
+    await page.locator('#connections-toggle').click();
+    assert.equal(await page.locator('#connections-toggle').getAttribute('aria-pressed'), 'true');
+    assert.notEqual(await page.locator('#relationship-layer').evaluate(el => el.style.display), 'none');
+    await page.locator('#connections-toggle').click();
+    assert.equal(await page.locator('#connections-toggle').getAttribute('aria-pressed'), 'false');
+    assert.equal(await page.locator('#relationship-layer').evaluate(el => el.style.display), 'none');
+    const before = await page.evaluate(() => scale);
+    await page.locator('#zoom-in').click();
+    assert.ok((await page.evaluate(() => scale)) > before);
+    const sizes = await page.evaluate(() => ({ map: document.querySelector('#map').getBoundingClientRect().width, wrap: document.querySelector('#map-wrap').getBoundingClientRect().width }));
+    assert.ok(Math.abs(sizes.map - sizes.wrap) < 1, 'Map must not be scaled twice');
+    await page.locator('#fit-all').click();
+    await page.locator('#fit-width').click();
+    await page.screenshot({ path: path.join(out, 'desktop.png') });
+    await page.evaluate(() => { window.__printCalled = false; window.print = () => { window.__printCalled = true; }; });
+    await page.locator('#print-map').click();
+    assert.equal(await page.evaluate(() => window.__printCalled), true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(100);
+    const layout = await page.evaluate(() => ({ width: innerWidth, pageWidth: document.documentElement.scrollWidth, headerBottom: document.querySelector('header').getBoundingClientRect().bottom, contentTop: document.querySelector('#stage').getBoundingClientRect().top }));
+    assert.ok(layout.pageWidth <= layout.width, 'No page-level horizontal overflow');
+    assert.ok(layout.contentTop >= layout.headerBottom, 'Header must not cover content');
+    await page.locator('#list-tab').click();
+    await page.locator('#search').fill('Remote Desktop');
+    await page.locator('.tool-row[data-tool-id="remote_desktop"]').dispatchEvent('click');
+    assert.match(await page.locator('#details').innerText(), /unconfigured/);
+    await page.locator('#detail-close').click();
+    await page.screenshot({ path: path.join(out, 'mobile.png') });
+    assert.deepEqual(errors, []);
+    console.log(JSON.stringify({ result: 'PASS', targetUrl, tools: tools.length, relationships: manifest.relationships.length, sourceBackedGroups: manifest.groups.length, views: ['radar', 'list', 'notes', 'workflow', 'connections', 'groups'], keyboardDetails: true, search: true, singleScale: true, printControl: true, mobile: layout, browserErrors: errors, evidence: out }, null, 2));
+  } finally { await browser.close(); }
+})().catch(e => { console.error(e); process.exitCode = 1; });

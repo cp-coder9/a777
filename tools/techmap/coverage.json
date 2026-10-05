@@ -1,0 +1,2424 @@
+{
+  "tools": [
+    {
+      "id": "practice",
+      "usageNote": "Coordinate tasks, pipeline, resource allocations and timesheets in the practice workspace.",
+      "boundary": "The current adapter requires an authenticated, authorised selected project and refuses writes for read-only memberships.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 2
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 38
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/practice.js",
+          "line": 10
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/practice.js",
+          "line": 8
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "wingman",
+      "usageNote": "Draft messages in persisted AI conversations using server-owned model configuration.",
+      "boundary": "AI requests refuse when server configuration is unavailable; conversation persistence does not prove a model is configured.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 3
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 39
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/wingman.js",
+          "line": 45
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "planning",
+      "usageNote": "Maintain project planning applications, entries, submission and stage records.",
+      "boundary": "Human confirmation records an internal transition, not authority acceptance.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 4
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 40
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance-tools.js",
+          "line": 25
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "municipal",
+      "usageNote": "Assess submission readiness against a versioned municipal matrix and route professional review.",
+      "boundary": "Internal readiness is not municipal submission or statutory approval.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 5
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 41
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/municipal.js",
+          "line": 13
+        },
+        {
+          "path": "app/src/Http/MunicipalReadinessRoutes.php",
+          "line": 16
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "xa",
+      "usageNote": "Save project-scoped XA calculator runs and review the recorded calculation history.",
+      "boundary": "Persisted calculator output remains advisory and requires competent professional review.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 6
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 42
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Platform/Engineering/EngineeringCalculatorService.php",
+          "line": 38
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "forms",
+      "usageNote": "Create project form drafts from templates, revise, review, approve and issue HTML or JSON artifacts.",
+      "boundary": "PDF and digital-signature providers are unavailable; only issued forms expose export artifacts.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 7
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 43
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/document-tools.js",
+          "line": 19
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "specforge",
+      "usageNote": "Author specification sections and human-entered items, approve them and issue a controlled snapshot.",
+      "boundary": "Item approval and issue require accountable human roles; supplier/model text fields do not establish live synchronisation.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 8
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 44
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/document-tools.js",
+          "line": 9
+        },
+        {
+          "path": "app/src/Platform/SpecForge/SpecForgeService.php",
+          "line": 62
+        },
+        {
+          "path": "app/src/Http/SpecForgeRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "bom",
+      "usageNote": "Record quantities, units, rates and contingency as a project BoQ takeoff run.",
+      "boundary": "QS certification, tender generation and PDF export providers are not configured.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 9
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 45
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/document-tools.js",
+          "line": 9
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "itp",
+      "usageNote": "Coordinate inspection records and field evidence through the site-execution workspace.",
+      "boundary": "Internal inspection records are not statutory approvals.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 10
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 46
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "safety",
+      "usageNote": "Review safety inspections and health-and-safety-plan evidence from site and trust workspaces.",
+      "boundary": "Safety evidence persists, but the registry reports only partial full safety-file coverage.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 11
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 47
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 13
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "feedback",
+      "usageNote": "Capture feedback context and persist feedback records for product review.",
+      "boundary": "Roadmap clustering remains non-authoritative; submitted feedback is not a committed roadmap.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 12
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 32
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/modules/feedback.js",
+          "line": 51
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "project_passport",
+      "usageNote": "Use the project identity, phase and missing-record baseline to orient lifecycle decisions.",
+      "boundary": "Usable project record types inform readiness; a passport is not statutory approval.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 13
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 49
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "project_explorer",
+      "usageNote": "Browse project operating records and controlled documents in the selected project.",
+      "boundary": "Operating records are a bounded latest subset, not a complete asset archive.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 14
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 50
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/explorer.js",
+          "line": 40
+        },
+        {
+          "path": "app/src/Platform/OperatingSystem/ProductOperatingSystemService.php",
+          "line": 59
+        },
+        {
+          "path": "app/src/Http/OperatingSystemRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "professional_directory",
+      "usageNote": "Search professional profiles and verification metadata before team appointment decisions.",
+      "boundary": "Directory results are not a project appointment; invitation and independent verification review are separate actions.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 15
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 51
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 44
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "team_workspace",
+      "usageNote": "Invite candidates to project roles and remove team members with a recorded reason.",
+      "boundary": "Membership changes require authorised project scope; a team invitation is not a signed professional appointment.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 16
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 52
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 26
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "inbox_action",
+      "usageNote": "Review role-routed inbox items and record explicit decision transitions.",
+      "boundary": "Sensitive decisions require human confirmation and reason; inbox resolution does not replace source-module issue gates.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 17
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 53
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/inbox.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Http/OperatingSystemRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "issues_rfis",
+      "usageNote": "Record RFIs, responses and lifecycle decisions alongside site evidence.",
+      "boundary": "RFI coordination is an internal project record, not an automatic contractual determination.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 18
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 54
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "documents_drawings",
+      "usageNote": "Manage controlled document metadata, successive revisions and human-reviewed approval/issue transitions.",
+      "boundary": "The adapter does not claim external transmittal or provider delivery.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 19
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 55
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/documents.js",
+          "line": 6
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "fee_proposal",
+      "usageNote": "Build fees from recorded calculator runs and create, issue and accept versioned proposals.",
+      "boundary": "Formal appointment remains a separate governed conversion; proposal issue needs professional/legal confirmation.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 20
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 56
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/proposals.js",
+          "line": 19
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "council_navigator",
+      "usageNote": "Review source-bound council drawing findings and municipal drawing context.",
+      "boundary": "Internal review is not municipal approval or external authority submission.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 21
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 57
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 85
+        },
+        {
+          "path": "app/src/Http/DrawingComplianceRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "compliance_hub",
+      "usageNote": "Maintain trust compliance items, evidence and accountable human review.",
+      "boundary": "Internal evidence is not statutory certification; Architex performs no external verification or submission.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 22
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 58
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 17
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "municipal_tracker",
+      "usageNote": "Track recorded submission readiness and professional review states.",
+      "boundary": "Only professional submission-review approval is exposed; no external authority submission is offered.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 23
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 59
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/municipal.js",
+          "line": 78
+        },
+        {
+          "path": "app/src/Http/MunicipalReadinessRoutes.php",
+          "line": 16
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "environmental_heritage",
+      "usageNote": "Maintain versioned environmental and heritage cases with source evidence and professional determinations.",
+      "boundary": "Case states and evidence are internal coordination, not authority-issued environmental authorisation.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 24
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 60
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 13
+        },
+        {
+          "path": "app/src/Http/RegulatoryCaseRoutes.php",
+          "line": 5
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "eia_workspace",
+      "usageNote": "Coordinate environmental assessment, participation and monitoring evidence within regulatory cases.",
+      "boundary": "A stored case or participation state does not perform an external regulatory submission.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 25
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 61
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 13
+        },
+        {
+          "path": "app/src/Http/RegulatoryCaseRoutes.php",
+          "line": 5
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "refuse_calculator",
+      "usageNote": "Calculate refuse storage using source-controlled rules and persist reviewable runs.",
+      "boundary": "Advisory exports do not certify compliance or substitute a professional declaration.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 26
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 62
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/refuse.js",
+          "line": 8
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "survey_geomatics",
+      "usageNote": "Coordinate survey jobs, observations, deliverables, fees and professional issue snapshots.",
+      "boundary": "No Surveyor-General lodgement, beacon certificate or official-coordinate certification is claimed.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 27
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 63
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/survey.js",
+          "line": 13
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "nhbrc_enrolment",
+      "usageNote": "Maintain enrolment evidence and versioned states in the controlled register.",
+      "boundary": "Internal evidence only; external submission and statutory approval are not performed.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 28
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 64
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registers.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/src/Http/ControlledRegisterRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "insurance_register",
+      "usageNote": "Maintain policy evidence, expiry information and reviewed versioned register states.",
+      "boundary": "Register evidence does not independently verify insurer cover or perform external submission.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 29
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 65
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registers.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 28
+        },
+        {
+          "path": "app/src/Http/ControlledRegisterRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "bim_ifc",
+      "usageNote": "Register model sources and provenance, enter metadata revisions, review facts and issue immutable snapshots.",
+      "boundary": "There is no native IFC parser and external extraction providers are not verified.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 30
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 66
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/models.js",
+          "line": 155
+        },
+        {
+          "path": "app/src/Http/ModelMetadataRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "rfq_marketplace",
+      "usageNote": "Issue controlled procurement packages, invite bidders, publish equal-information addenda and record comparisons.",
+      "boundary": "The clone does not expose automatic appointment; backend award governance does not imply a signed contract or email delivery.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 31
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 67
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/procurement.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Http/ProcurementRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "supplier_catalog",
+      "usageNote": "Register suppliers, catalogue item revisions and project baselines, then create packages and advisory matches.",
+      "boundary": "Catalogue metadata and advisory recommendations are not live external connectors or automatic approvals.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 32
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 68
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/supplier.js",
+          "line": 66
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "market_insights",
+      "usageNote": "Refresh scoped project KPIs and maintain analytics alert rules.",
+      "boundary": "Recorded project analytics are not external market intelligence or independently sourced forecasts.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 69
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 67
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 41
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "contract_admin",
+      "usageNote": "Maintain commercial baselines, payment schedules, variations, claims and certificate metadata.",
+      "boundary": "Internal commercial-control records are not evidence that funds moved.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 34
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 70
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 17
+        },
+        {
+          "path": "app/src/Http/FinanceRoutes.php",
+          "line": 16
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "contractor_compliance",
+      "usageNote": "Maintain contractor evidence and human-reviewed compliance states in the controlled register.",
+      "boundary": "Internal review does not claim external verification, statutory approval or external submission.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 71
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registers.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 28
+        },
+        {
+          "path": "app/src/Http/ControlledRegisterRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "approvals_queue",
+      "usageNote": "Aggregate source-module decisions, pending-review records and missing-record tasks for human action.",
+      "boundary": "Not an approvals-only queue; release-gate evidence does not deploy or approve a release.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 36
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 72
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/approvals.js",
+          "line": 15
+        },
+        {
+          "path": "app/src/Http/OperatingSystemRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "payments_escrow",
+      "usageNote": "Review certificate and release-request governance as internal commercial metadata.",
+      "boundary": "No payment/escrow provider is configured; Architex does not hold, execute, settle or release funds.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 37
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 73
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 18
+        },
+        {
+          "path": "app/src/Http/FinanceRoutes.php",
+          "line": 16
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "dispute_resolution",
+      "usageNote": "Maintain dispute notices, evidence and human-gated versioned progression to closure.",
+      "boundary": "A controlled-register transition does not infer legal resolution or move money.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 38
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 74
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registers.js",
+          "line": 6
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/src/Http/ControlledRegisterRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "site_instructions",
+      "usageNote": "Draft, professionally issue, acknowledge and supersede site instructions.",
+      "boundary": "Instructions remain accountable project records; they do not automatically grant payment or delay entitlement.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 39
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 75
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "ncr_manager",
+      "usageNote": "Track non-conformance evidence, corrective actions, review decisions and payment recommendation blockers.",
+      "boundary": "Payment blockers are internal recommendations and do not move money.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 40
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 76
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "snag_manager",
+      "usageNote": "Allocate snags, record corrective evidence and require reinspection and human closure.",
+      "boundary": "Closure is a governed project decision; unresolved records can still block completion readiness.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 41
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 77
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/src/Platform/Closeout/CloseoutService.php",
+          "line": 28
+        },
+        {
+          "path": "app/src/Http/SiteExecutionRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "fm_bridge",
+      "usageNote": "Compile controlled handover documents, practical completion and occupation-readiness records.",
+      "boundary": "No external FM synchronisation, asset-register export or municipal approval is provided.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 42
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 78
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/closeout.js",
+          "line": 14
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "remote_desktop",
+      "usageNote": "Expose remote-desktop governance and configuration-required capability metadata.",
+      "boundary": "Host agent, broker, viewer and allowlist are unconfigured; no remote session is started.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 43
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 79
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 51
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "cpd_learning",
+      "usageNote": "Review learning courses, assessment, entitlement, certificate verification and professional records.",
+      "boundary": "Certificates and credited records follow governed backend workflows; course listings alone do not prove accreditation.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 44
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 80
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/cpd.js",
+          "line": 70
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "admin_review",
+      "usageNote": "Review verification evidence and the platform completeness, QC and release-gate workspaces.",
+      "boundary": "External verification requires a named provider/reference; recording release evidence does not deploy.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 45
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 81
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 63
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "iconography_registry",
+      "usageNote": "Search and reuse the central semantic icon map for registered V1 tools.",
+      "boundary": "Read-only catalogue, not an icon editor; icons are compiled from the pack and UI edits would be lost on the next build.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 46
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 82
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/modules/iconography.js",
+          "line": 1
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/modules/iconography.js",
+          "line": 14
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "meetings",
+      "usageNote": "Schedule meetings, record consent, review transcript outcomes and publish immutable minutes.",
+      "boundary": "Publishing requires reviewed outcomes; accepted minutes are not automatic source-module execution.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 47
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 85
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/meetings.js",
+          "line": 17
+        },
+        {
+          "path": "app/src/Platform/Meeting/MeetingService.php",
+          "line": 70
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "engineering_calc",
+      "usageNote": "Persist advisory engineering calculations as versioned project working records.",
+      "boundary": "Results do not certify compliance, select design solutions or replace competent professional review.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 48
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 84
+        },
+        {
+          "path": "app/src/Platform/Engineering/EngineeringCalculatorService.php",
+          "line": 40
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "drawing_compliance_navigator",
+      "usageNote": "Run source-bound drawing checks with missing-information findings and a professional review gate.",
+      "boundary": "The answer contract prohibits municipality approval, AI professional certification and guaranteed-compliance claims.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 49
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 83
+        },
+        {
+          "path": "app/src/Platform/DrawingCompliance/DrawingComplianceService.php",
+          "line": 63
+        },
+        {
+          "path": "app/src/Http/DrawingComplianceRoutes.php",
+          "line": 15
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    },
+    {
+      "id": "valuations",
+      "usageNote": "Review claims, certificate revisions, deductions and retention in commercial control.",
+      "boundary": "Amounts are internal metadata; valuation review does not execute payment or escrow custody.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 50
+        },
+        {
+          "path": "app/public/assets/route-placement.json",
+          "line": 86
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 18
+        },
+        {
+          "path": "app/src/Http/FinanceRoutes.php",
+          "line": 16
+        }
+      ],
+      "replacement": {
+        "state": "not_documented",
+        "text": "No explicit replacement of a named external product is documented in the inspected registry, current adapters/modules or backend contracts.",
+        "sourceRefs": []
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "from": "specforge",
+      "to": "documents_drawings",
+      "type": "data_flow",
+      "label": "Issued specification → controlled revision",
+      "description": "SpecForge issue creates an issued document revision from approved specification items; this is an explicit backend write, not inferred model synchronisation.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SpecForge/SpecForgeService.php",
+          "line": 88
+        }
+      ]
+    },
+    {
+      "from": "documents_drawings",
+      "to": "rfq_marketplace",
+      "type": "data_flow",
+      "label": "Controlled revisions → tender evidence",
+      "description": "Procurement packages require document revision IDs and freeze controlled document evidence on issue.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Procurement/ProcurementService.php",
+          "line": 85
+        },
+        {
+          "path": "app/src/Platform/Procurement/ProcurementService.php",
+          "line": 106
+        }
+      ]
+    },
+    {
+      "from": "documents_drawings",
+      "to": "supplier_catalog",
+      "type": "data_flow",
+      "label": "Document references → supplier baseline",
+      "description": "Supplier baseline lines validate sourceDocumentIds against the project; item quantities are entered, not automatically extracted from BIM or BoQ.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SupplierProcurement/SupplierProcurementService.php",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "from": "documents_drawings",
+      "to": "municipal",
+      "type": "data_flow",
+      "label": "Drawing register → readiness evidence",
+      "description": "Municipal readiness queries controlled documents, drawing register entries and compliant tool runs; it does not lodge an authority submission.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Municipal/MunicipalReadinessService.php",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "from": "xa",
+      "to": "municipal",
+      "type": "data_flow",
+      "label": "Calculator runs → readiness evidence",
+      "description": "Readiness reads completed/issued project tool runs as supporting evidence. This does not establish professional sign-off or statutory approval.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Municipal/MunicipalReadinessService.php",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "from": "refuse_calculator",
+      "to": "municipal",
+      "type": "data_flow",
+      "label": "Calculator runs → readiness evidence",
+      "description": "Readiness reads completed/issued project tool runs as supporting evidence. This does not establish professional sign-off or statutory approval.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Municipal/MunicipalReadinessService.php",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "from": "documents_drawings",
+      "to": "fm_bridge",
+      "type": "data_flow",
+      "label": "Revision evidence → handover documents",
+      "description": "Handover documents may reference an owned project document revision or file; there is no external FM connector.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Closeout/CloseoutService.php",
+          "line": 55
+        }
+      ]
+    },
+    {
+      "from": "ncr_manager",
+      "to": "fm_bridge",
+      "type": "workflow",
+      "label": "Critical NCRs gate practical completion",
+      "description": "Closeout readiness checks unresolved critical site NCRs before practical completion can be issued.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Closeout/CloseoutService.php",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "from": "professional_directory",
+      "to": "team_workspace",
+      "type": "workflow",
+      "label": "Candidate search → explicit invitation",
+      "description": "The governance adapter searches the directory and sends candidateId, discipline and roleLabel to the separate team invitation endpoint; no automatic appointment is implied.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 44
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "from": "fee_proposal",
+      "to": "contract_admin",
+      "type": "workflow",
+      "label": "Formal appointment → baseline prerequisite",
+      "description": "Commercial baselines require an already formally issued confirmed professional appointment. A proposal by itself cannot become a commercial baseline.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Finance/CommercialControlService.php",
+          "line": 28
+        },
+        {
+          "path": "app/src/Platform/Finance/CommercialControlService.php",
+          "line": 433
+        }
+      ]
+    },
+    {
+      "from": "contract_admin",
+      "to": "valuations",
+      "type": "shared_backend",
+      "label": "Shared commercial-control workspace",
+      "description": "Both module views use the commercial adapter for baseline, variation, claim, certificate and retention records. Shared service ownership is not automatic exchange between separate products.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 250
+        }
+      ]
+    },
+    {
+      "from": "valuations",
+      "to": "payments_escrow",
+      "type": "workflow",
+      "label": "Certificate metadata → governed release review",
+      "description": "The commercial workspace exposes certificate and release metadata together; payment integration remains unconfigured and no funds move.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 18
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "from": "ncr_manager",
+      "to": "payments_escrow",
+      "type": "workflow",
+      "label": "Site issue → payment recommendation blocker",
+      "description": "Site execution can record blockers referencing an NCR, snag or inspection. This is an internal recommendation only; it does not prove an automatic commercial certificate lock or provider transfer.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 234
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        }
+      ]
+    },
+    {
+      "from": "snag_manager",
+      "to": "payments_escrow",
+      "type": "workflow",
+      "label": "Site issue → payment recommendation blocker",
+      "description": "Site execution can record blockers referencing an NCR, snag or inspection. This is an internal recommendation only; it does not prove an automatic commercial certificate lock or provider transfer.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 234
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        }
+      ]
+    },
+    {
+      "from": "itp",
+      "to": "payments_escrow",
+      "type": "workflow",
+      "label": "Site issue → payment recommendation blocker",
+      "description": "Site execution can record blockers referencing an NCR, snag or inspection. This is an internal recommendation only; it does not prove an automatic commercial certificate lock or provider transfer.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 234
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        }
+      ]
+    },
+    {
+      "from": "rfq_marketplace",
+      "to": "inbox_action",
+      "type": "data_flow",
+      "label": "Award recommendation → human review inbox",
+      "description": "Procurement creates an inbox request for separate client and verified professional award decisions; approved placeholders are still not signed appointments.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Procurement/ProcurementService.php",
+          "line": 218
+        },
+        {
+          "path": "app/src/Platform/Procurement/ProcurementService.php",
+          "line": 215
+        }
+      ]
+    },
+    {
+      "from": "municipal",
+      "to": "inbox_action",
+      "type": "data_flow",
+      "label": "Readiness blockers → review routing",
+      "description": "Assessing municipal readiness writes project records and routes blockers to the inbox. Routing is not authority approval.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Municipal/MunicipalReadinessService.php",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "from": "contract_admin",
+      "to": "inbox_action",
+      "type": "data_flow",
+      "label": "Claim submission → QS review inbox",
+      "description": "Commercial claim submission creates an explicit finance_claim_review_required inbox record.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Finance/CommercialControlService.php",
+          "line": 128
+        }
+      ]
+    },
+    {
+      "from": "inbox_action",
+      "to": "approvals_queue",
+      "type": "shared_backend",
+      "label": "Shared inbox decision projection",
+      "description": "The approvals adapter reads real project-filtered inbox rows and operating snapshot decisions; missing-record actions are also present.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/approvals.js",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/approvals.js",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "from": "project_passport",
+      "to": "approvals_queue",
+      "type": "data_flow",
+      "label": "Missing records → decision tasks",
+      "description": "The operating snapshot reads the passport baseline and creates missing-record decisions alongside pending-review records; these are tasks, not automatically approved records.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/OperatingSystem/ProductOperatingSystemService.php",
+          "line": 27
+        },
+        {
+          "path": "app/src/Platform/OperatingSystem/ProductOperatingSystemService.php",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "from": "project_explorer",
+      "to": "approvals_queue",
+      "type": "shared_backend",
+      "label": "Shared operating snapshot",
+      "description": "Explorer reads bounded records from the same operating snapshot that supplies the decision queue. Shared projection does not establish automatic domain transitions.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/explorer.js",
+          "line": 40
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/approvals.js",
+          "line": 46
+        },
+        {
+          "path": "app/src/Platform/OperatingSystem/ProductOperatingSystemService.php",
+          "line": 59
+        }
+      ]
+    },
+    {
+      "from": "bim_ifc",
+      "to": "project_passport",
+      "type": "data_flow",
+      "label": "Issued evidence → lifecycle record store",
+      "description": "The backend writes governed ProjectRecord evidence; the passport reads usable record types for lifecycle readiness. This is record write-back, not automatic phase change or external certification.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Models/ModelMetadataService.php",
+          "line": 77
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "from": "survey_geomatics",
+      "to": "project_passport",
+      "type": "data_flow",
+      "label": "Issued evidence → lifecycle record store",
+      "description": "The backend writes governed ProjectRecord evidence; the passport reads usable record types for lifecycle readiness. This is record write-back, not automatic phase change or external certification.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Survey/SurveyJobService.php",
+          "line": 12
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "from": "specforge",
+      "to": "project_passport",
+      "type": "data_flow",
+      "label": "Issued evidence → lifecycle record store",
+      "description": "The backend writes governed ProjectRecord evidence; the passport reads usable record types for lifecycle readiness. This is record write-back, not automatic phase change or external certification.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SpecForge/SpecForgeService.php",
+          "line": 89
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "from": "municipal",
+      "to": "project_passport",
+      "type": "data_flow",
+      "label": "Issued evidence → lifecycle record store",
+      "description": "The backend writes governed ProjectRecord evidence; the passport reads usable record types for lifecycle readiness. This is record write-back, not automatic phase change or external certification.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Municipal/MunicipalReadinessService.php",
+          "line": 28
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "from": "contract_admin",
+      "to": "project_passport",
+      "type": "data_flow",
+      "label": "Issued evidence → lifecycle record store",
+      "description": "The backend writes governed ProjectRecord evidence; the passport reads usable record types for lifecycle readiness. This is record write-back, not automatic phase change or external certification.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/Finance/CommercialControlService.php",
+          "line": 52
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "from": "municipal",
+      "to": "municipal_tracker",
+      "type": "shared_backend",
+      "label": "Shared submission-readiness assessments",
+      "description": "Both views use the municipal readiness adapter; tracker state is internal professional review, not a live municipal status feed.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/municipal.js",
+          "line": 78
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 31
+        }
+      ]
+    },
+    {
+      "from": "council_navigator",
+      "to": "drawing_compliance_navigator",
+      "type": "shared_backend",
+      "label": "Source-bound drawing review service",
+      "description": "Council review uses the drawing-compliance sources and review API. Common backend does not imply external municipal comments or a second autonomous check engine.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 85
+        },
+        {
+          "path": "app/src/Platform/DrawingCompliance/DrawingComplianceService.php",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "from": "environmental_heritage",
+      "to": "eia_workspace",
+      "type": "shared_backend",
+      "label": "Shared regulatory case service",
+      "description": "Environmental and heritage cases and environmental-only EIA views use regulatory cases. This is a scoped shared backend, not an external regulator exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 32
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "from": "issues_rfis",
+      "to": "itp",
+      "type": "shared_backend",
+      "label": "Shared site-execution records",
+      "description": "RFI and site-quality views share the site-execution workspace. Records retain separate lifecycle gates; adjacency does not mean automatic exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "from": "issues_rfis",
+      "to": "safety",
+      "type": "shared_backend",
+      "label": "Shared site-execution records",
+      "description": "RFI and site-quality views share the site-execution workspace. Records retain separate lifecycle gates; adjacency does not mean automatic exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "from": "issues_rfis",
+      "to": "site_instructions",
+      "type": "shared_backend",
+      "label": "Shared site-execution records",
+      "description": "RFI and site-quality views share the site-execution workspace. Records retain separate lifecycle gates; adjacency does not mean automatic exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "from": "issues_rfis",
+      "to": "ncr_manager",
+      "type": "shared_backend",
+      "label": "Shared site-execution records",
+      "description": "RFI and site-quality views share the site-execution workspace. Records retain separate lifecycle gates; adjacency does not mean automatic exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "from": "issues_rfis",
+      "to": "snag_manager",
+      "type": "shared_backend",
+      "label": "Shared site-execution records",
+      "description": "RFI and site-quality views share the site-execution workspace. Records retain separate lifecycle gates; adjacency does not mean automatic exchange.",
+      "sourceRefs": [
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "discipline_1",
+      "label": "Practice & Project Management",
+      "members": [
+        "practice"
+      ],
+      "description": "Registry-defined capability discipline. Members cover All stages. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 2
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/practice.js",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "id": "discipline_2",
+      "label": "Intelligence & Improvement",
+      "members": [
+        "wingman",
+        "feedback"
+      ],
+      "description": "Registry-defined capability discipline. Members cover All stages, Platform-wide. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 3
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 12
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/wingman.js",
+          "line": 45
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/modules/feedback.js",
+          "line": 51
+        }
+      ]
+    },
+    {
+      "id": "discipline_3",
+      "label": "Planning & Approvals",
+      "members": [
+        "planning",
+        "municipal",
+        "council_navigator",
+        "municipal_tracker",
+        "drawing_compliance_navigator"
+      ],
+      "description": "Registry-defined capability discipline. Members cover Brief / Comply, Comply, Design / Comply. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 4
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 5
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 21
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 23
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 49
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance-tools.js",
+          "line": 25
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/municipal.js",
+          "line": 13
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 85
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/municipal.js",
+          "line": 78
+        },
+        {
+          "path": "app/src/Platform/DrawingCompliance/DrawingComplianceService.php",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "id": "discipline_4",
+      "label": "Compliance & Environment",
+      "members": [
+        "xa",
+        "compliance_hub",
+        "environmental_heritage",
+        "eia_workspace",
+        "refuse_calculator",
+        "nhbrc_enrolment"
+      ],
+      "description": "Registry-defined capability discipline. Members cover Design / Comply, Brief / Comply, Comply / Build. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 6
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 22
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 24
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 25
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 26
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 28
+        },
+        {
+          "path": "app/src/Platform/Engineering/EngineeringCalculatorService.php",
+          "line": 38
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/compliance.js",
+          "line": 17
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/regulatory.js",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/refuse.js",
+          "line": 8
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "id": "discipline_5",
+      "label": "Design & Documentation",
+      "members": [
+        "forms",
+        "specforge",
+        "documents_drawings",
+        "survey_geomatics",
+        "bim_ifc",
+        "engineering_calc"
+      ],
+      "description": "Registry-defined capability discipline. Members cover All stages, Design / Procure, Brief / Design, Design / Comply. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 7
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 8
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 19
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 27
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 30
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 48
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/document-tools.js",
+          "line": 19
+        },
+        {
+          "path": "app/src/Platform/SpecForge/SpecForgeService.php",
+          "line": 62
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/documents.js",
+          "line": 6
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/survey.js",
+          "line": 13
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/models.js",
+          "line": 155
+        },
+        {
+          "path": "app/src/Platform/Engineering/EngineeringCalculatorService.php",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "id": "discipline_6",
+      "label": "Commercial & Procurement",
+      "members": [
+        "bom",
+        "fee_proposal",
+        "insurance_register",
+        "rfq_marketplace",
+        "supplier_catalog",
+        "market_insights",
+        "contract_admin",
+        "payments_escrow",
+        "dispute_resolution",
+        "valuations"
+      ],
+      "description": "Registry-defined capability discipline. Members cover Design / Procure / Build, Appoint, Appoint / Build, Procure, Design / Procure, All stages, Build / Pay, Pay. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 9
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 20
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 29
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 31
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 32
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 34
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 37
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 38
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 50
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/document-tools.js",
+          "line": 9
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/proposals.js",
+          "line": 19
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/procurement.js",
+          "line": 6
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/supplier.js",
+          "line": 66
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 41
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 17
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 18
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/commercial.js",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "id": "discipline_7",
+      "label": "Site Execution & Quality",
+      "members": [
+        "itp",
+        "safety",
+        "contractor_compliance",
+        "site_instructions",
+        "ncr_manager",
+        "snag_manager",
+        "fm_bridge"
+      ],
+      "description": "Registry-defined capability discipline. Members cover Build, Build / Close-out, Handover / Close-out. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 10
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 11
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 35
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 39
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 40
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 41
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 42
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 13
+        },
+        {
+          "path": "app/src/Platform/Governance/ControlledRegisterService.php",
+          "line": 33
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/src/Platform/SiteExecution/SiteExecutionService.php",
+          "line": 249
+        },
+        {
+          "path": "app/src/Platform/Closeout/CloseoutService.php",
+          "line": 28
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/closeout.js",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "id": "discipline_8",
+      "label": "Project & Collaboration",
+      "members": [
+        "project_passport",
+        "project_explorer",
+        "professional_directory",
+        "team_workspace",
+        "inbox_action",
+        "issues_rfis",
+        "approvals_queue",
+        "meetings"
+      ],
+      "description": "Registry-defined capability discipline. Members cover All stages, Appoint, Design / Build. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 13
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 14
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 15
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 16
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 17
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 18
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 36
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 47
+        },
+        {
+          "path": "app/src/Platform/Project/ProjectPassportService.php",
+          "line": 67
+        },
+        {
+          "path": "app/src/Platform/OperatingSystem/ProductOperatingSystemService.php",
+          "line": 59
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 44
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 26
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/inbox.js",
+          "line": 6
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/site-tools.js",
+          "line": 11
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/approvals.js",
+          "line": 15
+        },
+        {
+          "path": "app/src/Platform/Meeting/MeetingService.php",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "id": "discipline_9",
+      "label": "Platform Services",
+      "members": [
+        "remote_desktop",
+        "cpd_learning",
+        "admin_review",
+        "iconography_registry"
+      ],
+      "description": "Registry-defined capability discipline. Members cover All stages, Platform-wide. Grouping expresses stakeholder coverage, not automatic data exchange or a shared statutory sign-off.",
+      "sourceRefs": [
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 43
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 44
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 45
+        },
+        {
+          "path": "app/public/assets/tool-registry.json",
+          "line": 46
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/registry.js",
+          "line": 51
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/cpd.js",
+          "line": 70
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/adapters/governance.js",
+          "line": 63
+        },
+        {
+          "path": "app/public/assets/v1-clone/js/modules/iconography.js",
+          "line": 1
+        }
+      ]
+    }
+  ]
+}
