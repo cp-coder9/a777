@@ -1,0 +1,11 @@
+{
+  "title": "Production release work",
+  "summary": "Implementation and rollout tracking. These lanes do not override individual module status or claim a deployed integration.",
+  "workstreams": [
+    {"name":"PHP application release","owner":"Release owner","state":"Source pushed · artifact built","scope":"Clean source revision e5479d3 and a verified 739-file production artifact. Live host promotion is not yet completed."},
+    {"name":"Role-aware notifications","owner":"Codex","state":"Routing code implemented · review","scope":"Workflow recipients, in-app inbox, queued email and delivery handling. Native concurrency and deployed delivery remain separate acceptance steps."},
+    {"name":"Payment and remote-session adapters","owner":"OpenCode","state":"Adapter code implemented · review","scope":"Authenticated provider callbacks, payment lifecycle and scoped remote sessions. Actual merchant and signed-host transports are not yet connected."},
+    {"name":"Role and tool workflows","owner":"Role workflow owner","state":"Code implemented · final integration","scope":"Canonical role capabilities and native workflows across 21 profiles, four membership roles and 49 tools. Final integrated rollout is pending."},
+    {"name":"Deployment safety","owner":"Deployment owner","state":"Hardening","scope":"Runtime preservation, authenticated transfer, recoverable promotion and guarded migrations."}
+  ]
+}

@@ -110,6 +110,8 @@ def render_document():
     doc=doc.replace('>Map</button>','>Radar</button>')
     coverage = radar_coverage.load_coverage(base.ROOT, tools)
     doc = radar_coverage.extend_document(doc, coverage, list(tools.values()), place, stages, NODE_COORDS)
+    from radar_delivery import extend_document
+    doc = extend_document(doc)
     doc = radar_polish.polish_document(doc, tools, coverage)
     return doc
 
