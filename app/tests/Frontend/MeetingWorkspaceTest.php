@@ -10,11 +10,11 @@ final class MeetingWorkspaceTest extends TestCase
 {
     public function testCanonicalShellExposesGovernedPersistentMeetingLifecycle(): void
     {
-        $shell = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/shell.js');
+        $shell = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/js/meetings-workspace.js');
         $styles = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/css/architex-v1.css');
 
         self::assertStringContainsString('id="governedMeetingForm"', $shell);
-        self::assertStringContainsString("api.post('/meetings'", $shell);
+        self::assertStringContainsString("verifiedWrite('/meetings'", $shell);
         self::assertStringContainsString('/consents', $shell);
         self::assertStringContainsString('/start', $shell);
         self::assertStringContainsString('/conclude', $shell);

@@ -473,8 +473,27 @@ final class CPDAssessmentService
     /** @param array<string,mixed> $course */ private function assertCourseLive(array$course):void{$today=(new DateTimeImmutable('today'))->format('Y-m-d');if($course['status']!=='live'||$course['valid_from']>$today||$course['valid_until']<$today)throw new CPDAssessmentException('cpd_course_not_live');}
     /** @param array<string,mixed> $course @param array<string,mixed> $profile */ private function assertCourseProfileBody(array$course,array$profile):void{if($course['professional_body']!==$profile['professional_body'])throw new CPDAssessmentException('cpd_course_professional_body_mismatch');}
     /** @return array<string,mixed> */ private function professionalRoleMapping(mixed$value):array{if(!is_string($value)||trim($value)==='')throw new CPDAssessmentException('cpd_profile_profession_required');$normalised=trim((string)preg_replace('/[^a-z0-9]+/','_',strtolower(trim($value))),'_');foreach(self::ROLE_BODY_MAPPINGS as$role=>$mapping){$aliases=array_map(static fn(string$alias):string=>trim((string)preg_replace('/[^a-z0-9]+/','_',strtolower($alias)),'_'),$mapping['aliases']);if($normalised===$role||in_array($normalised,$aliases,true))return['role'=>$role]+$mapping;}throw new CPDAssessmentException('cpd_professional_role_invalid');}
-    private function membership(string$o,string$u,string$role):void{$s=$this->pdo->prepare("SELECT role FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u) AND status='active'");$s->execute(['o'=>$o,'u'=>$u]);$actual=$s->fetchColumn();if(!is_string($actual)||$actual!==$role)throw new CPDAssessmentException('cpd_membership_required');}
-    private function membershipRole(string$o,string$u):string{$s=$this->pdo->prepare("SELECT role FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u) AND status='active'");$s->execute(['o'=>$o,'u'=>$u]);$actual=$s->fetchColumn();if(!is_string($actual))throw new CPDAssessmentException('cpd_membership_required');return$actual;}
+    private function membership(string $organisationId, string $userId, string $role): void
+    {
+        if ($this->membershipRole($organisationId, $userId) !== $role) {
+            throw new CPDAssessmentException('cpd_membership_required');
+        }
+    }
+
+    private function membershipRole(string $organisationId, string $userId): string
+    {
+        $statement = $this->pdo->prepare("SELECT m.role,p.role_key FROM organisation_memberships m LEFT JOIN registration_profiles p ON p.organisation_id=m.organisation_id AND p.user_id=m.user_id WHERE m.organisation_id=UNHEX(:organisation) AND m.user_id=UNHEX(:user) AND m.status='active'");
+        $statement->execute(['organisation'=>$organisationId,'user'=>$userId]);
+        $membership = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($membership) || !is_string($membership['role'])) {
+            throw new CPDAssessmentException('cpd_membership_required');
+        }
+        // Owning an organisation does not turn a client into a CPD professional.
+        if ($membership['role_key'] === 'client') {
+            throw new CPDAssessmentException('cpd_role_forbidden');
+        }
+        return $membership['role'];
+    }
     private function requireCapability(string$o,string$u,string$role,string$capability,string$error):void{$this->membership($o,$u,$role);$participation=$this->participationRole($o,$u,$role);$map=['content.create'=>'canCreateContent','assessment.draft'=>'canDraftAssessments','assessment.review'=>'canReviewAssessments','attempt.review'=>'canReviewAttempts','accreditation.submit'=>'canSubmitAccreditation','accreditation.decide'=>'canDecideAccreditation','course.publish'=>'canPublishCourses','commercial.manage'=>'canManageCommercial','roles.assign'=>'canAssignRoles'];$key=$map[$capability]??null;if($key===null||!($this->capabilities($participation)[$key]??false))throw new CPDAssessmentException($error);}
     private function participationRole(string$o,string$u,string$membershipRole):string{if(in_array($membershipRole,self::GOVERNORS,true))return'platform_admin';$profile=$this->optionalProfile($o,$u);return is_array($profile)&&is_string($profile['participationRole']??null)?$profile['participationRole']:'learner';}
     /** @return array<string,bool> */ private function capabilities(string$participation):array{$admin=$participation==='platform_admin';$creator=$participation==='content_creator';$reviewer=$participation==='cpd_reviewer';$partner=$participation==='accreditation_partner';return['canLearn'=>true,'canCreateContent'=>$creator||$admin,'canDraftAssessments'=>$creator||$admin,'canReviewAssessments'=>$reviewer||$admin,'canReviewAttempts'=>$reviewer||$admin,'canSubmitAccreditation'=>$creator||$reviewer||$partner||$admin,'canDecideAccreditation'=>$partner||$admin,'canPublishCourses'=>$partner||$admin,'canManageCommercial'=>$admin,'canAssignRoles'=>$admin,'canViewAnalytics'=>$creator||$reviewer||$partner||$admin,'canReview'=>$reviewer||$partner||$admin];}

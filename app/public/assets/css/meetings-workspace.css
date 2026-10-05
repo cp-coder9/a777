@@ -1,0 +1,27 @@
+/* Meetings-owned presentation; no global shell overrides. */
+.meetings-workspace { display:grid; gap:16px; min-width:0; }
+.meetings-workspace nav { display:flex; flex-wrap:wrap; gap:8px; }
+.meetings-workspace nav [aria-pressed="true"] { background:var(--ink,#173329); color:var(--paper,#fff); }
+.meetings-workspace .governed-meeting-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
+.meetings-workspace .meeting-card { min-width:0; display:block; overflow-wrap:anywhere; }
+.meetings-workspace .meeting-card h3 { margin:0 0 8px; }
+.meetings-workspace .meeting-card h4 { margin:16px 0 8px; }
+.meetings-workspace .meeting-card p { line-height:1.6; }
+.meetings-workspace fieldset { border:0; padding:0; margin:0; min-width:0; }
+.meetings-workspace .meeting-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:16px 0; }
+.meetings-workspace label { display:grid; gap:6px; font-size:13px; margin-bottom:10px; }
+.meetings-workspace .meeting-wide { grid-column:1/-1; }
+.meetings-workspace .meeting-check { display:flex; align-items:flex-start; gap:9px; }
+.meetings-workspace input[type="checkbox"] { flex:0 0 auto; width:18px; height:18px; }
+.meetings-workspace textarea { width:100%; min-height:100px; resize:vertical; }
+.meetings-workspace :is(input,select,textarea) { max-width:100%; box-sizing:border-box; }
+.meetings-workspace :is(button,input,select,textarea,summary):focus-visible { outline:3px solid #b86939; outline-offset:3px; }
+.meetings-workspace button:disabled { opacity:.5; cursor:not-allowed; }
+.meetings-workspace .meeting-outcome,.meetings-workspace blockquote { border:1px solid var(--line,#d9dfd9); border-radius:10px; margin:12px 0; padding:14px; }
+.meetings-workspace .meeting-outcome fieldset { display:grid; gap:8px; }
+.meetings-workspace details { padding:12px 0; }
+.meetings-workspace summary { cursor:pointer; font-weight:600; }
+.meetings-workspace li { margin:10px 0; }
+.meetings-workspace [role="status"]:empty { display:none; }
+.meetings-workspace [role="alert"] { padding:16px; border:1px solid #a54736; border-radius:10px; }
+@media(max-width:680px) { .meetings-workspace .meeting-fields { grid-template-columns:minmax(0,1fr); } .meetings-workspace nav .btn { flex:1 1 130px; white-space:normal; } .meetings-workspace .meeting-card { padding:16px; } }

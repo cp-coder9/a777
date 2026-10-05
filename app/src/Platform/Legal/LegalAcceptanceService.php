@@ -17,9 +17,6 @@ final readonly class LegalAcceptanceService
     /** @return list<array{noticeType:string,version:string,title:string,contentSha256:string,effectiveAt:string,href:string}> */
     public function currentSignupNotices(): array
     {
-        $types = implode(',', array_fill(0, count(self::SIGNUP_NOTICE_TYPES), '?'));
-        $statement = $this->pdo->prepare("SELECT notice_type,version,title,content_sha256,DATE_FORMAT(effective_at,'%Y-%m-%dT%H:%i:%s.%fZ') effective_at FROM legal_notices WHERE notice_type IN ($types) AND published_at<=UTC_TIMESTAMP(6) AND effective_at<=UTC_TIMESTAMP(6) AND retired_at IS NULL ORDER BY FIELD(notice_type,$types)");
-        $statement->execute([...self::SIGNUP_NOTICE_TYPES, ...self::SIGNUP_NOTICE_TYPES]);
         $hrefs = [
             'terms_of_service'=>'/terms',
             'privacy_policy'=>'/privacy',
@@ -27,7 +24,7 @@ final readonly class LegalAcceptanceService
             'signup_privacy_notice'=>'/privacy#signup',
         ];
         $result = [];
-        foreach ($statement->fetchAll() as $row) {
+        foreach ($this->currentSignupRows() as $row) {
             $type = (string)$row['notice_type'];
             $result[] = [
                 'noticeType'=>$type,
@@ -39,6 +36,22 @@ final readonly class LegalAcceptanceService
             ];
         }
         return $result;
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function currentSignupRows(): array
+    {
+        $types = implode(',', array_fill(0, count(self::SIGNUP_NOTICE_TYPES), '?'));
+        $statement = $this->pdo->prepare("SELECT HEX(n.id) id,n.notice_type,n.version,n.title,n.content_sha256,DATE_FORMAT(n.effective_at,'%Y-%m-%dT%H:%i:%s.%fZ') effective_at
+            FROM legal_notices n
+            WHERE n.notice_type IN ($types) AND n.published_at<=UTC_TIMESTAMP(6) AND n.effective_at<=UTC_TIMESTAMP(6) AND n.retired_at IS NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM legal_notices newer
+                WHERE newer.notice_type=n.notice_type AND newer.published_at<=UTC_TIMESTAMP(6) AND newer.effective_at<=UTC_TIMESTAMP(6) AND newer.retired_at IS NULL
+                AND (newer.effective_at,newer.published_at,newer.created_at,newer.id) > (n.effective_at,n.published_at,n.created_at,n.id)
+            ) ORDER BY FIELD(n.notice_type,$types)");
+        $statement->execute([...self::SIGNUP_NOTICE_TYPES, ...self::SIGNUP_NOTICE_TYPES]);
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /** @param array<string,string> $versions @param array<string,mixed> $deviceMetadata */
@@ -53,7 +66,13 @@ final readonly class LegalAcceptanceService
                 throw new IdentityException('legal_acceptance_required', 'All current signup notices must be accepted.');
             }
         }
-        $lookup = $this->pdo->prepare("SELECT HEX(id) id FROM legal_notices WHERE notice_type=:type AND version=:version AND published_at<=UTC_TIMESTAMP(6) AND effective_at<=UTC_TIMESTAMP(6) AND retired_at IS NULL");
+        $current = array_column($this->currentSignupRows(), null, 'notice_type');
+        // Validate the complete selection before recording any acceptance.
+        foreach (self::SIGNUP_NOTICE_TYPES as $type) {
+            if (!isset($current[$type]) || $current[$type]['version'] !== $versions[$type]) {
+                throw new IdentityException('legal_notice_not_current', 'A selected legal notice is not current.');
+            }
+        }
         $insert = $this->pdo->prepare('INSERT INTO legal_acceptances (id,legal_notice_id,user_id,organisation_id,ip_address,device_metadata) VALUES (UNHEX(:id),UNHEX(:notice_id),UNHEX(:user_id),UNHEX(:organisation_id),:ip_address,:device_metadata)');
         try {
             $metadata = $deviceMetadata === [] ? null : json_encode($deviceMetadata, JSON_THROW_ON_ERROR);
@@ -62,11 +81,7 @@ final readonly class LegalAcceptanceService
         }
         $packedIp = $ipAddress === null ? null : inet_pton($ipAddress);
         foreach (self::SIGNUP_NOTICE_TYPES as $type) {
-            $lookup->execute(['type' => $type, 'version' => $versions[$type]]);
-            $noticeId = $lookup->fetchColumn();
-            if (!is_string($noticeId)) {
-                throw new IdentityException('legal_notice_not_current', 'A selected legal notice is not current.');
-            }
+            $noticeId = (string)$current[$type]['id'];
             $insert->execute([
                 'id' => Identifier::generate(), 'notice_id' => strtolower($noticeId), 'user_id' => $userId,
                 'organisation_id' => $organisationId, 'ip_address' => $packedIp, 'device_metadata' => $metadata,

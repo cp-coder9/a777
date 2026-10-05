@@ -29,6 +29,11 @@ final readonly class PracticeController
     public function recordRegistration(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->recordRegistrationRenewal($s[0],$s[1],$s[2],$b),201);}
     public function createTemplate(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->createTemplate($s[0],$s[1],$s[2],$b),201);}
     public function reviseTemplate(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->reviseTemplate($s[0],$s[1],$s[2],$this->id($r,'templateId'),$b),201);}
+    public function createProgramme(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->createProgrammeItem($s[0],$s[1],$this->id($r,'projectId'),$b),201);}
+    public function updateProgramme(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->updateProgrammeItem($s[0],$s[1],$this->id($r,'projectId'),$this->id($r,'programmeId'),$b));}
+    public function createMilestone(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->createMilestone($s[0],$s[1],$this->id($r,'projectId'),$b),201);}
+    public function setMilestoneCompletion(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->setMilestoneCompletion($s[0],$s[1],$this->id($r,'projectId'),$this->id($r,'milestoneId'),$b));}
+    public function saveFee(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->service->saveFeeSettings($s[0],$s[1],$this->id($r,'projectId'),$b),201);}
     private function read(Request$r,callable$f):Response{try{$s=$this->scope($r);return$s instanceof Response?$s:Response::success($f($s));}catch(PracticeException$e){return$this->error($e);}}
     private function write(Request$r,callable$f,int$status=200):Response{try{$s=$this->scope($r);if($s instanceof Response)return$s;return Response::success($f($r->jsonBody(),$s),status:$status);}catch(JsonException){return Response::error(400,'invalid_json','Request body must contain valid JSON.');}catch(PracticeException$e){return$this->error($e);}}
     /** @return array{string,string,string}|Response */ private function scope(Request$r):array|Response{$o=$r->attribute('organisationId');$i=$r->attribute('identity');$role=$r->attribute('role');return is_string($o)&&$i instanceof AuthenticatedIdentity&&is_string($role)?[$o,$i->userId,$role]:Response::error(401,'authentication_required','Authentication is required.');}

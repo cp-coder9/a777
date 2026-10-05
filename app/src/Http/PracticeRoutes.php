@@ -19,6 +19,9 @@ final readonly class PracticeRoutes
             ['/api/v1/projects/{projectId}/practice/supervision-reviews','createSupervision'],['/api/v1/practice/supervision-reviews/{reviewId}/sign-off','signOffSupervision'],
             ['/api/v1/projects/{projectId}/practice/invoice-readiness','assessInvoice'],['/api/v1/practice/registration-renewals','recordRegistration'],
             ['/api/v1/practice/templates','createTemplate'],['/api/v1/practice/templates/{templateId}/revisions','reviseTemplate'],
+            ['/api/v1/projects/{projectId}/practice/programme','createProgramme'],['/api/v1/practice/programme/{programmeId}','updateProgramme'],
+            ['/api/v1/projects/{projectId}/practice/milestones','createMilestone'],['/api/v1/projects/{projectId}/practice/milestones/{milestoneId}/completion','setMilestoneCompletion'],
+            ['/api/v1/projects/{projectId}/practice/fees','saveFee'],
         ]as[$path,$method])$r->post($path,fn(Request$q):Response=>$this->write->process($q,$this->controller->{$method}(...)));
     }
 }

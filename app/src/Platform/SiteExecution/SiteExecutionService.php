@@ -34,6 +34,9 @@ final readonly class SiteExecutionService
             'delays' => $this->strings($input['delays'] ?? [], 100, 1000, 'site_daily_log_delays_invalid'),
             'safetyNotes' => $this->strings($input['safetyNotes'] ?? [], 100, 1000, 'site_daily_log_safety_invalid'),
         ];
+        // One log per project per date: report a repeat as the handled conflict the controller maps
+        // to 409 (a reason ending in _exists) instead of letting the unique key surface as a 500.
+        $this->assertDailyLogAbsent($organisationId, $projectId, $date);
         return $this->transaction(function () use ($organisationId, $userId, $projectId, $id, $date, $status, $payload): array {
             $this->pdo->prepare('INSERT INTO site_daily_logs(id,organisation_id,project_id,log_date,weather,labour,plant,deliveries,visitors,delays,safety_notes,status,created_by) VALUES(UNHEX(:id),UNHEX(:organisation),UNHEX(:project),:log_date,:weather,:labour,:plant,:deliveries,:visitors,:delays,:safety_notes,:status,UNHEX(:actor))')->execute([
                 'id'=>$id,'organisation'=>$organisationId,'project'=>$projectId,'log_date'=>$date,'weather'=>$payload['weather'],'labour'=>$this->json($payload['labour']),'plant'=>$this->json($payload['plant']),'deliveries'=>$this->json($payload['deliveries']),'visitors'=>$this->json($payload['visitors']),'delays'=>$this->json($payload['delays']),'safety_notes'=>$this->json($payload['safetyNotes']),'status'=>$status,'actor'=>$userId,
@@ -243,7 +246,27 @@ final readonly class SiteExecutionService
     public function workspace(string $organisationId,string $userId,string $projectId):array
     {
         $this->assertProject($organisationId,$userId,$projectId);
-        return ['dailyLogs'=>$this->all('site_daily_logs',$organisationId,$projectId),'evidence'=>$this->all('site_field_evidence',$organisationId,$projectId),'rfis'=>$this->all('site_rfis',$organisationId,$projectId),'siteInstructions'=>$this->all('site_instructions',$organisationId,$projectId),'ncrs'=>$this->all('site_ncrs',$organisationId,$projectId),'snags'=>$this->all('site_snags',$organisationId,$projectId),'inspections'=>$this->all('site_inspections',$organisationId,$projectId),'delayWarnings'=>$this->all('site_delay_warnings',$organisationId,$projectId),'programmeImpacts'=>$this->all('site_programme_impacts',$organisationId,$projectId),'paymentBlockers'=>$this->all('site_payment_blockers',$organisationId,$projectId),'recommendations'=>$this->all('site_agent_recommendations',$organisationId,$projectId),'boundaries'=>['delayWarningsGrantEntitlement'=>false,'internalInspectionsAreStatutoryApprovals'=>false,'paymentBlockersMoveMoney'=>false]];
+        return ['dailyLogs'=>$this->all('site_daily_logs',$organisationId,$projectId),'evidence'=>$this->all('site_field_evidence',$organisationId,$projectId),'rfis'=>$this->workspaceRfis($organisationId,$projectId),'siteInstructions'=>$this->all('site_instructions',$organisationId,$projectId),'ncrs'=>$this->all('site_ncrs',$organisationId,$projectId),'snags'=>$this->all('site_snags',$organisationId,$projectId),'inspections'=>$this->all('site_inspections',$organisationId,$projectId),'delayWarnings'=>$this->all('site_delay_warnings',$organisationId,$projectId),'programmeImpacts'=>$this->all('site_programme_impacts',$organisationId,$projectId),'paymentBlockers'=>$this->all('site_payment_blockers',$organisationId,$projectId),'recommendations'=>$this->all('site_agent_recommendations',$organisationId,$projectId),'boundaries'=>['delayWarningsGrantEntitlement'=>false,'internalInspectionsAreStatutoryApprovals'=>false,'paymentBlockersMoveMoney'=>false]];
+    }
+
+    /** @return list<array<string,mixed>> */
+    private function workspaceRfis(string $organisationId, string $projectId): array
+    {
+        $rfis = $this->all('site_rfis', $organisationId, $projectId);
+        if ($rfis === []) return [];
+        // One response per RFI is enforced by uq_site_rfi_response. Load the
+        // project batch so refreshing the register retains saved answers.
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(r.rfi_id)) rfi_id,LOWER(HEX(r.id)) id,r.answer,r.requires_instruction,LOWER(HEX(r.responded_by)) responded_by,r.issued_at FROM site_rfi_responses r JOIN site_rfis f ON f.id=r.rfi_id AND f.organisation_id=r.organisation_id WHERE f.organisation_id=UNHEX(:organisation) AND f.project_id=UNHEX(:project)');
+        $statement->execute(['organisation'=>$organisationId,'project'=>$projectId]);
+        $responses = [];
+        foreach ($statement->fetchAll() as $row) {
+            $rfiId = $row['rfi_id'];
+            unset($row['rfi_id']);
+            $responses[$rfiId] = $this->camel($row);
+        }
+        foreach ($rfis as &$rfi) $rfi['response'] = $responses[$rfi['id']] ?? null;
+        unset($rfi);
+        return $rfis;
     }
 
     /** @param list<string> $evidence */
@@ -301,7 +324,17 @@ final readonly class SiteExecutionService
     private function nullableId(mixed$v,string$error):?string{return$v===null||$v===''?null:$this->id($v,$error);}
     /** @return list<string> */ private function ids(mixed$v,string$error):array{if(!is_array($v)||count($v)>100)throw new SiteExecutionException($error);$out=[];foreach($v as$id)$out[]=$this->id($id,$error);return array_values(array_unique($out));}
     /** @return list<string> */ private function strings(mixed$v,int$limit,int$max,string$error):array{if(!is_array($v)||count($v)>$limit)throw new SiteExecutionException($error);$out=[];foreach($v as$item)$out[]=$this->text($item,$max,$error);return$out;}
-    /** @return array<string,int> */ private function labour(mixed$v):array{if(!is_array($v)||count($v)>100)throw new SiteExecutionException('site_daily_log_labour_invalid');$out=[];foreach($v as$key=>$count){if(!is_string($key)||trim($key)===''||!is_int($count)||$count<0||$count>100000)throw new SiteExecutionException('site_daily_log_labour_invalid');$out[substr(trim($key),0,100)]=$count;}return$out;}
+    /** @return array<string,int> */
+    /** One daily log per project per date; a repeat is a conflict, not a server error. */
+    private function assertDailyLogAbsent(string $organisationId, string $projectId, string $logDate): void
+    {
+        $statement = $this->pdo->prepare('SELECT 1 FROM site_daily_logs WHERE organisation_id=UNHEX(:organisation) AND project_id=UNHEX(:project) AND log_date=:log_date');
+        $statement->execute(['organisation' => $organisationId, 'project' => $projectId, 'log_date' => $logDate]);
+        if ($statement->fetchColumn() !== false) {
+            throw new SiteExecutionException('site_daily_log_exists');
+        }
+    }
+    private function labour(mixed$v):array{if(!is_array($v)||count($v)>100)throw new SiteExecutionException('site_daily_log_labour_invalid');$out=[];foreach($v as$key=>$count){if(!is_string($key)||trim($key)===''||!is_int($count)||$count<0||$count>100000)throw new SiteExecutionException('site_daily_log_labour_invalid');$out[substr(trim($key),0,100)]=$count;}return$out;}
     /** @return list<array{item:string,outcome:string}> */ private function checklist(mixed$v):array{if(!is_array($v)||count($v)>300)throw new SiteExecutionException('site_inspection_checklist_invalid');$out=[];foreach($v as$item){if(!is_array($item))throw new SiteExecutionException('site_inspection_checklist_invalid');$out[]=['item'=>$this->text($item['item']??null,500,'site_inspection_checklist_invalid'),'outcome'=>$this->choice($item['outcome']??null,['pass','fail','not_applicable'],'site_inspection_checklist_invalid')];}return$out;}
     private function integer(mixed$v,int$min,int$max,string$error):int{if(!is_int($v)||$v<$min||$v>$max)throw new SiteExecutionException($error);return$v;}
     private function date(mixed$v,string$error):string{if(!is_string($v)||DateTimeImmutable::createFromFormat('!Y-m-d',$v)?->format('Y-m-d')!==$v)throw new SiteExecutionException($error);return$v;}

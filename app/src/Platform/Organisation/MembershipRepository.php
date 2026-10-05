@@ -18,14 +18,18 @@ final readonly class MembershipRepository
         return $id;
     }
 
-    /** @return list<array{organisationId:string,role:string}> */
+    /** @return list<array{organisationId:string,role:string,profileRole?:string}> */
     public function activeForUser(string $userId): array
     {
-        $statement = $this->pdo->prepare("SELECT HEX(organisation_id) organisation_id,role FROM organisation_memberships WHERE user_id=UNHEX(:user_id) AND status='active' ORDER BY organisation_id");
+        $statement = $this->pdo->prepare("SELECT HEX(m.organisation_id) organisation_id,m.role,p.role_key FROM organisation_memberships m LEFT JOIN registration_profiles p ON p.organisation_id=m.organisation_id AND p.user_id=m.user_id WHERE m.user_id=UNHEX(:user_id) AND m.status='active' ORDER BY m.organisation_id");
         $statement->execute(['user_id' => $userId]);
         $memberships = [];
         foreach ($statement as $row) {
-            $memberships[] = ['organisationId' => strtolower((string) $row['organisation_id']), 'role' => (string) $row['role']];
+            $membership = ['organisationId' => strtolower((string) $row['organisation_id']), 'role' => (string) $row['role']];
+            if (is_string($row['role_key']) && $row['role_key'] !== '') {
+                $membership['profileRole'] = $row['role_key'];
+            }
+            $memberships[] = $membership;
         }
         return $memberships;
     }

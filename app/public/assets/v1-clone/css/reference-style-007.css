@@ -1,0 +1,132 @@
+/* Municipal Refuse Area Calculator — presentation only.
+   Colours, fonts and radii come from the shell's own custom properties (reference-shell.css),
+   so this screen inherits the Datum theme rather than restating it. Icons are the inline pack,
+   which draws its geometry in ink with a single teal fold and takes all colour from CSS. */
+
+.refuse-workspace { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 30px; }
+
+.refuse-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.refuse-title { display: flex; align-items: center; gap: 12px; }
+.refuse-hero-icon { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid var(--border); background: linear-gradient(180deg, #fff, var(--aqua)); border-radius: 13px; }
+.refuse-hero-icon svg { width: 26px; height: 26px; }
+.refuse-title h1 { margin: 0 0 3px; font-size: 20px; letter-spacing: -.01em; color: var(--ink); }
+.refuse-title p { margin: 0; font-size: 12px; color: var(--muted); }
+.refuse-hero-actions { display: flex; gap: 8px; }
+
+/* KPI strip — the three cards the mockup puts above the fold. Values come from the saved
+   record's server results, so they read "—" until something has actually been calculated. */
+.refuse-kpis { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.refuse-kpi { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--white); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--soft); }
+.refuse-kpi-icon { width: 40px; height: 40px; flex: 0 0 40px; display: grid; place-items: center; border-radius: 11px; background: var(--aqua); }
+.refuse-kpi-icon svg { width: 22px; height: 22px; }
+.refuse-kpi-copy { display: flex; flex-direction: column; gap: 2px; }
+.refuse-kpi-copy b { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.refuse-kpi-copy strong { font-size: 24px; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.refuse-kpi-unit { font-size: 12px; color: var(--muted); }
+
+.refuse-body { display: flex; gap: 16px; align-items: flex-start; }
+.refuse-rail { position: sticky; top: 8px; flex: 0 0 208px; display: flex; flex-direction: column; gap: 2px; background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 8px; box-shadow: var(--soft); }
+.refuse-rail-item { display: flex; align-items: center; gap: 9px; border: 0; border-left: 3px solid transparent; background: transparent; text-align: left; padding: 9px 10px; border-radius: 9px; font: inherit; font-size: 12px; color: #536074; cursor: pointer; }
+.refuse-rail-item:hover { background: var(--aqua); color: var(--deep); }
+.refuse-rail-item.is-active { background: var(--aqua); border-left-color: var(--teal); color: var(--deep); font-weight: 600; }
+.refuse-rail-icon { display: grid; place-items: center; width: 18px; height: 18px; }
+.refuse-rail-icon svg { width: 16px; height: 16px; }
+
+.refuse-columns { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 1240px) { .refuse-columns { grid-template-columns: minmax(0, 1fr); } .refuse-rail { display: none; } }
+
+.refuse-panel { background: var(--white); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--soft); padding: 15px 17px; margin-bottom: 14px; }
+.refuse-panel h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--deep); }
+.refuse-panel h2 svg { width: 16px; height: 16px; }
+.refuse-hint { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+.refuse-hint code { background: var(--aqua); padding: 1px 5px; border-radius: 5px; color: var(--deep); }
+
+.refuse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 14px; }
+.refuse-form .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.refuse-form .field > span { letter-spacing: .03em; }
+.refuse-form .field input,
+.refuse-form .field select { font: inherit; font-size: 12.5px; color: var(--ink); background: #fff; border: 1px solid rgba(16,32,51,.14); border-radius: 9px; padding: 8px 10px; }
+.refuse-form .field input:focus,
+.refuse-form .field select:focus { outline: 2px solid rgba(25,183,176,.35); outline-offset: 1px; border-color: var(--teal); }
+.refuse-form .field.checkbox { flex-direction: row; align-items: center; gap: 7px; }
+.refuse-form .field.checkbox input { width: 15px; height: 15px; accent-color: var(--teal); }
+.refuse-form-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+
+/* Results matrix — the verdicts the server returned, each with the basis it was measured on. */
+.refuse-packline { margin: 0 0 10px; font-size: 12px; color: var(--ink); }
+.refuse-matrix td { vertical-align: top; }
+.refuse-matrix small { color: var(--muted); font-size: 11px; line-height: 1.45; display: inline-block; }
+.refuse-basis { display: block; margin-top: 3px; font-style: italic; }
+.refuse-verdict { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+.refuse-verdict.is-pass { background: rgba(40,168,107,.13); color: var(--green); }
+.refuse-verdict.is-warning { background: rgba(255,176,32,.16); color: #8a5a00; }
+.refuse-verdict.is-fail { background: rgba(217,87,71,.14); color: var(--red); }
+.refuse-verdict.is-unassessed { background: rgba(101,114,135,.13); color: var(--muted); }
+.refuse-advisory { margin: 12px 0 0; padding: 10px 12px; border-left: 3px solid var(--amber); background: rgba(255,176,32,.09); border-radius: 9px; font-size: 11.5px; line-height: 1.5; color: #6b4a00; }
+
+/* Bin specification + layout sketch */
+.refuse-spec-body { display: flex; gap: 16px; align-items: center; }
+.refuse-bin { width: 108px; height: 136px; flex: 0 0 108px; }
+.refuse-spec-list { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; font-size: 12px; }
+.refuse-spec-list dt { color: var(--muted); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; }
+.refuse-spec-list dd { margin: 2px 0 0; color: var(--ink); font-weight: 600; }
+.refuse-sketch svg { width: 100%; height: auto; }
+.refuse-sketch-label { font-size: 9px; fill: var(--muted); font-family: inherit; }
+
+/* The inline icon role model: ink outline + detail, one teal fold. */
+.refuse-workspace svg .outline,
+.refuse-bin .outline { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
+.refuse-workspace svg .line,
+.refuse-bin .line { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; opacity: .48; }
+.refuse-workspace svg .fold,
+.refuse-bin .fold { fill: var(--teal); stroke: none; }
+
+.refuse-signoff .refuse-note { flex: 1 1 260px; font: inherit; font-size: 12.5px; padding: 8px 10px; border: 1px solid rgba(16,32,51,.14); border-radius: 9px; }
+.refuse-declared { margin: 0 0 10px; font-size: 12px; color: var(--deep); }
+.refuse-export button[disabled] { cursor: not-allowed; }
+
+.refuse-saved .is-selected { background: var(--aqua); }
+.refuse-saved small { color: var(--muted); font-size: 11px; }
+.refuse-rowactions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.refuse-rowactions input { font: inherit; font-size: 11px; padding: 6px 8px; border: 1px solid rgba(16,32,51,.14); border-radius: 8px; max-width: 170px; }
+.refuse-rules .refuse-newrule { margin-top: 12px; }
+.refuse-rules summary { cursor: pointer; font-size: 12px; color: var(--deep); font-weight: 600; }
+.refuse-rules .refuse-grid { margin-top: 10px; }
+
+
+/* Inbox & action — decision queue. */
+.inbox-workspace { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 28px; }
+.inbox-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.inbox-hero h1 { margin: 0 0 4px; font-size: 20px; color: var(--ink); }
+.inbox-hero p { margin: 0; font-size: 12px; color: var(--muted); }
+.inbox-workspace .panel { background: var(--white); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--soft); padding: 15px 17px; }
+.inbox-workspace .panel h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--deep); }
+.inbox-workspace .is-selected { background: var(--aqua); }
+.inbox-rowactions { display: flex; gap: 6px; }
+.inbox-status.is-unread { background: rgba(25,183,176,.14); color: var(--deep); }
+.inbox-status.is-read { background: rgba(101,114,135,.14); color: var(--muted); }
+.inbox-status.is-resolved { background: rgba(40,168,107,.14); color: var(--green); }
+.inbox-status.is-dismissed { background: rgba(217,87,71,.13); color: var(--red); }
+.inbox-detail-meta { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.inbox-detail-body { margin: 0 0 12px; font-size: 13px; color: var(--ink); line-height: 1.5; }
+.inbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; }
+.inbox-grid .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.inbox-grid .field input, .inbox-grid .field select { font: inherit; font-size: 12.5px; padding: 8px 10px; border: 1px solid rgba(16,32,51,.14); border-radius: 9px; color: var(--ink); }
+.inbox-grid .field.checkbox { flex-direction: row; align-items: center; gap: 7px; }
+.inbox-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.inbox-hint { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+
+
+/* Professional Directory — search and invitation. */
+.dir-workspace { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 28px; }
+.dir-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dir-hero h1 { margin: 0 0 4px; font-size: 20px; color: var(--ink); }
+.dir-hero p { margin: 0; font-size: 12px; color: var(--muted); }
+.dir-workspace .panel { background: var(--white); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--soft); padding: 15px 17px; }
+.dir-workspace .panel h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--deep); }
+.dir-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.dir-filters .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); min-width: 200px; }
+.dir-filters .field input { font: inherit; font-size: 12.5px; padding: 8px 10px; border: 1px solid rgba(16,32,51,.14); border-radius: 9px; color: var(--ink); }
+.dir-rowactions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dir-rowactions select { font: inherit; font-size: 11px; padding: 6px 8px; border: 1px solid rgba(16,32,51,.14); border-radius: 8px; }
+.dir-hint { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.5; }

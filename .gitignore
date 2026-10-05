@@ -20,3 +20,10 @@
 /packs/**/node_modules/
 *.log
 *.tmp
+/app/config/runtime.php
+/.private/
+/.hermes/
+/.worktrees/
+__pycache__/
+*.py[cod]
+/tools/**/node_modules/

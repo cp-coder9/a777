@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Architex\Http;
 
+use Architex\Http\Controller\FeedbackController;
+use Architex\Platform\Feedback\FeedbackService;
 use Architex\Http\Controller\AuthController;
 use Architex\Http\Controller\HealthController;
 use Architex\Http\Controller\RegistrationController;
@@ -43,6 +45,10 @@ use Architex\Http\Controller\FinanceController;
 use Architex\Http\Controller\SiteExecutionController;
 use Architex\Http\Controller\CloseoutController;
 use Architex\Http\Controller\PracticeController;
+use Architex\Http\Controller\ModuleRecordController;
+use Architex\Platform\ModuleRecords\ModuleRecordService;
+use Architex\Http\Controller\RefuseController;
+use Architex\Platform\Refuse\RefuseService;
 use Architex\Http\Controller\TrustComplianceController;
 use Architex\Http\Controller\AgentOrchestrationController;
 use Architex\Http\Controller\WingmanController;
@@ -176,6 +182,7 @@ final readonly class AuthenticationKernelFactory
         };
 
         $router = new Router();
+        (new FeedbackRoutes(new FeedbackController(new FeedbackService($this->pdo))))->register($router);
         $router->get('/api/v1/health', new HealthController());
         $router->get('/api/v1/build-info', new BuildInfoController(dirname(__DIR__,2).'/release.json'));
         if ($this->readinessController !== null) {
@@ -396,6 +403,17 @@ final readonly class AuthenticationKernelFactory
             new PracticeController(new PracticeManagementService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),
             new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new ModuleRecordRoutes(
+            new ModuleRecordController(new ModuleRecordService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+        ))->register($router);
+        (new RefuseRoutes(
+            new RefuseController(new RefuseService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new PermissionMiddleware(new PermissionService(),'verification.review'),
         ))->register($router);
         (new CPDRoutes(
             new CPDController(new CPDAssessmentService($this->pdo,$wingmanModel),$this->appUrl),

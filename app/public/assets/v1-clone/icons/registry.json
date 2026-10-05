@@ -1,0 +1,562 @@
+{
+  "dashboard": {
+    "label": "Dashboard",
+    "category": "primary",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/dashboard.svg"
+  },
+  "projects": {
+    "label": "Projects",
+    "category": "primary",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/projects.svg"
+  },
+  "specification": {
+    "label": "Specification",
+    "category": "primary",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/specification.svg"
+  },
+  "workflow": {
+    "label": "Workflow",
+    "category": "primary",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/workflow.svg"
+  },
+  "marketplace": {
+    "label": "Marketplace",
+    "category": "primary",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/marketplace.svg"
+  },
+  "procurement": {
+    "label": "Procurement",
+    "category": "primary",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/procurement.svg"
+  },
+  "contracts": {
+    "label": "Contracts",
+    "category": "primary",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/contracts.svg"
+  },
+  "calendar": {
+    "label": "Calendar",
+    "category": "primary",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/calendar.svg"
+  },
+  "messages": {
+    "label": "Messages",
+    "category": "primary",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/messages.svg"
+  },
+  "reports": {
+    "label": "Reports",
+    "category": "primary",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/reports.svg"
+  },
+  "team": {
+    "label": "Team",
+    "category": "primary",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/team.svg"
+  },
+  "wingman": {
+    "label": "Wingman",
+    "category": "primary",
+    "tone": "lavender",
+    "priority": "P0",
+    "file": "icons/wingman.svg"
+  },
+  "remoteDesktop": {
+    "label": "Remote Desktop",
+    "category": "remoteDesktop",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/remoteDesktop.svg"
+  },
+  "remoteSession": {
+    "label": "Remote Session",
+    "category": "remoteDesktop",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/remoteSession.svg"
+  },
+  "sessionBroker": {
+    "label": "Session Broker",
+    "category": "remoteDesktop",
+    "tone": "lavender",
+    "priority": "P0",
+    "file": "icons/sessionBroker.svg"
+  },
+  "sessionToken": {
+    "label": "Session Token",
+    "category": "remoteDesktop",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/sessionToken.svg"
+  },
+  "hostAgent": {
+    "label": "Host Agent",
+    "category": "remoteDesktop",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/hostAgent.svg"
+  },
+  "browserViewer": {
+    "label": "Browser Viewer",
+    "category": "remoteDesktop",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/browserViewer.svg"
+  },
+  "fileHandoff": {
+    "label": "File Handoff",
+    "category": "remoteDesktop",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/fileHandoff.svg"
+  },
+  "recordingConsent": {
+    "label": "Recording Consent",
+    "category": "remoteDesktop",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/recordingConsent.svg"
+  },
+  "formSystem": {
+    "label": "Form System",
+    "category": "forms",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/formSystem.svg"
+  },
+  "formTemplateLibrary": {
+    "label": "Form Template Library",
+    "category": "forms",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/formTemplateLibrary.svg"
+  },
+  "formEditor": {
+    "label": "Form Editor",
+    "category": "forms",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/formEditor.svg"
+  },
+  "autoFill": {
+    "label": "Auto-Fill",
+    "category": "forms",
+    "tone": "lavender",
+    "priority": "P0",
+    "file": "icons/autoFill.svg"
+  },
+  "formSignature": {
+    "label": "Form Signature",
+    "category": "forms",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/formSignature.svg"
+  },
+  "formApprovalWorkflow": {
+    "label": "Form Approval Workflow",
+    "category": "forms",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/formApprovalWorkflow.svg"
+  },
+  "formPdfExport": {
+    "label": "Form PDF Export",
+    "category": "forms",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/formPdfExport.svg"
+  },
+  "eiaWorkspace": {
+    "label": "EIA Workspace",
+    "category": "environmental",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/eiaWorkspace.svg"
+  },
+  "activityScreening": {
+    "label": "Activity Screening",
+    "category": "environmental",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/activityScreening.svg"
+  },
+  "basicAssessment": {
+    "label": "Basic Assessment",
+    "category": "environmental",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/basicAssessment.svg"
+  },
+  "fullEia": {
+    "label": "Full EIA",
+    "category": "environmental",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/fullEia.svg"
+  },
+  "environmentalAuthorisation": {
+    "label": "Environmental Authorisation",
+    "category": "environmental",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/environmentalAuthorisation.svg"
+  },
+  "emprMonitor": {
+    "label": "EMPr Monitor",
+    "category": "environmental",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/emprMonitor.svg"
+  },
+  "publicParticipation": {
+    "label": "Public Participation",
+    "category": "environmental",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/publicParticipation.svg"
+  },
+  "greenBuilding": {
+    "label": "Green Building",
+    "category": "environmental",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/greenBuilding.svg"
+  },
+  "practiceManagement": {
+    "label": "Practice Management",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/practiceManagement.svg"
+  },
+  "firmDashboard": {
+    "label": "Firm Dashboard",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/firmDashboard.svg"
+  },
+  "timesheetCapture": {
+    "label": "Timesheet Capture",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/timesheetCapture.svg"
+  },
+  "expenseClaim": {
+    "label": "Expense Claim",
+    "category": "practiceManagement",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/expenseClaim.svg"
+  },
+  "billingRates": {
+    "label": "Billing Rates",
+    "category": "practiceManagement",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/billingRates.svg"
+  },
+  "feeTracker": {
+    "label": "Fee Tracker",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/feeTracker.svg"
+  },
+  "wipReport": {
+    "label": "WIP Report",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/wipReport.svg"
+  },
+  "profitability": {
+    "label": "Profitability",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/profitability.svg"
+  },
+  "practiceInvoice": {
+    "label": "Practice Invoice",
+    "category": "practiceManagement",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/practiceInvoice.svg"
+  },
+  "resourceCapacity": {
+    "label": "Resource Capacity",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/resourceCapacity.svg"
+  },
+  "crmPipeline": {
+    "label": "CRM Pipeline",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/crmPipeline.svg"
+  },
+  "incomeForecast": {
+    "label": "Income Forecast",
+    "category": "practiceManagement",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/incomeForecast.svg"
+  },
+  "bimQuantities": {
+    "label": "BIM Quantities",
+    "category": "bim",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/bimQuantities.svg"
+  },
+  "ifcUpload": {
+    "label": "IFC Upload",
+    "category": "bim",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/ifcUpload.svg"
+  },
+  "ifcModel": {
+    "label": "IFC Model",
+    "category": "bim",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/ifcModel.svg"
+  },
+  "modelValidation": {
+    "label": "Model Validation",
+    "category": "bim",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/modelValidation.svg"
+  },
+  "quantityExtraction": {
+    "label": "Quantity Extraction",
+    "category": "bim",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/quantityExtraction.svg"
+  },
+  "mappingRules": {
+    "label": "Mapping Rules",
+    "category": "bim",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/mappingRules.svg"
+  },
+  "boqGenerator": {
+    "label": "BoQ Generator",
+    "category": "bim",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/boqGenerator.svg"
+  },
+  "bimExport": {
+    "label": "BIM Export",
+    "category": "bim",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/bimExport.svg"
+  },
+  "bimSpecForgeSync": {
+    "label": "SpecForge BIM Sync",
+    "category": "bim",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/bimSpecForgeSync.svg"
+  },
+  "rfqMarketplace": {
+    "label": "RFQ Marketplace",
+    "category": "rfq",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/rfqMarketplace.svg"
+  },
+  "rfqPackage": {
+    "label": "RFQ Package",
+    "category": "rfq",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/rfqPackage.svg"
+  },
+  "supplierProfile": {
+    "label": "Supplier Profile",
+    "category": "rfq",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/supplierProfile.svg"
+  },
+  "quoteSubmission": {
+    "label": "Quote Submission",
+    "category": "rfq",
+    "tone": "amber",
+    "priority": "P0",
+    "file": "icons/quoteSubmission.svg"
+  },
+  "quoteComparison": {
+    "label": "Quote Comparison",
+    "category": "rfq",
+    "tone": "cobalt",
+    "priority": "P0",
+    "file": "icons/quoteComparison.svg"
+  },
+  "rfqAward": {
+    "label": "RFQ Award",
+    "category": "rfq",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/rfqAward.svg"
+  },
+  "bbbeeCompliance": {
+    "label": "B-BBEE Compliance",
+    "category": "rfq",
+    "tone": "coral",
+    "priority": "P0",
+    "file": "icons/bbbeeCompliance.svg"
+  },
+  "municipalRefuseCalculator": {
+    "label": "Municipal Refuse Calculator",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/municipalRefuseCalculator.svg"
+  },
+  "municipalityProfile": {
+    "label": "Municipality Profile",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/municipalityProfile.svg"
+  },
+  "buildingType": {
+    "label": "Building Type",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/buildingType.svg"
+  },
+  "wasteVolume": {
+    "label": "Waste Volume",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/wasteVolume.svg"
+  },
+  "refuseStorageArea": {
+    "label": "Refuse Storage Area",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/refuseStorageArea.svg"
+  },
+  "areaDimensions": {
+    "label": "Area Dimensions",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/areaDimensions.svg"
+  },
+  "binAllocation": {
+    "label": "Bin Allocation",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/binAllocation.svg"
+  },
+  "collectionVehicleAccess": {
+    "label": "Collection Vehicle Access",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/collectionVehicleAccess.svg"
+  },
+  "ventilationRequirement": {
+    "label": "Ventilation Requirement",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/ventilationRequirement.svg"
+  },
+  "drainageRequirement": {
+    "label": "Drainage Requirement",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/drainageRequirement.svg"
+  },
+  "missingMunicipalField": {
+    "label": "Missing Municipal Field",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/missingMunicipalField.svg"
+  },
+  "advisoryDisclaimer": {
+    "label": "Advisory Disclaimer",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/advisoryDisclaimer.svg"
+  },
+  "professionalSignOff": {
+    "label": "Professional Sign-Off",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/professionalSignOff.svg"
+  },
+  "lockedUntilSignOff": {
+    "label": "Locked Until Sign-Off",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/lockedUntilSignOff.svg"
+  },
+  "exportPdfReport": {
+    "label": "Export PDF Report",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/exportPdfReport.svg"
+  },
+  "projectPassportSync": {
+    "label": "Project Passport Sync",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/projectPassportSync.svg"
+  },
+  "specForgePush": {
+    "label": "SpecForge Push",
+    "category": "refuse",
+    "tone": "core",
+    "priority": "P0",
+    "file": "icons/specForgePush.svg"
+  }
+}

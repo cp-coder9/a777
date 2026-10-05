@@ -34,14 +34,22 @@ final readonly class WingmanService
     }
 
     /** @return array<string,mixed> */
+    public function tutorial(string $organisationId, string $userId, string $role, ?array $input = null): array
+    {
+        $service = new WingmanTutorialService($this->pdo);
+        return $input === null ? $service->read($organisationId,$userId,$role) : $service->update($organisationId,$userId,$role,$input);
+    }
+
+    /** @return array<string,mixed> */
     public function bootstrap(string $organisationId, string $userId, string $role, string $route, ?string $projectId): array
     {
         $context = $this->authoriseContext($organisationId, $userId, $role, $route, $projectId);
-        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,title,route_context routeContext,updated_at updatedAt FROM wingman_conversations WHERE organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user) AND status='active' AND retention_expires_at>UTC_TIMESTAMP(6) ORDER BY updated_at DESC LIMIT 8");
-        $statement->execute(['organisation' => $organisationId, 'user' => $userId]);
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) projectId,title,route_context routeContext,updated_at updatedAt FROM wingman_conversations WHERE organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user) AND project_id <=> UNHEX(:project) AND status='active' AND retention_expires_at>UTC_TIMESTAMP(6) ORDER BY updated_at DESC LIMIT 8");
+        $statement->execute(['organisation' => $organisationId, 'user' => $userId, 'project'=>$projectId]);
         return [
             'provider' => 'nvidia',
             'model' => WingmanConfig::MODEL,
+            'availability' => $this->availability(),
             'context' => $context,
             'conversations' => $statement->fetchAll(),
             'capabilities' => [
@@ -61,10 +69,12 @@ final readonly class WingmanService
         $context = $this->authoriseContext($organisationId, $userId, $role, $route, $projectId);
         $selectedRecordId = $this->optionalId($input['selectedRecordId'] ?? null, 'invalid_record');
         $conversationId = $this->optionalId($input['conversationId'] ?? null, 'invalid_conversation');
+        if ($this->availability()['configured'] === false) throw new WingmanException('configuration_required');
         if ($conversationId === null) {
             $conversationId = $this->createConversation($organisationId, $userId, $projectId, $route, $prompt);
         } else {
-            $this->assertConversation($organisationId, $userId, $conversationId);
+            $conversation = $this->assertConversation($organisationId, $userId, $conversationId);
+            if ($conversation['projectId'] !== $projectId) throw new WingmanException('context_denied');
         }
 
         $contextSummary = ['route' => $route, 'projectId' => $projectId, 'selectedRecordId' => $selectedRecordId, 'family' => $context['family'], 'stage' => $context['stage']];
@@ -110,7 +120,7 @@ final readonly class WingmanService
     /** @return array<string,mixed> */
     public function conversation(string $organisationId, string $userId, string $conversationId): array
     {
-        $this->assertConversation($organisationId, $userId, $this->id($conversationId, 'wingman_conversation_not_found'));
+        $scope = $this->assertConversation($organisationId, $userId, $this->id($conversationId, 'wingman_conversation_not_found'));
         $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,role,status,content,provider,model,created_at createdAt FROM wingman_messages WHERE organisation_id=UNHEX(:organisation) AND conversation_id=UNHEX(:conversation) ORDER BY created_at,id');
         $statement->execute(['organisation' => $organisationId, 'conversation' => $conversationId]);
         $messages = [];
@@ -119,7 +129,7 @@ final readonly class WingmanService
             $message['suggestions'] = $this->suggestions($organisationId, $message['id']);
             $messages[] = $message;
         }
-        return ['id' => $conversationId, 'messages' => $messages];
+        return ['id' => $conversationId, 'projectId'=>$scope['projectId'], 'messages' => $messages];
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
@@ -185,11 +195,21 @@ final readonly class WingmanService
         return $id;
     }
 
-    private function assertConversation(string $organisationId, string $userId, string $conversationId): void
+    private function assertConversation(string $organisationId, string $userId, string $conversationId): array
     {
-        $statement = $this->pdo->prepare("SELECT 1 FROM wingman_conversations WHERE id=UNHEX(:id) AND organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user) AND status='active' AND retention_expires_at>UTC_TIMESTAMP(6)");
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(c.id)) id,LOWER(HEX(c.project_id)) projectId FROM wingman_conversations c JOIN organisation_memberships m ON m.organisation_id=c.organisation_id AND m.user_id=c.user_id AND m.status='active' WHERE c.id=UNHEX(:id) AND c.organisation_id=UNHEX(:organisation) AND c.user_id=UNHEX(:user) AND c.status='active' AND c.retention_expires_at>UTC_TIMESTAMP(6)");
         $statement->execute(['id' => $conversationId, 'organisation' => $organisationId, 'user' => $userId]);
-        if ($statement->fetchColumn() === false) throw new WingmanException('wingman_conversation_not_found');
+        $scope = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($scope)) throw new WingmanException('wingman_conversation_not_found');
+        if ($scope['projectId'] !== null) $this->assertProject($organisationId,$userId,$scope['projectId']);
+        return $scope;
+    }
+
+    private function availability(): array
+    {
+        $diagnostics = method_exists($this->model,'diagnostics') ? $this->model->diagnostics() : [];
+        $configured = is_bool($diagnostics['configured'] ?? null) ? $diagnostics['configured'] : null;
+        return ['configured'=>$configured,'status'=>$configured === false ? 'configuration_required' : ($configured === true ? 'configured_unverified' : 'not_reported'),'providerResponseVerified'=>false];
     }
 
     /** @param array<string,mixed>|null $context @param array<string,mixed>|null $modelResponse */
@@ -220,7 +240,7 @@ final readonly class WingmanService
     /** @return list<array<string,mixed>> */
     private function toolDefinitions(): array
     {
-        $object = static fn (array $properties, array $required = []): array => ['type' => 'object', 'properties' => $properties, 'required' => $required, 'additionalProperties' => false];
+        $object = static fn (array $properties, array $required = []): array => ['type' => 'object', 'properties' => (object)$properties, 'required' => $required, 'additionalProperties' => false];
         return [
             ['type' => 'function', 'function' => ['name' => 'search_authorised_knowledge', 'description' => 'Search permission-filtered Architex knowledge.', 'parameters' => $object(['query' => ['type' => 'string']], ['query'])]],
             ['type' => 'function', 'function' => ['name' => 'get_authorised_project_summary', 'description' => 'Read a bounded summary of the current authorised project.', 'parameters' => $object([])]],

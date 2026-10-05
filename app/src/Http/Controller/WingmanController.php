@@ -29,6 +29,16 @@ final readonly class WingmanController
         return $this->write($request, fn (array $body, array $scope): array => $this->service->message($scope[0], $scope[1], $scope[2], $body));
     }
 
+    public function tutorial(Request $request): Response
+    {
+        return $this->read($request, fn(array $scope): array => $this->service->tutorial($scope[0],$scope[1],$scope[2]));
+    }
+
+    public function updateTutorial(Request $request): Response
+    {
+        return $this->write($request, fn(array $body,array $scope): array => $this->service->tutorial($scope[0],$scope[1],$scope[2],$body));
+    }
+
     public function conversation(Request $request): Response
     {
         return $this->read($request, fn (array $scope): array => $this->service->conversation($scope[0], $scope[1], $this->id($request, 'conversationId', 'wingman_conversation_not_found')));

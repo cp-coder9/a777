@@ -50,7 +50,9 @@ final class ReleaseVerifier
 
     private function forbidden(string $relative): bool
     {
-        return preg_match('#(^|/)(?:\.env(?:\..*)?|tests?|node_modules|packs|\.git|storage/(?:files|logs|tmp|evidence))(?:/|$)#i', $relative) === 1
+        return preg_match('#(^|/)(?:\.env(?:\.[^/]*)?|\.private|backups|tests?|node_modules|packs|\.git)(?:/|$)#i', $relative) === 1
+            || preg_match('#^storage/#i', $relative) === 1
+            || preg_match('#(^|/)config/runtime\.php$#i', $relative) === 1
             || preg_match('#^vendor/(?:phpunit|sebastian|mockery|phar-io|theseer)/#i', $relative) === 1;
     }
 

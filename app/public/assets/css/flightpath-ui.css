@@ -29,6 +29,8 @@ body{font-family:var(--fp-body);color:var(--fp-ink);background:var(--fp-canvas);
 
 /* Shared page grammar */
 .fp-page{display:grid;gap:16px;min-width:0;max-width:1540px;margin:0 auto}
+/* The shell main is a grid track, not a centred standalone page. */
+.main.fp-page{width:100%;max-width:100%;margin:0;grid-template-columns:minmax(0,1fr)}
 .fp-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:20px;border:1px solid var(--fp-line);border-radius:var(--fp-radius-lg);background:linear-gradient(135deg,var(--fp-tracing-wash),var(--fp-paper) 60%);box-shadow:var(--fp-shadow)}
 .fp-page-header__copy{display:grid;gap:5px;min-width:0}
 .fp-page-header__eyebrow{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fp-datum-teal)}
