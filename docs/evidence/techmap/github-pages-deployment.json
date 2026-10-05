@@ -3,7 +3,7 @@
   "repository_url": "https://github.com/cp-coder9/architex-technology-radar",
   "branch": "main",
   "expires": null,
-  "sha256": "68305f71e23815e634f9707db64871525215b8a91602f5358f6559f9b7b8ac57",
+  "sha256": "9bdbd7274fa82df74876c8cb4a60475394568c5e4743c10f854458aa4591d5f0",
   "http_status": 200,
   "artifact": "docs/techmap/architex-radar.html"
 }
