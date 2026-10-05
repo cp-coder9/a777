@@ -56,12 +56,26 @@
       if(!retentionUntil)throw Error('A retention date is required.');
       return unwrap(await context.write('/verifications',{kind,grade,registrationBody:String(registrationBody).toUpperCase(),registrationNumber:registrationNumber||null,purpose:String(purpose).trim(),expiresOn:expiresOn||null,evidenceFileId:evidenceFileId||null,consentGiven:true,retentionUntil},{readBackPath:'/verification-review-queue'}));
     }
-    async function reviewQueue(){const s=scope(false);return unwrap(await context.read('/verification-review-queue'));}
-    async function reviewVerification(verificationId,decision,{provider,providerReference,note}={}){
-      const s=scope(false);if(s.readOnly)throw Error('Read-only session.');
-      if(!['manually_reviewed','externally_verified','rejected'].includes(decision))throw Error('A valid decision is required (manually_reviewed, externally_verified, rejected).');
-      if(decision==='externally_verified'&&(!provider||!providerReference))throw Error('External verification requires a provider and provider reference.');
-      return unwrap(await context.write('/verifications/'+encodeURIComponent(verificationId)+'/review',{decision,provider:provider||null,providerReference:providerReference||null,note:note||null,humanConfirmed:true},{readBackPath:'/verification-review-queue'}));
+    function reviewer(){const s=scope(false),member=s.session.memberships?.find(m=>m.organisationId===s.organisationId);if(!['owner','admin'].includes(member?.role)||(member.status&&member.status!=='active'))throw Error('An active owner or admin membership is required.');return s;}
+    function verificationRows(value){const rows=unwrap(value);if(!Array.isArray(rows))throw Error('Invalid verification readback.');return rows;}
+    async function reviewQueue(){const s=reviewer();const rows=verificationRows(await context.read('/verification-review-queue'));current(s);return rows;}
+    async function ownVerifications(){const s=scope(false);const rows=verificationRows(await context.read('/verifications'));current(s);return rows;}
+    let reviewing=false;
+    async function reviewVerification(verificationId,decision,{provider,providerReference,note,humanConfirmed}={}){
+      const s=reviewer();if(s.readOnly)throw Error('Read-only session.');
+      if(!/^[a-f0-9]{32}$/i.test(verificationId||''))throw Error('Select a real verification record.');
+      if(humanConfirmed!==true)throw Error('Explicit human confirmation is required.');
+      if(!note?.trim())throw Error('A review reason is required.');
+      if(!['manually_reviewed','externally_verified','rejected'].includes(decision))throw Error('A valid decision is required.');
+      if(decision==='externally_verified'&&(!provider?.trim()||!providerReference?.trim()))throw Error('External verification requires a real provider and provider reference.');
+      if(reviewing)throw Error('A review is already pending.');reviewing=true;
+      try{
+        const queue=await reviewQueue();current(s);if(!queue.some(r=>r.id===verificationId))throw Error('Selected verification is no longer in the review queue.');
+        const saved=unwrap(await context.write('/verifications/'+verificationId+'/review',{decision,provider:provider?.trim()||null,providerReference:providerReference?.trim()||null,note:note.trim(),humanConfirmed:true},{projectScoped:false,readBackPath:'/verification-review-queue',readBackAbsentId:verificationId}));current(s);
+        const remaining=await reviewQueue();current(s);
+        if(saved?.id!==verificationId||saved.grade!==decision||remaining.some(r=>r.id===verificationId))throw Error('Review readback not verified; the decision receipt mismatched or the record is still queued. Refresh before retrying.');
+        await ownVerifications();current(s);return saved;
+      }finally{reviewing=false;}
     }
     // --- Analytics (market_insights) ---
     async function analyticsWorkspace(){const s=scope(true);return unwrap(await context.read(path(s,'analytics-workspace')));}
@@ -75,7 +89,7 @@
       const body={name:rule.name,recordType:rule.recordType,payloadPath:rule.payloadPath,operator:rule.operator,comparisonValue:rule.comparisonValue,severity:rule.severity||'medium',recipientRole:rule.recipientRole||'owner',throttleMinutes:rule.throttleMinutes??60};
       return unwrap(await context.write(path(s,'analytics/alert-rules'),body,{readBackPath:path(s,'analytics-workspace')}));
     }
-    return {scope,current,listTeam,invite,removeMember,searchDirectory,saveProfile,submitVerification,reviewQueue,reviewVerification,analyticsWorkspace,refreshKpis,createAlertRule};
+    return {scope,current,listTeam,invite,removeMember,searchDirectory,saveProfile,submitVerification,reviewQueue,ownVerifications,reviewVerification,analyticsWorkspace,refreshKpis,createAlertRule};
   }
   root.V1CloneGovernanceAdapter={create,aliases};
 })(window);

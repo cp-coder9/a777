@@ -19,7 +19,7 @@ final readonly class OperatingSystemController
 
     public function snapshot(Request$r):Response{return$this->read($r,function($s)use($r){$project=$this->pathId($r,'projectId','operating_project_not_found');return$this->operating->projectSnapshot($s[0],$s[1],$s[2],$project);});}
     public function mobileInbox(Request$r):Response{return$this->read($r,fn($s)=>$this->operating->mobileInbox($s[0],$s[1],$s[2]));}
-    public function capabilityReport(Request$r):Response{return$this->read($r,fn()=> $this->capabilities->report());}
+    public function capabilityReport(Request$r):Response{return$this->read($r,function($s)use($r){$profile=null;$identity=$r->attribute('identity');foreach($identity->memberships as $membership)if(($membership['organisationId']??null)===$s[0]&&($membership['role']??null)===$s[2]){$profile=is_string($membership['profileRole']??null)?$membership['profileRole']:null;return$this->capabilities->report($s[2],$profile);}return$this->capabilities->report();});}
     public function releaseGateHistory(Request$r):Response{return$this->read($r,fn($s)=>$this->releaseGates->history($s[0],$s[1],$s[2]));}
     public function transitionInbox(Request$r):Response{return$this->write($r,function($b,$s)use($r){$id=$this->pathId($r,'inboxItemId','operating_inbox_item_not_found');$status=$b['status']??null;if(!is_string($status))throw new ProductOperatingSystemException('operating_inbox_status_invalid');return$this->operating->transitionInboxItem($s[0],$s[1],$s[2],$id,$status,$b);});}
     public function recordReleaseGate(Request$r):Response{return$this->write($r,fn($b,$s)=>$this->releaseGates->record($s[0],$s[1],$s[2],$b),201);}

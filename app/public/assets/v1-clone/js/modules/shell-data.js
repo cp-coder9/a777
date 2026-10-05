@@ -55,7 +55,7 @@
       for (const item of all('#globalMenu .os-item')) {
         const action = item.getAttribute('onclick') || '';
         if (/openGlobal\(['"]projects['"]\)/.test(action)) text(item.querySelector('.os-meta'), current.ready ? current.projects.length : 'Not loaded');
-        if (/openGlobal\(['"]tools['"]\)/.test(action)) text(item.querySelector('.os-meta'), '47');
+        if (/openGlobal\(['"]tools['"]\)/.test(action)) {const discovery=global.V1CloneRuntime?.controllers?.discovery;text(item.querySelector('.os-meta'),discovery?discovery.getCatalogue().filter(t=>discovery.allowed(t.id)).length:'Unavailable');}
         if (/openGlobal\(['"](?:inbox|documents|finance)['"]\)/.test(action)) text(item.querySelector('.os-meta'), 'Not loaded');
       }
       if (route.mode === 'project') {

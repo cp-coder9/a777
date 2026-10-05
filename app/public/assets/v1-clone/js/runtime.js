@@ -16,9 +16,12 @@
   }
   function authenticatedRole(current) {
     const member = current.session?.memberships?.find(item => item.organisationId === current.organisationId);
-    const role = member?.profileRole || member?.role || 'viewer';
-    // The reference calls its organisation-administration presentation 'admin'.
-    // This changes presentation only; authenticated membership and tutorial scope stay intact.
+    // Profile labels and presentation lenses never confer access. Keep read-only
+    // and unknown memberships out of administrative presentation.
+    if (!['owner','admin','member'].includes(member?.role)) return 'viewer';
+    const role = member.profileRole || member.role;
+    const administrative=['firm_admin','organisation_admin','admin','platform_admin'];
+    if (administrative.includes(role) && !['owner','admin'].includes(member.role)) return 'member';
     return role === 'organisation_admin' ? 'admin' : role;
   }
   async function bootstrap({ context, fixtureRequested = false, fixtureAllowed = false, onReady }) {
@@ -55,6 +58,10 @@
   // These native workspaces require an authorised project in their current adapters.
   // Organisation tools and standalone-capable tools must not be added implicitly.
   const PROJECT_REQUIRED_TOOLS = Object.freeze({
+    bom:'BoQ takeoff runs and procurement actions use the selected project.',
+    safety:'Safety evidence and draft inspections belong to a selected project.',
+    council_navigator:'Council submission-readiness evidence belongs to a selected project.',
+    municipal_tracker:'Municipal readiness assessments belong to a selected project.',
     project_passport:'Project facts belong to a selected project.',
     project_explorer:'Documents and project records belong to a selected project.',
     team_workspace:'Team appointments and responsibilities belong to a selected project.',
@@ -111,6 +118,120 @@
     const original=global.renderMain;
     global.renderMain=function(...args){if(render())return;return original?.apply(this,args);};
     return {render,required};
+  }
+  // Operating snapshots use some historical destination keys. Only known local
+  // native workspaces may be followed; arbitrary URLs and deployment actions stay closed.
+  function sourceWorkspace(target){
+    const aliases={closeout:'fm_bridge',cpd:'cpd_learning',municipal:'municipal_tracker',site_diary:'itp',inbox:'inbox_action',documents_drawings:'documents_drawings',payments_escrow:'payments_escrow',project_passport:'project_passport'};
+    return Object.hasOwn(aliases,target)?aliases[target]:'';
+  }
+  function installWorkspaceDiscovery({context,viewState,notify=()=>{}}) {
+    let catalogue=new Map(),loadedScope=null,generation=0,disposed=false;
+    const scope=()=>{const s=context.getState();return JSON.stringify([s.organisationId,s.session?.userId,s.session?.memberships]);};
+    const membership=()=>{const s=context.getState();return s.session?.memberships?.find(m=>m.organisationId===s.organisationId)?.role;};
+    const allowed=id=>!disposed&&loadedScope===scope()&&['owner','admin','member','viewer'].includes(membership())&&catalogue.get(id==='command'?'practice':id)?.access?.read===true;
+    const open=global.openTool;
+    if(typeof open==='function')global.openTool=function(id,...args){if(!allowed(id)){notify('This tool is not available with your current membership.');return false;}return open.call(this,id,...args);};
+    function decorateSources(){
+      if(viewState?.tool!=='approvals_queue'||!allowed('approvals_queue'))return;
+      const project=context.getState().selectedProjectId,key=scope();
+      for(const cell of document.querySelectorAll('#main .approvals-workspace section:first-of-type tbody tr td:last-child')){
+        if(cell.querySelector('[data-open-native-source]'))continue;
+        const target=sourceWorkspace(cell.textContent.trim());if(!target||!allowed(target))continue;
+        const button=document.createElement('button');button.type='button';button.className='btn ghost';button.dataset.openNativeSource=target;button.textContent='Open source workspace';
+        button.onclick=()=>{if(key!==scope()||project!==context.getState().selectedProjectId||!allowed(target))return false;return global.openTool(target,'project');};cell.append(button);
+      }
+    }
+    function reconcile(){
+      if(disposed)return;
+      const s=context.getState();
+      const current=loadedScope===scope();
+      // Annotate original navigation without changing its visual hierarchy.
+      for(const button of document.querySelectorAll('[onclick*="openTool("]')){
+        const id=/openTool\(['"]([a-z0-9_]+)['"]/.exec(button.getAttribute('onclick')||'')?.[1];
+        if(!id||id==='command')continue;
+        const permitted=allowed(id);
+        button.disabled=!permitted;button.setAttribute('aria-disabled',String(!permitted));
+        button.title=permitted?(catalogue.get(id)?.recommended?'Suggested for your saved profile. Source operations still verify authority.':'Available in your current organisation scope.'):'Requires an authorised membership for this workspace.';
+        button.dataset.workspaceRecommended=String(permitted&&catalogue.get(id)?.recommended===true);
+      }
+      const active=catalogue.get(viewState?.tool),inspector=document.querySelector('#inspectBody');
+      if(inspector&&allowed(viewState?.tool)&&active?.nativeActions?.length&&['context','activity'].includes(viewState?.inspector)){
+        const panel=document.createElement('div');panel.className='inspect-note';panel.dataset.workspaceContext=active.id;
+        const title=document.createElement('b');title.textContent=active.name;panel.append(title);
+        const description=document.createElement('p');description.textContent=viewState.inspector==='activity'?'Activity is not loaded in this inspector. Review persisted records in the native workspace; no completion or external action is inferred.':(active.nativeBoundary||active.evidence);panel.append(description);
+        const access=document.createElement('p');access.textContent='Membership: '+membership()+'. Stage: '+active.stage+'. Source operations verify project scope, evidence and professional authority.';panel.append(access);
+        const gates=document.createElement('p');gates.textContent='Next action gates: '+[...new Set(active.nativeActions.map(a=>a.humanGate))].join(', ')+'. An internal record is not certification, authority approval or payment.';panel.append(gates);
+        inspector.replaceChildren(panel);
+      }
+      const count=[...catalogue.values()].filter(t=>allowed(t.id)).length;
+      for(const button of document.querySelectorAll('#globalMenu .os-item'))if(/openGlobal\(['"]tools['"]/.test(button.getAttribute('onclick')||'')){const meta=button.querySelector('.os-meta');if(meta)meta.textContent=current?String(count):'Unavailable';}
+      const nav=document.querySelector('#navigator');
+      if(nav){
+        nav.querySelector('[data-role-suggested-tools]')?.remove();
+        if(!viewState?.tool){
+          const suggested=[...catalogue.values()].filter(t=>t.recommended&&allowed(t.id));
+          if(suggested.length){const panel=document.createElement('div');panel.className='nav-section';panel.dataset.roleSuggestedTools='';const heading=document.createElement('div');heading.className='nav-heading';heading.textContent='Suggested for your saved profile';panel.append(heading);
+            for(const tool of suggested){const button=document.createElement('button');button.type='button';button.className='nav-row';button.textContent=tool.name;button.onclick=()=>allowed(tool.id)?global.openTool(tool.id,context.getState().mode):false;panel.append(button);}nav.prepend(panel);}
+        }
+        nav.querySelector('[data-native-next-actions]')?.remove();
+        const tool=catalogue.get(viewState?.tool);
+        if(allowed(viewState?.tool)&&tool?.nativeActions?.length){
+          const panel=document.createElement('div');panel.className='nav-section';panel.dataset.nativeNextActions='';
+          const heading=document.createElement('div');heading.className='nav-heading';heading.textContent='Native next actions';panel.append(heading);
+          for(const action of tool.nativeActions){
+            const button=document.createElement('button');button.type='button';button.className='nav-row';button.textContent=action.label;
+            button.disabled=action.allowed!==true||!allowed(action.target);
+            button.title='Gate: '+action.humanGate+'. The source workflow checks evidence and professional authority.';
+            button.onclick=()=>{if(loadedScope!==scope()||action.allowed!==true||!allowed(action.target))return false;
+              if(action.target!==viewState.tool)return global.openTool(action.target,s.mode);
+              const selectors={'save-takeoff':'[data-boq-form] input[name="title"]','download-advisory-output':'[data-boq-history]','draft-safety-inspection':'[data-site-create]','submit-feedback':'#v1-feedback-new','compliance-evidence':'[data-compliance-create]','readiness':'[data-mun-create]','review-verification':'[data-review-select]'};
+              const main=document.querySelector('#main');const selector=selectors[action.id];
+              const target=selector&&(main?.querySelector(selector)||main?.querySelector('iframe')?.contentDocument?.querySelector(selector));
+              if(target){target.scrollIntoView?.({block:'center'});target.focus?.();if(target.tagName==='BUTTON')target.click();}else{main?.scrollIntoView?.({block:'start'});notify('Use the native workspace controls below; source decisions retain their human gate.');}
+              return true;
+            };panel.append(button);
+          }
+          nav.append(panel);
+        }
+      }
+    }
+    async function load(){const token=++generation,key=scope();loadedScope=null;catalogue=new Map();reconcile();
+      try{const rows=await context.read('/api/v1/tools');if(disposed||token!==generation||key!==scope())return false;
+        if(!Array.isArray(rows)||rows.some(t=>!t||typeof t.id!=='string'||typeof t.access?.read!=='boolean'))throw Error('Invalid workspace capability response.');
+        catalogue=new Map(rows.map(t=>[t.id,t]));loadedScope=key;reconcile();return true;
+      }catch(error){if(!disposed&&token===generation){notify('Workspace capability discovery is unavailable. '+error.message);reconcile();}return false;}
+    }
+    const unsubscribe=context.subscribe?.(()=>{if(loadedScope!==scope())void load();else reconcile();});
+    const originalMain=global.renderMain;
+    if(typeof originalMain==='function')global.renderMain=function(...args){
+      if(viewState?.tool&&viewState.tool!=='command'&&!allowed(viewState.tool)){
+        const main=document.querySelector('#main');if(main){const panel=document.createElement('section');panel.className='panel panel-pad';const message=document.createElement('p');message.textContent='This workspace is unavailable with your current membership. No records have been loaded.';message.setAttribute('role','status');panel.append(message);main.replaceChildren(panel);}return;
+      }
+      return originalMain.apply(this,args);
+    };
+    const main=document.querySelector('#main');
+    const observer=main&&global.MutationObserver?new global.MutationObserver(decorateSources):null;
+    observer?.observe(main,{childList:true,subtree:true});
+    return {ready:load(),allowed,reconcile(){reconcile();decorateSources();},getCatalogue:()=>[...catalogue.values()],dispose(){disposed=true;++generation;observer?.disconnect();unsubscribe?.();catalogue.clear();}};
+  }
+  async function openRequestedWorkspace({context,discovery,parameters,notify=()=>{}}){
+    const id=parameters?.get('workspace');if(!id)return false;
+    if(!discovery.allowed(id)){notify('The requested native workspace is not permitted.');return false;}
+    const project=parameters.get('project'),orientation=parameters.get('orientation')||'project';
+    if(!['project','standalone'].includes(orientation)){notify('Unknown workspace orientation.');return false;}
+    if(project&&(!/^[a-f0-9]{32}$/i.test(project)||!context.getState().projects.some(p=>p.id===project))){notify('The requested project is not authorised.');return false;}
+    if(project&&orientation==='project'&&await context.selectProject(project)===false)return false;
+    if(await context.setMode(orientation)===false||!discovery.allowed(id))return false;
+    const result=await global.openTool(id,orientation);return result!==false;
+  }
+  function installRenderLifecycle({originalRender,reconcile,shell,training,afterRender}){
+    let depth=0;
+    for(const name of ['renderMain','renderNavigator','renderTopbar','renderInspector','renderGlobalMenu']){
+      const original=global[name];if(typeof original!=='function')continue;
+      global[name]=function(...args){const result=original.apply(this,args);shell?.reconcile();training?.reconcile();afterRender?.();if(name==='renderMain'&&depth===0)reconcile();return result;};
+    }
+    global.renderAll=function(...args){depth++;try{return originalRender.apply(this,args);}finally{depth--;if(depth===0)reconcile();}};
   }
   async function installProduction(context) {
     // Production metadata belongs in the adapter layer, never in immutable reference scripts.
@@ -204,9 +325,14 @@
       if (originalProject) Object.assign(originalProject, projectModel(selected));
     };
     const projectRequirement=installProjectRequirement({context,viewState});
+    const discovery=installWorkspaceDiscovery({context,viewState,notify});
+    global.V1CloneRuntime.controllers.discovery=discovery;
+    await discovery.ready;
     const reconcile = () => {
       global.V1CloneRuntime.controllers.shell.reconcile();
       global.V1CloneRuntime.controllers.training?.reconcile();
+      discovery.reconcile();
+      if(viewState?.tool&&viewState.tool!=='command'&&!discovery.allowed(viewState.tool))return;
       document.querySelectorAll('.nav-note').forEach(note => {
         if (/Functional sample preserved|functional sample is integrated/.test(note.textContent)) note.textContent = 'Original V1 workspace · production adapter verification in progress.';
       });
@@ -265,17 +391,13 @@
     global.V1CloneRuntime.controllers.shell = global.V1CloneShellData.install({ context });
     global.V1CloneRuntime.controllers.training = global.V1CloneTraining.install({ context });
     global.V1CloneRuntime.controllers.permissions = global.V1ClonePermissionControls?.install({ context });
-    ['renderMain', 'renderNavigator', 'renderTopbar', 'renderInspector', 'renderGlobalMenu'].forEach(name => {
-      const original = global[name]; if (typeof original !== 'function') return;
-      global[name] = function (...args) { const result = original.apply(this, args); global.V1CloneRuntime.controllers.shell.reconcile();
-      global.V1CloneRuntime.controllers.training?.reconcile(); return result; };
-    });
+    installRenderLifecycle({originalRender,reconcile,shell:global.V1CloneRuntime.controllers.shell,training:global.V1CloneRuntime.controllers.training,afterRender:discovery.reconcile});
     refreshProject();
-    global.renderAll = function (...args) { const result = originalRender.apply(this, args); reconcile(); return result; };
     context.subscribe(() => { refreshProject(); global.renderAll(); });
     global.renderAll();
+    if(global.location?.search)await openRequestedWorkspace({context,discovery,parameters:new URLSearchParams(global.location.search),notify});
   }
-  global.V1CloneRuntime = { authenticatedRole, projectModel, bootstrap, installNavigation, installProjectRequirement, installProduction, fixtureMode: false, controllers: {} };
+  global.V1CloneRuntime = { authenticatedRole, projectModel, bootstrap, installNavigation, installProjectRequirement, installWorkspaceDiscovery, sourceWorkspace, openRequestedWorkspace, installRenderLifecycle, installProduction, fixtureMode: false, controllers: {} };
   if (!global.__V1_CLONE_NO_AUTOSTART__) {
     bootstrap({
       context: global.V1CloneContext?.create({ api: new global.ArchitexApi.ApiClient(), confirm: text => global.confirm(text) }),

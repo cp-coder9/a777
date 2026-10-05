@@ -38,7 +38,7 @@
       }
       if (def.kind === 'admin') {
         const q = await adapter.reviewQueue();
-        return { queue: Array.isArray(q) ? q : (q?.items || []) };
+        return { queue: q, own: await adapter.ownVerifications() };
       }
       if (def.kind === 'analytics') { const w = await adapter.analyticsWorkspace(); return { analytics: w }; }
       return {};
@@ -69,8 +69,11 @@
         const rows = (data.directory || []).map(d => `<tr><td>${esc(d.displayName || d.name || '—')}</td><td>${esc(d.profession || '—')}</td><td>${esc((d.serviceAreas || []).join(', ') || '—')}</td><td>${esc(d.verificationGrade || d.grade || 'unverified')}</td></tr>`).join('') || '<tr><td colspan="4">No directory results.</td></tr>';
         bodyHtml = `<section class="panel"><h2>Verified professionals</h2><table class="table"><thead><tr><th>Name</th><th>Profession</th><th>Service areas</th><th>Grade</th></tr></thead><tbody>${rows}</tbody></table></section>`;
       } else if (def.kind === 'admin') {
-        const rows = (data.queue || []).map(v => `<tr><td>${esc(v.kind || '—')}</td><td>${esc(v.userId || '—')}</td><td>${esc(v.grade || '—')}</td><td><span class="pill">${esc(v.status || 'pending')}</span></td></tr>`).join('') || '<tr><td colspan="4">Verification review queue is empty.</td></tr>';
-        bodyHtml = `<section class="panel"><h2>Verification review queue</h2><table class="table"><thead><tr><th>Kind</th><th>Applicant</th><th>Grade</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+        const rows = (data.queue || []).map(v => `<tr><td>${esc(v.kind || '—')}</td><td>${esc(v.subject_user_id || '—')} ${esc(v.subject_email || '')}</td><td>${esc(v.grade || '—')}</td><td><button class="btn ghost" type="button" data-review-select="${esc(v.id)}">Review evidence</button></td></tr>`).join('') || '<tr><td colspan="4">Verification review queue is empty.</td></tr>';
+        const own=(data.own||[]).map(v=>`<tr><td>${esc(v.id)}</td><td>${esc(v.grade)}</td><td>${esc(v.effectiveGrade)}</td></tr>`).join('')||'<tr><td colspan="3">No own verification records returned.</td></tr>';
+        bodyHtml = `<section class="panel"><h2>Verification review queue</h2><table class="table"><thead><tr><th>Kind</th><th>Applicant</th><th>Grade</th><th>Review</th></tr></thead><tbody>${rows}</tbody></table></section>
+          <section class="panel" data-review-editor><p>Select an independent applicant to inspect the recorded evidence.</p></section>
+          <section class="panel"><h2>My verification status</h2><p>Your own records are separate from independent applicant reviews.</p><table class="table"><thead><tr><th>Record</th><th>Grade</th><th>Effective grade</th></tr></thead><tbody>${own}</tbody></table></section>`;
       } else if (def.kind === 'analytics') {
         const w = data.analytics || {};
         const metrics = w.latestMetrics || w.metrics || [];
@@ -82,6 +85,30 @@
         <div class="rfi-hero"><div><h1>${esc(def.title)}</h1><p>Project: <strong>${esc(project)}</strong></p></div></div>
         <p class="pill" data-gov-status role="status">Internal records only.</p>
         ${bodyHtml}</div>`;
+      if(def.kind==='admin'){
+        const renderToken=generation;
+        main.querySelectorAll('[data-review-select]').forEach(button=>button.addEventListener('click',()=>{
+          const record=data.queue.find(v=>v.id===button.dataset.reviewSelect);if(!record)return;
+          const editor=main.querySelector('[data-review-editor]');
+          const evidence=['id','subject_user_id','subject_email','kind','grade','effectiveGrade','registration_body','registration_number','evidence_file_id','provider','provider_reference','expires_on','created_at'].map(key=>`<tr><th>${esc(key.replaceAll('_',' '))}</th><td>${esc(record[key]??'Not recorded')}</td></tr>`).join('');
+          editor.innerHTML=`<h2>Selected verification evidence</h2><table class="table" data-review-evidence><tbody>${evidence}</tbody></table><p>Evidence file references are recorded metadata, not proof of external verification. Self-review is protected by the server.</p>
+            <form data-review-form><label>Decision <select name="decision" required><option value="">Select a decision</option><option value="manually_reviewed">Manually reviewed</option><option value="externally_verified">Externally verified</option><option value="rejected">Rejected</option></select></label>
+            <label>Reason <textarea name="note" required maxlength="4000"></textarea></label>
+            <label>External provider <input name="provider" maxlength="160"></label><label>Provider evidence reference <input name="providerReference" maxlength="180"></label><p>External verification requires a real provider and evidence reference supplied by the reviewer.</p>
+            <label><input type="checkbox" name="humanConfirmed" required> I confirm this decision for the selected record.</label><button class="btn" type="submit">Record decision</button></form>`;
+          const form=editor.querySelector('form'),fields=form.elements;
+          fields.decision.onchange=()=>{fields.provider.required=fields.providerReference.required=fields.decision.value==='externally_verified';};
+          if(context.getState().readOnly)Array.from(fields).forEach(field=>field.disabled=true);
+          form.onsubmit=async event=>{event.preventDefault();if(!form.reportValidity()||form.dataset.saving==='true')return;
+            const decision=fields.decision.value,payload={note:fields.note.value,provider:fields.provider.value,providerReference:fields.providerReference.value,humanConfirmed:fields.humanConfirmed.checked};
+            if(!root.confirm?.('Confirm '+decision+' for verification '+record.id+' belonging to '+record.subject_user_id+'?'))return;
+            form.dataset.saving='true';Array.from(fields).forEach(field=>field.disabled=true);main.querySelectorAll('[data-review-select]').forEach(b=>b.disabled=true);
+            try{const saved=await adapter.reviewVerification(record.id,decision,payload);if(disposed||renderToken!==generation||!ownsRoute(routeFor(def)))return;if(await refresh(def))notice('Review '+saved.grade+' recorded; exact queue absence and own status read back.');}
+            catch(error){if(!disposed&&renderToken===generation&&ownsRoute(routeFor(def)))notice(error.message+' No success claimed.');}
+            finally{delete form.dataset.saving;if(form.isConnected){Array.from(fields).forEach(field=>field.disabled=context.getState().readOnly===true);main.querySelectorAll('[data-review-select]').forEach(b=>b.disabled=false);}}
+          };
+        }));
+      }
     }
 
     function renderAvailability(def, message, retry) {

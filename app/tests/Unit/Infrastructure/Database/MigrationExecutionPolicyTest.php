@@ -26,6 +26,14 @@ final class MigrationExecutionPolicyTest extends TestCase
     }
 
     /** @param list<string> $statements */
+    public function testDdlModeAllowsOnlyTheExactToolboxPdfStorageUpgrade(): void
+    {
+        self::assertFalse((new MigrationExecutionPolicy())->isTransactional('ddl', [
+            "ALTER TABLE tool_run_exports MODIFY format ENUM('json','csv','html','pdf') NOT NULL, MODIFY content MEDIUMBLOB NOT NULL",
+        ]));
+    }
+
+    /** @param list<string> $statements */
     #[DataProvider('unsafeDdlProvider')]
     public function testDdlModeRejectsNonRetrySafeOrAdministrativeStatements(array $statements): void
     {
@@ -44,6 +52,10 @@ final class MigrationExecutionPolicyTest extends TestCase
         yield 'repair' => [['REPAIR TABLE example']];
         yield 'flush' => [['FLUSH TABLES']];
         yield 'autocommit' => [['SET autocommit = 0']];
+        yield 'other export table' => [["ALTER TABLE other_exports MODIFY format ENUM('json','csv','html','pdf') NOT NULL, MODIFY content MEDIUMBLOB NOT NULL"]];
+        yield 'drops existing formats' => [["ALTER TABLE tool_run_exports MODIFY format ENUM('pdf') NOT NULL, MODIFY content MEDIUMBLOB NOT NULL"]];
+        yield 'adds unapproved format' => [["ALTER TABLE tool_run_exports MODIFY format ENUM('json','csv','html','pdf','zip') NOT NULL, MODIFY content MEDIUMBLOB NOT NULL"]];
+        yield 'changes nullability' => [["ALTER TABLE tool_run_exports MODIFY format ENUM('json','csv','html','pdf') NULL, MODIFY content MEDIUMBLOB NOT NULL"]];
     }
 
     public function testDmlModeAllowsOnlyExplicitTransactionalDmlAllowlist(): void

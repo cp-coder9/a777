@@ -50,6 +50,11 @@
           const create=[...doc.querySelectorAll('button')].find(b=>b.textContent.includes('Create ITP'));if(create){create.textContent='+ Draft inspection';delete create.dataset.siteUnavailable;create.dataset.siteCreate='';create.title='Creates an internal inspection, not an ITP certification';}
         }else{
           doc.querySelectorAll('#tab-plans tbody').forEach(el=>el.dataset.siteRecords='plans');
+          if(id==='safety'){
+            const card=doc.createElement('section');card.className='card';
+            card.innerHTML='<h2 class="card-title">Internal safety inspections</h2><p>Draft findings only. Not safety certification or permission to work.</p><button class="action-btn" type="button" data-site-create>Draft safety inspection</button><table class="table"><thead><tr><th>Inspection</th><th>Findings</th><th>Revision</th><th>Status</th><th>Checklist</th><th>Follow-ups</th><th>Boundary</th></tr></thead><tbody data-site-records="inspections"><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>';
+            (doc.querySelector('#tab-overview')||doc.querySelector('.content-wrapper')).prepend(card);
+          }
         }
       }
       const status=doc.createElement('p');status.className=id==='itp'?'card-title':'card-title';status.dataset.siteToolsStatus='';status.setAttribute('role','status');status.textContent=id==='engineering_calc'?'Local advisory calculator — inputs and results are not saved; professional verification required.':('Loading project records. '+boundary);
@@ -96,8 +101,10 @@
         // The original source has no editable form: collect explicit user input,
         // never manufacture a completed checklist or a professional sign-off.
         const finding=win.prompt('Draft internal inspection finding (not certification):');if(!finding?.trim())return;
-        if(!win.confirm('Save this as a draft quality inspection for the selected project?'))return;
-        button.disabled=true;try{await adapter.createInspection({inspectionType:'quality',findings:[finding.trim()],checklist:[],followUps:[],signOffRequired:true});await refresh();setStatus('Draft inspection verified in project records. '+boundary);}catch(error){setStatus(error.message+' No success claimed.');}finally{button.disabled=context.getState().readOnly===true;}
+        const inspectionType=id==='safety'?'safety':'quality';
+        if(!win.confirm('Save this as a draft '+inspectionType+' inspection for the selected project?'))return;
+        const token=generation;
+        button.disabled=true;try{await adapter.createInspection({inspectionType,findings:[finding.trim()],checklist:[],followUps:[],signOffRequired:true});if(token!==generation||frame.contentDocument!==doc)return;await refresh();setStatus('Draft inspection verified in project records. '+boundary);}catch(error){setStatus(error.message+' No success claimed.');}finally{button.disabled=context.getState().readOnly===true;}
       });
       mounted.set(frame,{doc,refresh});return refresh();
     }

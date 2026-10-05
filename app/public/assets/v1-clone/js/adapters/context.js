@@ -76,6 +76,24 @@
       if (disposed || token !== generation) throw Error('Project context changed while loading.');
       return value;
     }
+    async function download(path,{sha256,mimeType,filename}={}){
+      assertReady();
+      if(!/^\/toolbox\/exports\/[a-f0-9]{32}$/i.test(safePath(path))||!/^boq_takeoff-[a-f0-9]{32}\.(json|csv|html)$/.test(filename||'')||!/^[a-f0-9]{64}$/.test(sha256||'')||!['application/json','text/csv','text/html'].includes(mimeType))throw Error('Invalid advisory artifact download contract or path.');
+      if(getState().readOnly)throw Error('Toolbox download requires tools-use membership scope.');
+      if(!global.crypto?.subtle||typeof global.fetch!=='function')throw Error('Artifact integrity verification requires a secure browser context.');
+      const token=generation,key=JSON.stringify([state.organisationId,state.session.userId,state.session.memberships]),project=state.selectedProjectId;
+      const response=await global.fetch('/api/v1'+safePath(path),{method:'GET',credentials:'same-origin',cache:'no-store',headers:{'X-Organisation-Id':state.organisationId}});
+      if(!response.ok)throw Error('Artifact download refused (HTTP '+response.status+').');
+      const bytes=await response.arrayBuffer();
+      const digest=await global.crypto.subtle.digest('SHA-256',bytes),actual=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+      const disposition=response.headers.get('Content-Disposition')||'',declaredName=/filename="([^"\\]+)"/.exec(disposition)?.[1];
+      const declaredLength=response.headers.get('Content-Length'),encoding=response.headers.get('Content-Encoding');
+      const verifyLength=declaredLength!==null&&(!encoding||encoding.toLowerCase()==='identity');
+      const invalidLength=verifyLength&&(!/^\d+$/.test(declaredLength)||!Number.isSafeInteger(Number(declaredLength))||Number(declaredLength)!==bytes.byteLength);
+      if(actual!==sha256||response.headers.get('X-Content-Sha256')!==sha256||response.headers.get('Content-Type')?.split(';')[0]!==mimeType||declaredName!==filename||invalidLength)throw Error('Artifact integrity, MIME, filename or length read-back did not match.');
+      if(disposed||token!==generation||project!==state.selectedProjectId||key!==JSON.stringify([state.organisationId,state.session.userId,state.session.memberships]))throw Error('Scope changed while downloading.');
+      return {blob:new global.Blob([bytes],{type:mimeType}),filename,mimeType,sha256,byteSize:bytes.byteLength};
+    }
     async function write(path, payload, options = {}) {
       assertReady();
       if (!options.readBackPath) throw Error('An exact read-back path is required before writing.');
@@ -123,6 +141,14 @@
       }
       const persisted = await api.get(safePath(target));
       const expectedId = saved?.id || saved?.conversationId;
+      // A pending-review queue removes completed records. Verify only the exact
+      // acknowledged independent-review transition, not a generic empty list.
+      if(options.readBackAbsentId){
+        if(options.projectScoped!==false||safePath(path)!=='/verifications/'+options.readBackAbsentId+'/review'||safePath(target)!=='/verification-review-queue'||expectedId!==options.readBackAbsentId||!['manually_reviewed','externally_verified','rejected'].includes(saved?.grade)||saved.grade!==payload?.decision||!Array.isArray(persisted))throw Error('Invalid independent-review read-back contract.');
+        if(persisted.some(record=>record?.id===options.readBackAbsentId))throw Error('The verification is still pending; review persistence was not confirmed.');
+        if(disposed||token!==generation)throw Error('Organisation context changed after the review.');
+        acceptedWrites.delete(receiptKey);return saved;
+      }
       if (options.readBackParentId && persisted?.id !== options.readBackParentId) throw Error('Read-back parent identity did not match.');
       if (persisted?.projectId && options.projectScoped !== false && persisted.projectId !== projectId) throw Error('Read-back parent project does not match the write context.');
       const collection = options.readBackCollection ? persisted?.[options.readBackCollection] : persisted;
@@ -136,7 +162,7 @@
       } finally { pendingWrite = false; }
     }
     return {
-      bootstrap, getState, selectProject, setMode, reloadProjects, read, write,
+      bootstrap, getState, selectProject, setMode, reloadProjects, read, write, download,
       // A newer route can supersede a draft-guard wait without invalidating data reads.
       cancelNavigation() { navigationGeneration++; },
       capabilities: Object.freeze({ readBackCollection: true, methods: Object.freeze(['POST', 'PUT', 'DELETE']) }),
