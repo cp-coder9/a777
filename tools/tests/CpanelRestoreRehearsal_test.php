@@ -44,6 +44,8 @@ foreach (['stage','restore','promotion','restore-rehearsal'] as $mode) {
     check($out['status']==='failed'); check($out['sourceDatabaseDdlTouched']===false);
     check($out['liveFilesTouched']===false); check($out['targetDatabaseDdlTouched']===false);
     check($out['isolatedRehearsalPassed']===false);
+    check($out['failureStage']==='plan' && $out['knownReason']==='plan_refused');
+    check($out['failureFile']==='CpanelRestoreRehearsal.php' && $out['failureFunction']==='run' && is_int($out['failureLine']));
     check(!str_contains(json_encode($out,JSON_THROW_ON_ERROR),'synthetic-not-a-real-credential'));
 }
 // The valid mode still cannot substitute a mocked host or bypass Linux/account checks.
@@ -51,4 +53,14 @@ if (PHP_OS_FAMILY !== 'Linux' || !function_exists('posix_geteuid') || (posix_get
     $out=CpanelRestoreRehearsal::run($config,$pdo,'/synthetic-storage',str_repeat('a',64),str_repeat('a',40),'restore-rehearsal','/synthetic-repo');
     check($out['status']==='failed' && !$out['targetDatabaseDdlTouched']);
 }
+$failure=$r->getMethod('failure');
+foreach (['SELECT password FROM users', '/private/secret credential', 'Private directory required.'] as $secret) {
+    $diagnostic=$failure->invoke(null,new RuntimeException($secret),'repository');
+    check($diagnostic['knownReason']==='unclassified');
+    check(!str_contains(json_encode($diagnostic,JSON_THROW_ON_ERROR),$secret));
+    check(!isset($diagnostic['failureFile']) && !isset($diagnostic['failureLine']));
+}
+$metadata=$r->getMethod('metadata')->invoke(null,__DIR__,__DIR__);
+check(!str_contains(json_encode($metadata,JSON_THROW_ON_ERROR),__DIR__));
+check(in_array($metadata['fixedGitBinaryAvailability'],['available','unavailable'],true));
 printf("Synthetic reflection/caller-contract assertions: %d passed; provider host authentication NOT exercised.\n",$n);

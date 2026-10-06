@@ -31,6 +31,53 @@ class RehearsalFake(NativeFake):
         return result
 
 class RehearsalTests(unittest.TestCase):
+    def initial_failure(self):
+        f=NativeFake()
+        original_api=f._uapi
+        def api(module,function,params):
+            if module=='Mysql' and function=='list_databases': return [{'database':'archite4_dev_rel1'}]
+            return original_api(module,function,params)
+        f._uapi=api
+        g.preflight_plan(f,SHA,expected_runtime_config_sha256='a'*64,mode='restore-rehearsal')
+        old=f.files[g.PLAN]; digest=hashlib.sha256(old.encode()).hexdigest()
+        data=dict(format='a777-cpanel-restore-rehearsal-v1',mode='restore-rehearsal',commit=SHA,
+                  planSha256=digest,status='failed',sourceDatabaseDdlTouched=False,
+                  targetDatabaseDdlTouched=False,databaseDdlTouched=False,isolatedRehearsalPassed=False,
+                  liveFilesTouched=False,apacheConfigurationTouched=False,cronConfigurationTouched=False)
+        path=g.DEPLOY_ROOT+'/restore-rehearsal-'+SHA+'-0123456789abcdef.json'
+        f.files[path]=json.dumps(data); f.modes[path]=600
+        return f,path
+
+    def test_explicit_initial_retry_archives_old_plan_without_deleting_receipt(self):
+        f,path=self.initial_failure(); old=f.files[g.PLAN]
+        g.preflight_plan(f,'b'*40,expected_runtime_config_sha256='a'*64,mode='restore-rehearsal',retry_initial_rehearsal=True)
+        self.assertEqual(json.loads(f.files[g.PLAN])['expectedCommit'],'b'*40)
+        archive=g.DEPLOY_ROOT+'/plan-roll-'+hashlib.sha256(old.encode()).hexdigest()+'.json'
+        self.assertIn(archive,f.files); self.assertIn(path,f.files)
+
+    def test_initial_retry_refuses_any_target_effect_or_recovery_artifact(self):
+        for changed in ('targetDatabaseDdlTouched','sourceDatabaseDdlTouched','liveFilesTouched'):
+            f,path=self.initial_failure(); d=json.loads(f.files[path]); d[changed]=True; f.files[path]=json.dumps(d)
+            with self.assertRaises(CpanelError):
+                g.preflight_plan(f,'b'*40,expected_runtime_config_sha256='a'*64,mode='restore-rehearsal',retry_initial_rehearsal=True)
+
+    def test_initial_retry_refuses_retained_recovery_directory(self):
+        f,_=self.initial_failure()
+        path=g.DEPLOY_ROOT+'/recovery-'+SHA+'-'+'a'*32
+        f.dirs.add(path); f.modes[path]=700
+        with self.assertRaises(CpanelError):
+            g.preflight_plan(f,'b'*40,expected_runtime_config_sha256='a'*64,mode='restore-rehearsal',retry_initial_rehearsal=True)
+
+    def test_initial_retry_refuses_provider_owned_target_inventory(self):
+        f,_=self.initial_failure(); old_api=f._uapi
+        def api(module,function,params):
+            if module=='Mysql' and function=='list_databases':
+                return [{'database':'archite4_ar_0123456789abcdef_test'}]
+            return old_api(module,function,params)
+        f._uapi=api
+        with self.assertRaises(CpanelError):
+            g.preflight_plan(f,'b'*40,expected_runtime_config_sha256='a'*64,mode='restore-rehearsal',retry_initial_rehearsal=True)
+
     def test_complete_actual_runner_contract_and_redaction(self):
         f = RehearsalFake()
         with patch.object(g, 'clone', return_value={'status':'cloned_and_pulled','commit':SHA}):
