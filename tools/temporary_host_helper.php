@@ -103,13 +103,19 @@ try {
                 foreach (array_reverse($allowed) as $relative) {
                     $path = $root . '/' . $relative;
                     $original = $journal['original'][$relative];
-                    if ($original === null) { if (is_file($path) && !unlink($path)) throw new RuntimeException(); }
+                    if ($original === null) {
+                        if (is_file($path)) {
+                            // Invalidate while the canonical path still exists.
+                            if (function_exists('opcache_get_status') && opcache_get_status(false) !== false && !opcache_invalidate($path,true)) throw new RuntimeException();
+                            if (!unlink($path)) throw new RuntimeException();
+                        }
+                    }
                     else {
                         $bytes = base64_decode($original,true); $tmp = $path . '.restore-' . bin2hex(random_bytes(8));
                         if (file_put_contents($tmp,$bytes) !== strlen($bytes) || !rename($tmp,$path)) throw new RuntimeException();
                         if (hash_file('sha256',$path) !== hash('sha256',$bytes)) throw new RuntimeException();
                     }
-                    if (function_exists('opcache_get_status') && opcache_get_status(false) !== false && !opcache_invalidate($path,true)) throw new RuntimeException();
+                    if ($original !== null && function_exists('opcache_get_status') && opcache_get_status(false) !== false && !opcache_invalidate($path,true)) throw new RuntimeException();
                 }
                 $journal['restored'] = true; persistPrivate($receipt,$journal);
             }
