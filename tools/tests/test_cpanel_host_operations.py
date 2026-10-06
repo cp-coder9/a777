@@ -92,7 +92,13 @@ class HelperHttpTests(unittest.TestCase):
                 'FILE_STORAGE_PATH':str(private).replace(chr(92),'/')})).decode()
             (runtime/'config/runtime.php').write_text("<?php return json_decode(base64_decode('"+runtime_values+"'),true);")
             runtime_bytes = (runtime/'config/runtime.php').read_bytes()
-            config={'target':{**TARGET,'documentRoot':str(root),'runtimeRoot':str(runtime).replace(chr(92),'/')},
+            # Linux fixtures must satisfy the real account-home containment gate.
+            # GitHub runners live under /home/runner, not the production account.
+            account = TARGET['account']
+            if __import__('os').name != 'nt':
+                self.assertEqual(root.parts[1], 'home')
+                account = root.parts[2]
+            config={'target':{**TARGET,'account':account,'documentRoot':str(root),'runtimeRoot':str(runtime).replace(chr(92),'/')},
                 'candidateRoot':str(runtime).replace(chr(92),'/'),'keySha256':hashlib.sha256(key).hexdigest(),
                 'recoveryPaths':{'maintenanceDirectory':str(private/'maintenance').replace(chr(92),'/'),
                                  'archiveDirectory':str(private.parent/'operator-recovery').replace(chr(92),'/')}}
