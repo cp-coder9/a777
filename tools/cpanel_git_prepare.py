@@ -3,6 +3,7 @@ import base64
 import fnmatch
 import hashlib
 import json
+import os
 import re
 import time
 from urllib.request import Request, build_opener, HTTPSHandler
@@ -890,8 +891,24 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
             report['native_preflight_status'] = report['reports'][-1]['status']
         else: report['native_preflight_status'] = 'receipt_unavailable'
         report['status'] = ('restore_rehearsal_complete' if mode == 'restore-rehearsal' else 'preflight_complete') if report['deployment_status'] == 'succeeded' and report.get('deployment_last_commit') == expected_commit and report['native_preflight_status'] == ('rehearsal-verified' if mode == 'restore-rehearsal' else 'inspected-not-authorized') else 'failed_or_incomplete'
-    except Exception:
+    except Exception as error:
         report['error'] = 'native_preflight_' + stage + '_refused'
+        import traceback
+        locations = [frame for frame in traceback.extract_tb(error.__traceback__) if os.path.basename(frame.filename) == 'cpanel_git_prepare.py']
+        if locations: report['refusalLine'] = locations[-1].lineno
+        reasons = {
+            'Initial rehearsal retry binding refused.':'retry_binding',
+            'Retained recovery effects prohibit initial retry.':'retained_recovery_effects',
+            'Initial retry requires proof of no recovery effects.':'retry_effects_proof',
+            'Exact initial failure receipt required.':'retry_receipt_count',
+            'Provider inventory prohibits initial rehearsal retry.':'provider_target_inventory',
+            'Private deployment inventory collision; refused.':'deployment_inventory',
+            'Retained rehearsal source safety refused.':'retained_receipt_safety',
+            'Existing operator plan collision; refused.':'operator_plan_contract',
+            'Retained rehearsal plan requires independent operator review; no replay.':'retry_not_authorized',
+        }
+        if isinstance(error, CpanelError) and str(error) in reasons:
+            report['refusalReason'] = reasons[str(error)]
         # Preserve available gate evidence even when task polling fails.
         if 'plan_sha' in locals() and 'previous' in locals():
             try:
