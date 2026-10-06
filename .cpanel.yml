@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    # Git deployment is capability inspection only. Live DDL requires separate operator invocation and plan.
-    - /bin/bash /home/archite4/repositories/a777/tools/cpanel_git_deploy.sh --preflight
+    # Dispatch only an explicit private preflight or isolated restore-rehearsal plan; never live deploy.
+    - /bin/bash /home/archite4/repositories/a777/tools/cpanel_git_deploy.sh --from-plan

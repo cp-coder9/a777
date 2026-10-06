@@ -89,7 +89,7 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--public-key", type=Path)
     parser.add_argument("--expected-key-fingerprint")
@@ -113,9 +113,9 @@ def main():
                 if not args.public_key:
                     raise CpanelError('Public key destination required.')
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
-            elif args.mode == "native-preflight":
+            elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
-                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256)
+                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight")
             else:
                 report = clone(client, args.expected_key_fingerprint)
     except Exception as error:
@@ -150,7 +150,7 @@ def main():
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete')) else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete')) else 1
 
 
 if __name__ == "__main__":

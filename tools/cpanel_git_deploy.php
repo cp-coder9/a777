@@ -521,41 +521,63 @@ final class CpanelGitDeploy
         self::requireValue(function_exists('posix_geteuid') && posix_getpwuid(posix_geteuid())['name'] === 'archite4', 'account_mismatch');
         umask(0077);
         $root = self::PRIVATE_ROOT;
-        self::requireValue(realpath($root) === $root && (fileperms($root) & 0077) === 0 && fileowner($root) === posix_geteuid(), 'private_root_not_owned_0700');
+        self::requireValue(realpath($root) === $root && (fileperms($root) & 07777) === 0700 && fileowner($root) === posix_geteuid(), 'private_root_not_owned_0700');
         $planPath = $root . '/operator-plan.json';
-        self::requireValue(is_file($planPath) && !is_link($planPath) && (fileperms($planPath) & 0077) === 0 && fileowner($planPath) === posix_geteuid(), 'private_plan_not_owned_0600');
+        self::requireValue(is_file($planPath) && !is_link($planPath) && (fileperms($planPath) & 07777) === 0600 && fileowner($planPath) === posix_geteuid(), 'private_plan_not_owned_0600');
         $lockPath = $root . '/deploy.lock';
         self::requireValue(!is_link($lockPath), 'lock_symlink');
         $lock = fopen($lockPath, 'c+b');
         self::requireValue(is_resource($lock) && flock($lock, LOCK_EX | LOCK_NB), 'deployment_busy');
         try {
             $plan = json_decode((string)file_get_contents($planPath), true, 32, JSON_THROW_ON_ERROR);
-            self::requireValue(in_array($plan['mode'] ?? null, ['stage-only', 'preflight', 'deploy'], true) && ($plan['account'] ?? null) === 'archite4' && ($plan['repository'] ?? null) === self::REPO && ($plan['activeRoot'] ?? null) === self::ACTIVE && ($plan['documentRoot'] ?? null) === self::DOCROOT, 'plan_target_mismatch');
+            self::requireValue(in_array($plan['mode'] ?? null, ['stage-only', 'preflight', 'restore-rehearsal', 'deploy'], true) && ($plan['account'] ?? null) === 'archite4' && ($plan['repository'] ?? null) === self::REPO && ($plan['activeRoot'] ?? null) === self::ACTIVE && ($plan['documentRoot'] ?? null) === self::DOCROOT, 'plan_target_mismatch');
             $requested = $_SERVER['argv'][1] ?? '--preflight';
             self::requireValue(preg_match('/\A[a-f0-9]{40}\z/', $plan['expectedCommit'] ?? '') === 1, 'plan_commit_invalid');
-            if ($requested !== '--preflight') {
+            if ($requested === '--from-plan') {
+                self::requireValue(in_array($plan['mode'], ['preflight', 'restore-rehearsal'], true), 'explicit_plan_mode_required');
+                $requested = '--' . $plan['mode'];
+            }
+            if (in_array($requested, ['--stage-only', '--deploy'], true)) {
                 self::requireValue(preg_match('/\A[a-f0-9]{64}\z/', $plan['artifactTreeSha256'] ?? '') === 1, 'plan_digest_invalid');
             }
             $commit = self::command(['/usr/local/cpanel/3rdparty/bin/git', 'rev-parse', '--verify', 'HEAD'], self::REPO);
             self::requireValue(hash_equals($plan['expectedCommit'], $commit), 'commit_mismatch');
             self::requireValue(self::command(['/usr/local/cpanel/3rdparty/bin/git', 'status', '--porcelain', '--untracked-files=all'], self::REPO) === '', 'repository_dirty');
             self::requireValue(self::command(['/usr/local/cpanel/3rdparty/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], self::REPO) === 'master', 'branch_mismatch');
-            $requested = $_SERVER['argv'][1] ?? '--preflight';
-            self::requireValue(in_array($requested, ['--preflight', '--deploy', '--stage-only'], true), 'invocation_mode_invalid');
-            $apiAllowed = $requested === '--preflight' && $plan['mode'] === 'preflight'
+            $hookBytes = self::command(['/usr/local/cpanel/3rdparty/bin/git', 'show', 'HEAD:tools/cpanel_git_deploy.php'], self::REPO, true);
+            self::requireValue((new ReflectionClass(self::class))->getFileName() === __FILE__ && hash_equals(hash('sha256', $hookBytes), (string)hash_file('sha256', __FILE__)), 'managed_restore_class_commit_mismatch');
+            self::requireValue(count($_SERVER['argv']) === 2 && in_array($requested, ['--preflight', '--restore-rehearsal', '--deploy', '--stage-only'], true), 'invocation_mode_invalid');
+            $apiAllowed = in_array($requested, ['--preflight', '--restore-rehearsal'], true) && $plan['mode'] === substr($requested, 2)
                 && ($plan['readOnlyUapiTransport'] ?? null) === 'native-cli-then-private-token-https';
             $expectedSha = $plan['expectedRuntimeConfigSha256'] ?? '';
-            self::requireValue(is_string($expectedSha) && ($expectedSha === '' || ($requested === '--preflight' && $plan['mode'] === 'preflight' && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1)), 'runtime_config_pin_mismatch');
-            if ($requested === '--preflight') $plan['mode'] = 'preflight';
-            else self::requireValue($plan['mode'] === substr($requested, 2), 'explicit_plan_mode_required');
+            self::requireValue(is_string($expectedSha) && ($expectedSha === '' || (in_array($requested, ['--preflight', '--restore-rehearsal'], true) && $plan['mode'] === substr($requested, 2) && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1)), 'runtime_config_pin_mismatch');
+            self::requireValue($plan['mode'] === substr($requested, 2), 'explicit_plan_mode_required');
+            if ($plan['mode'] === 'restore-rehearsal') {
+                self::journal($root . '/rehearsal-intent-' . hash_file('sha256', $planPath) . '.json', ['format'=>'a777-rehearsal-intent-v1','commit'=>$commit,'planSha256'=>hash_file('sha256', $planPath),'sourceDatabaseDdlTouched'=>false,'automaticResume'=>false]);
+            }
+            if ($plan['mode'] === 'restore-rehearsal') self::requireValue($apiAllowed && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1, 'runtime_config_pin_mismatch');
             if ($plan['mode'] !== 'stage-only') {
                 $report = ['format'=>'a777-cpanel-native-preflight-v1', 'mode'=>$plan['mode'], 'commit'=>$commit,
-                    'planSha256'=>hash_file('sha256', $planPath), 'databaseDdlTouched'=>false, 'liveFilesTouched'=>false];
+                    'planSha256'=>hash_file('sha256', $planPath), 'databaseDdlTouched'=>false, 'liveFilesTouched'=>false, 'sourceDatabaseDdlTouched'=>false, 'targetDatabaseDdlTouched'=>false, 'isolatedRehearsalPassed'=>false, 'apacheConfigurationTouched'=>false, 'cronConfigurationTouched'=>false];
+                if ($plan['mode'] === 'restore-rehearsal') $report['format'] = 'a777-cpanel-restore-rehearsal-v1';
                 $evidence = [];
                 try {
-                    $observed = self::preflight($evidence, $apiAllowed, $requested === '--preflight' && ($plan['secureRuntimeConfigPermissions'] ?? false) === true, $commit, $report['planSha256'], $expectedSha);
+                    $observed = self::preflight($evidence, $apiAllowed, in_array($requested, ['--preflight', '--restore-rehearsal'], true) && ($plan['secureRuntimeConfigPermissions'] ?? false) === true, $commit, $report['planSha256'], $expectedSha);
                     $report += $observed['report'];
                     $report['status'] = 'inspected-not-authorized';
+                    if ($plan['mode'] === 'restore-rehearsal') {
+                        spl_autoload_register(static function(string $class): void {
+                            if (str_starts_with($class, 'Architex\\')) {
+                                $path = self::REPO . '/app/src/' . str_replace('\\', '/', substr($class, 9)) . '.php';
+                                if (is_file($path)) require_once $path;
+                            }
+                        }, true, true);
+                        require_once __DIR__ . '/CpanelRestoreRehearsal.php';
+                        $outcome = \Architex\Deployment\CpanelRestoreRehearsal::run(\Architex\Infrastructure\Config\AppConfig::fromEnvironment($observed['config']), $observed['pdo'], $observed['config']['FILE_STORAGE_PATH'], $expectedSha, $commit, $plan['mode'], self::REPO);
+                        $report = array_replace($report, $outcome);
+                        $report['format'] = 'a777-cpanel-restore-rehearsal-v1';
+                        $report['databaseDdlTouched'] = $outcome['targetDatabaseDdlTouched'];
+                    }
                 } catch (Throwable $error) {
                     $report['status'] = 'capability-inspection-refused';
                     // Do not persist PDO/provider error strings or config values.
@@ -571,11 +593,12 @@ final class CpanelGitDeploy
                 }
                 $report['liveFilesTouched'] = ($evidence['runtimeConfigPermissionsTouched'] ?? false) === true || ($evidence['runtimeConfigParentPermissionsTouched'] ?? false) === true;
                 $report += $evidence;
-                self::journal($root . '/preflight-' . $commit . '-' . bin2hex(random_bytes(8)) . '.json', $report);
+                self::journal($root . '/' . ($plan['mode'] === 'restore-rehearsal' ? 'restore-rehearsal-' : 'preflight-') . $commit . '-' . bin2hex(random_bytes(8)) . '.json', $report);
                 if ($plan['mode'] === 'preflight' && $report['status'] === 'inspected-not-authorized') {
                     print "native preflight inspected; no DDL; permission metadata changes reported; private receipt retained\n";
                     return;
                 }
+                if ($plan['mode'] === 'restore-rehearsal' && ($report['isolatedRehearsalPassed'] ?? false) === true) { print "isolated restore rehearsal verified; no source DDL or promotion\n"; return; }
                 // Exclusive grant visibility alone cannot exclude another same-user dispatcher.
                 // No caller-supplied boolean can substitute for this missing enforcement boundary.
                 throw new RuntimeException($report['blockingGate']);

@@ -405,9 +405,95 @@ def permission_intent_guard(client, receipt):
         raise CpanelError('Private permission intent binding refused.')
 
 
+def rehearsal_safe(data, permissions_authorized=False):
+    if not isinstance(data, dict) or data.get('format') != 'a777-cpanel-restore-rehearsal-v1' or data.get('mode') != 'restore-rehearsal':
+        return False
+    if any(data.get(k) is not False for k in ('sourceDatabaseDdlTouched', 'apacheConfigurationTouched', 'cronConfigurationTouched')):
+        return False
+    if any(data.get(k, False) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
+        return False
+    if type(data.get('targetDatabaseDdlTouched')) is not bool or type(data.get('isolatedRehearsalPassed')) is not bool:
+        return False
+    envelope = dict(data, databaseDdlTouched=False)
+    if not permission_only_safe(envelope) or (data.get('liveFilesTouched') is not False and not permissions_authorized):
+        return False
+    if data.get('status') not in ('failed', 'capability-inspection-refused', 'rehearsal-verified'):
+        return False
+    if data['isolatedRehearsalPassed'] is not (data['status'] == 'rehearsal-verified'):
+        return False
+    if 'targetDatabase' in data and (not isinstance(data['targetDatabase'], str) or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['targetDatabase'])):
+        return False
+    if data['isolatedRehearsalPassed']:
+        if not data['targetDatabaseDdlTouched'] or 'targetDatabase' not in data:
+            return False
+        if not isinstance(data.get('archiveSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['archiveSha256']):
+            return False
+        if not isinstance(data.get('backupId'), str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', data['backupId']):
+            return False
+        if any(type(data.get(k)) is not int or data[k] < 0 for k in ('rowCount','fileCount','tableCount')):
+            return False
+    return True
+
+
+def rehearsal_receipts(client, commit, plan_sha, previous, permissions_authorized=False):
+    reports = []
+    for row in entries(client, DEPLOY_ROOT):
+        name = row.get('name', '')
+        if not isinstance(name, str) or not re.fullmatch(r'restore-rehearsal-' + re.escape(commit) + r'-[a-f0-9]{16}\.json', name) or name in previous:
+            continue
+        owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+        data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+        if data.get('commit') != commit or data.get('planSha256') != plan_sha:
+            raise CpanelError('Rehearsal receipt binding refused.')
+        if not rehearsal_safe(data, permissions_authorized):
+            raise CpanelError('Rehearsal source safety envelope refused.')
+        permission_intent_guard(client, dict(data, databaseDdlTouched=False))
+        safe = {'report_id':name, 'commit':commit, 'planSha256':plan_sha}
+        for key in ('status','sourceDatabaseDdlTouched','targetDatabaseDdlTouched','isolatedRehearsalPassed','liveFilesTouched','apacheConfigurationTouched','cronConfigurationTouched','targetDatabase','archiveSha256','backupId','rowCount','fileCount','tableCount'):
+            if key in data: safe[key] = data[key]
+        reports.append(safe)
+    if len(reports) > 1:
+        raise CpanelError('Multiple fresh rehearsal receipts refused.')
+    return reports
+
+
 def deployment_inventory_guard(client):
     for row in entries(client, DEPLOY_ROOT):
         name = row.get('name')
+        if isinstance(name, str) and re.fullmatch(r'recovery-[a-f0-9]{40}-[a-f0-9]{32}', name):
+            # Metadata only: NEVER read journal.jsonl (contains archive password).
+            authorize(client)  # exact authenticated provider account/home ownership context
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0700', True)
+            if ('owner' in row and row['owner'] != 'archite4') or ('user' in row and row['user'] != 'archite4'):
+                raise CpanelError('Recovery owner context refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'restore-archite4_ar_[a-f0-9]{16}_test\.json', name):
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+            allowed = {'account','target','source','user','binding','phase','create','grant','inventory','users','privileges'}
+            if (not isinstance(data, dict) or not set(data) <= allowed
+                    or data.get('account') != 'archite4' or data.get('source') != 'archite4_dev_rel1'
+                    or not isinstance(data.get('target'), str) or name != 'restore-' + data['target'] + '.json'
+                    or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['target'])
+                    or data.get('phase') not in ('intent','created','grant-intent','granted','verified')
+                    or not isinstance(data.get('binding'), dict) or data['binding'].get('source') != data['source']):
+                raise CpanelError('Retained provider target metadata refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'rehearsal-intent-[a-f0-9]{64}\.json', name):
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+            if (not isinstance(data, dict) or set(data) != {'format','commit','planSha256','sourceDatabaseDdlTouched','automaticResume'}
+                    or data.get('format') != 'a777-rehearsal-intent-v1' or data.get('sourceDatabaseDdlTouched') is not False
+                    or data.get('automaticResume') is not False or name != 'rehearsal-intent-' + data.get('planSha256','') + '.json'
+                    or not re.fullmatch(r'[a-f0-9]{40}', data.get('commit',''))):
+                raise CpanelError('Rehearsal intent refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'restore-rehearsal-[a-f0-9]{40}-[a-f0-9]{16}\.json', name):
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+            if not rehearsal_safe(data, True) or not name.startswith('restore-rehearsal-' + data.get('commit','') + '-'):
+                raise CpanelError('Retained rehearsal source safety refused.')
+            continue
         if name == 'operator-plan.json':
             continue
         if name == 'deploy.lock':
@@ -517,14 +603,16 @@ def cleanup_token(client, state):
     return True
 
 
-def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256=''):
+def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight'):
+    if mode not in ('preflight', 'restore-rehearsal') or (mode == 'restore-rehearsal' and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
+        raise CpanelError('Explicit rehearsal config pin required.')
     if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
         raise CpanelError('Explicit runtime config hash required.')
     if not exists(client, DEPLOY_ROOT):
         client.mkdir(DEPLOY_ROOT, '0700')
     # Existing directories are not repaired or broadened. Native helper checks UID too.
     owned_mode(client, DEPLOY_ROOT, '0700', True)
-    plan = {'mode': 'preflight', 'account': 'archite4', 'repository': ROOT,
+    plan = {'mode': mode, 'account': 'archite4', 'repository': ROOT,
             'activeRoot': HOME + '/public_html/.a777-runtime-active',
             'documentRoot': HOME + '/public_html/php.architex.co.za', 'expectedCommit': commit,
             'readOnlyUapiTransport': 'native-cli-then-private-token-https'}
@@ -540,16 +628,19 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False, expe
         owned_mode(client, PLAN, '0600')
         original = read(client, PLAN)
         old = json.loads(original)
-        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256')}
+        base = {k: v for k, v in plan.items() if k not in ('mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256')}
         if (not isinstance(old, dict) or any(old.get(k) != v for k, v in base.items())
                 or not set(base) | {'expectedCommit'} <= set(old)
-                or not set(old) <= set(base) | {'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256'}
+                or old.get('mode') not in ('preflight', 'restore-rehearsal')
+                or not set(old) <= set(base) | {'mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256'}
                 or ('expectedRuntimeConfigSha256' in old and (not isinstance(old['expectedRuntimeConfigSha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', old['expectedRuntimeConfigSha256'])))
                 or not isinstance(old.get('expectedCommit'), str)
                 or not re.fullmatch(r'[a-f0-9]{40}', old['expectedCommit'])
                 or ('secureRuntimeConfigPermissions' in old and type(old['secureRuntimeConfigPermissions']) is not bool)
                 or ('readOnlyUapiTransport' in old and old['readOnlyUapiTransport'] != plan['readOnlyUapiTransport'])):
             raise CpanelError('Existing operator plan collision; refused.')
+        if old.get('mode') == 'restore-rehearsal':
+            raise CpanelError('Retained rehearsal plan requires independent operator review; no replay.')
         if old != plan:
             old_sha = hashlib.sha256(original.encode('ascii')).hexdigest()
             matched = False
@@ -601,7 +692,9 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False, expe
     return hashlib.sha256(actual.encode('ascii')).hexdigest()
 
 
-def receipts(client, commit, plan_sha, previous):
+def receipts(client, commit, plan_sha, previous, mode='preflight', permissions_authorized=False):
+    if mode == 'restore-rehearsal':
+        return rehearsal_receipts(client, commit, plan_sha, previous, permissions_authorized)
     reports = []
     pattern = r'preflight-' + re.escape(commit) + r'-[a-f0-9]{16}\.json'
     for row in entries(client, DEPLOY_ROOT):
@@ -665,8 +758,8 @@ def receipts(client, commit, plan_sha, previous):
     return sorted(reports, key=lambda r: r['report_id'])
 
 
-def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256=''):
-    report = {'mode': 'native-preflight', 'status': 'failed', 'runtime_deployed': False,
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight'):
+    report = {'mode': ('restore-rehearsal' if mode == 'restore-rehearsal' else 'native-preflight'), 'status': 'failed', 'runtime_deployed': False,
               'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
               'tokenAbsenceVerified': False}
     token_state = {}
@@ -677,6 +770,9 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
             raise CpanelError('Native preflight input refused.')
         if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
             raise CpanelError('Explicit runtime config hash required.')
+        if mode not in ('preflight', 'restore-rehearsal') or (mode == 'restore-rehearsal' and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
+            raise CpanelError('Explicit rehearsal intent required.')
+        if mode == 'restore-rehearsal': attempts = max(attempts, 240)
         stage = 'pull_master'
         # Preflight must never create a new repository implicitly.
         authorize(client)
@@ -687,7 +783,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
             raise CpanelError('Remote HEAD differs from workflow commit.')
         stage = 'private_plan'
-        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256)
+        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256, mode=mode)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
         stage = 'private_token'
         provision_token(client, token_state)
@@ -716,17 +812,17 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
                 report['deployment_status'] = 'active' if stamps.get('active') else 'queued'
             if attempt + 1 < attempts: time.sleep(pause)
         stage = 'private_report'
-        report['reports'] = receipts(client, expected_commit, plan_sha, previous)
+        report['reports'] = receipts(client, expected_commit, plan_sha, previous, mode, secure_runtime_config_permissions)
         if report['reports']:
             report['native_preflight_status'] = report['reports'][-1]['status']
         else: report['native_preflight_status'] = 'receipt_unavailable'
-        report['status'] = 'preflight_complete' if report['deployment_status'] == 'succeeded' and report.get('deployment_last_commit') == expected_commit and report['native_preflight_status'] == 'inspected-not-authorized' else 'failed_or_incomplete'
+        report['status'] = ('restore_rehearsal_complete' if mode == 'restore-rehearsal' else 'preflight_complete') if report['deployment_status'] == 'succeeded' and report.get('deployment_last_commit') == expected_commit and report['native_preflight_status'] == ('rehearsal-verified' if mode == 'restore-rehearsal' else 'inspected-not-authorized') else 'failed_or_incomplete'
     except Exception:
         report['error'] = 'native_preflight_' + stage + '_refused'
         # Preserve available gate evidence even when task polling fails.
         if 'plan_sha' in locals() and 'previous' in locals():
             try:
-                report['reports'] = receipts(client, expected_commit, plan_sha, previous)
+                report['reports'] = receipts(client, expected_commit, plan_sha, previous, mode, secure_runtime_config_permissions)
                 if report['reports']: report['native_preflight_status'] = report['reports'][-1]['status']
             except Exception: pass
     finally:
@@ -737,6 +833,6 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
                     raise CpanelError('Private token cleanup refused.')
             except Exception:
                 report['cleanup'] = 'cleanupfailed'
-                if report['status'] == 'preflight_complete':
+                if report['status'] in ('preflight_complete', 'restore_rehearsal_complete'):
                     report['status'] = 'failed_or_incomplete'
     return report
