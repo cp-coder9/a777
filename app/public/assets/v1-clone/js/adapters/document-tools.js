@@ -6,7 +6,7 @@
   function create(context){
     function scope(){const s=context.getState();if(s.ready===false||!s.session||!s.organisationId||!/^[a-f0-9]{32}$/i.test(s.selectedProjectId||''))throw Error('Select an authenticated project.');return s;}
     function rows(x){x=unwrap(x);if(!Array.isArray(x))throw Error('Invalid document list response.');return x;}
-    async function load(id){const s=scope(),p=s.selectedProjectId;if(id==='bom'){const runs=rows(await context.read('/toolbox/runs?limit=100'));return {available:true,boq:runs.filter(r=>r.toolId==='boq_takeoff'&&r.assignment?.projectId===p),boundaries:{qsCertification:false,tenderGeneration:false,exports:['json','csv','html'],reason:'BoQ takeoff runs and checksum-verified JSON, CSV and HTML artifacts persist in Toolbox. QS certification, tender generation and PDF export are unavailable here.'}};}if(id==='specforge')return {workspaces:rows(await context.read('/projects/'+p+'/specforge-workspaces')).filter(w=>w.projectId===p)};if(id==='forms'){const [t,d]=await Promise.all([context.read('/form-templates'),context.read('/form-drafts?projectId='+p)]);return {templates:rows(t),drafts:rows(d).filter(x=>x.projectId===p)};}throw Error('Unsupported document tool.');}
+    async function load(id){const s=scope(),p=s.selectedProjectId;if(id==='bom'){const runs=rows(await context.read('/toolbox/runs?limit=100'));return {available:true,boq:runs.filter(r=>r.toolId==='boq_takeoff'&&r.assignment?.projectId===p),boundaries:{qsCertification:false,tenderGeneration:false,exports:['json','csv','html','pdf'],reason:'BoQ takeoff runs and checksum-verified JSON, CSV, HTML and PDF artifacts persist in Toolbox. QS certification and tender generation are unavailable here.'}};}if(id==='specforge')return {workspaces:rows(await context.read('/projects/'+p+'/specforge-workspaces')).filter(w=>w.projectId===p)};if(id==='forms'){const [t,d]=await Promise.all([context.read('/form-templates'),context.read('/form-drafts?projectId='+p)]);return {templates:rows(t),drafts:rows(d).filter(x=>x.projectId===p)};}throw Error('Unsupported document tool.');}
     async function saveBoq({title,currency,contingencyPercent,items}){
       const s={...scope()};if(s.readOnly)throw Error('Read-only session.');
       const number=v=>v===null||v===undefined||String(v).trim()===''?NaN:Number(v);
@@ -26,11 +26,11 @@
     }
     async function downloadBoq(run,format){
       const s={...scope()};
-      if(!['json','csv','html'].includes(format))throw Error('Unsupported advisory artifact format.');
+      if(!['json','csv','html','pdf'].includes(format))throw Error('Unsupported advisory artifact format.');
       if(!run||run.toolId!=='boq_takeoff'||run.assignment?.projectId!==s.selectedProjectId||!['completed','issued','superseded'].includes(run.status))throw Error('Select a saved advisory BoQ from this project.');
       identifier(run.id);if(typeof context.download!=='function')throw Error('Verified binary downloads are not connected.');
       const list=rows(await context.read('/toolbox/runs/'+run.id+'/exports'));
-      const matches=list.filter(item=>item.format===format),artifact=matches[0],mime={json:'application/json',csv:'text/csv',html:'text/html'}[format];
+      const matches=list.filter(item=>item.format===format),artifact=matches[0],mime={json:'application/json',csv:'text/csv',html:'text/html',pdf:'application/pdf'}[format];
       if(matches.length!==1||!artifact||artifact.mime_type!==mime||artifact.filename!=='boq_takeoff-'+run.id+'.'+format||!/^[a-f0-9]{64}$/.test(artifact.sha256||''))throw Error('Invalid advisory artifact metadata.');
       identifier(artifact.id);
       const result=await context.download('/toolbox/exports/'+artifact.id,{mimeType:mime,filename:artifact.filename,sha256:artifact.sha256});

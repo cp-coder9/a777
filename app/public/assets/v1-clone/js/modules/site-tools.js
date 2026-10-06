@@ -106,6 +106,10 @@
         const token=generation;
         button.disabled=true;try{await adapter.createInspection({inspectionType,findings:[finding.trim()],checklist:[],followUps:[],signOffRequired:true});if(token!==generation||frame.contentDocument!==doc)return;await refresh();setStatus('Draft inspection verified in project records. '+boundary);}catch(error){setStatus(error.message+' No success claimed.');}finally{button.disabled=context.getState().readOnly===true;}
       });
+      if(id==='safety'){
+        if(!root.V1CloneWorkPermits)await new Promise((resolve,reject)=>{const script=root.document.createElement('script');script.src='/assets/v1-clone/js/modules/work-permits.js';script.onload=resolve;script.onerror=()=>reject(Error('Internal work-permit UI could not load.'));root.document.head.append(script);});
+        root.V1CloneWorkPermits.mount({context,doc});
+      }
       mounted.set(frame,{doc,refresh});return refresh();
     }
     return {supports,prepareSource,mountFrame};

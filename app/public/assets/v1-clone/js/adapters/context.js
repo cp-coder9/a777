@@ -78,7 +78,7 @@
     }
     async function download(path,{sha256,mimeType,filename}={}){
       assertReady();
-      if(!/^\/toolbox\/exports\/[a-f0-9]{32}$/i.test(safePath(path))||!/^boq_takeoff-[a-f0-9]{32}\.(json|csv|html)$/.test(filename||'')||!/^[a-f0-9]{64}$/.test(sha256||'')||!['application/json','text/csv','text/html'].includes(mimeType))throw Error('Invalid advisory artifact download contract or path.');
+      if(!/^\/toolbox\/exports\/[a-f0-9]{32}$/i.test(safePath(path))||!/^boq_takeoff-[a-f0-9]{32}\.(json|csv|html|pdf)$/.test(filename||'')||!/^[a-f0-9]{64}$/.test(sha256||'')||!['application/json','text/csv','text/html','application/pdf'].includes(mimeType))throw Error('Invalid advisory artifact download contract or path.');
       if(getState().readOnly)throw Error('Toolbox download requires tools-use membership scope.');
       if(!global.crypto?.subtle||typeof global.fetch!=='function')throw Error('Artifact integrity verification requires a secure browser context.');
       const token=generation,key=JSON.stringify([state.organisationId,state.session.userId,state.session.memberships]),project=state.selectedProjectId;

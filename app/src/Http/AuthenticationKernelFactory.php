@@ -384,6 +384,11 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(),'projects.write'),
             new RateLimitMiddleware($limiter,'finance_provider_webhook',300,3_600,$remoteKey),
         ))->register($router);
+        (new WorkPermitRoutes(
+            new \Architex\Http\Controller\WorkPermitController(new \Architex\Platform\SiteExecution\WorkPermitService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(), 'projects.read'),
+            new PermissionMiddleware(new PermissionService(), 'projects.write'),
+        ))->register($router);
         (new SiteExecutionRoutes(
             new SiteExecutionController(new SiteExecutionService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),

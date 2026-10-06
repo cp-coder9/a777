@@ -114,7 +114,7 @@
         const history=q('[data-boq-history]');history.replaceChildren();
         for(const record of data.boq||[]){const item=d.createElement('article');item.className='panel';item.dataset.recordId=record.id;const heading=d.createElement('h4');heading.textContent=(record.input?.title||record.id)+' — '+(record.status||'Status unavailable');item.append(heading);
           const table=d.createElement('table');table.className='table';const body=d.createElement('tbody');for(const line of record.input?.items||[]){const row=d.createElement('tr');for(const value of [line.description,line.quantity,line.unit,line.rate,record.input?.currency]){const cell=d.createElement('td');cell.textContent=String(value??'—');row.append(cell);}body.append(row);}table.append(body);item.append(table);
-          for(const format of ['json','csv','html']){const button=d.createElement('button');button.type='button';button.className='btn btn-secondary';button.dataset.boqExport=format;button.textContent='Download '+format.toUpperCase();button.onclick=()=>run('exportBoq',{id:record.id,format});item.append(button);}
+          for(const format of ['json','csv','html','pdf']){const button=d.createElement('button');button.type='button';button.className='btn btn-secondary';button.dataset.boqExport=format;button.textContent='Download '+format.toUpperCase();button.onclick=()=>run('exportBoq',{id:record.id,format});item.append(button);}
           history.append(item);}
         if(!history.children.length)history.textContent=data.error||'No saved advisory BoQ records returned.';
       };
