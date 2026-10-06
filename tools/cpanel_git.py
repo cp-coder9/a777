@@ -112,9 +112,22 @@ def main():
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
             else:
                 report = clone(client, args.expected_key_fingerprint)
-    except Exception:
-        # Never print provider exceptions or subprocess output (may contain secrets).
-        report = {"mode": args.mode, "status": "failed", "error": "configuration_or_operation_refused", "runtime_deployed": False}
+    except Exception as error:
+        # Match only known constant refusals; never emit arbitrary exception text.
+        reasons = {
+            'Account home mismatch.': 'account_home_mismatch',
+            'Invalid file inventory.': 'file_inventory_contract',
+            'Remote permission read-back failed.': 'permission_readback',
+            'ASCII file preservation contract unavailable; refused.': 'ssh_file_encoding',
+            'Existing SSH wildcard policy collision; refused.': 'ssh_policy_collision',
+            'Complex SSH configuration requires review.': 'ssh_policy_complex',
+            'Official GitHub host key fingerprint mismatch.': 'github_host_key_mismatch',
+            'Owned key collision: expected fingerprint required; no overwrite.': 'owned_key_already_exists',
+            'cPanel UAPI operation failed.': 'provider_uapi_refused',
+            'cPanel Fileman operation failed.': 'provider_fileman_refused',
+        }
+        reason = reasons.get(str(error), 'configuration_or_operation_refused') if isinstance(error, CpanelError) else 'configuration_or_operation_refused'
+        report = {"mode": args.mode, "status": "failed", "error": reason, "runtime_deployed": False}
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.report:
         args.report.write_text(text, encoding="utf-8")
