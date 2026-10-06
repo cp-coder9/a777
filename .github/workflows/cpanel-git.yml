@@ -27,6 +27,11 @@ on:
         description: SHA256 fingerprint required for clone and existing-key preparation reruns
         type: string
         required: false
+      retry_initial_rehearsal:
+        description: Explicit retry only after verified failure before recovery or target creation
+        type: boolean
+        default: false
+        required: false
 
 concurrency:
   group: a777-cpanel-git
@@ -57,6 +62,7 @@ jobs:
       - name: Execute explicitly selected mode (never runtime deploy)
         env:
           MODE: ${{ inputs.mode }}
+          RETRY_INITIAL_REHEARSAL: ${{ inputs.retry_initial_rehearsal }}
           SECURE_RUNTIME_CONFIG_PERMISSIONS: ${{ inputs.secure_runtime_config_permissions }}
           EXPECTED_COMMIT: ${{ github.sha }}
           EXPECTED_RUNTIME_CONFIG_SHA256: ${{ inputs.expected_runtime_config_sha256 }}
@@ -76,6 +82,10 @@ jobs:
             args+=(--expected-commit "$EXPECTED_COMMIT")
             if [[ -n "$EXPECTED_RUNTIME_CONFIG_SHA256" ]]; then args+=(--expected-runtime-config-sha256 "$EXPECTED_RUNTIME_CONFIG_SHA256"); fi
             if [[ "$SECURE_RUNTIME_CONFIG_PERMISSIONS" == true ]]; then args+=(--secure-runtime-config-permissions); fi
+            if [[ "$RETRY_INITIAL_REHEARSAL" == true ]]; then
+              [[ "$MODE" == restore-rehearsal ]] || exit 1
+              args+=(--retry-initial-rehearsal)
+            fi
           fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report

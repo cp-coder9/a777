@@ -96,6 +96,7 @@ def main():
     parser.add_argument("--expected-commit")
     parser.add_argument("--expected-runtime-config-sha256", default='')
     parser.add_argument("--secure-runtime-config-permissions", action="store_true")
+    parser.add_argument("--retry-initial-rehearsal", action="store_true")
     args = parser.parse_args()
     try:
         config = CpanelConfig(host=os.environ.get("A777_CPANEL_HOST", ""),
@@ -115,7 +116,7 @@ def main():
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
             elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
-                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight")
+                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal)
             else:
                 report = clone(client, args.expected_key_fingerprint)
     except Exception as error:

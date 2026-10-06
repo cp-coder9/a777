@@ -405,6 +405,31 @@ def permission_intent_guard(client, receipt):
         raise CpanelError('Private permission intent binding refused.')
 
 
+REHEARSAL_STAGES = frozenset(('plan','account','repository','trustedclasses','runtimeconfig','source-storage','provider','source-engine','archive','create','grant','restore','compare'))
+REHEARSAL_REASONS = frozenset(('unclassified','plan_refused','linux_account_required','account_refused','private_directory_required','canonical_path_required','symlink_refused','clean_commit_required','git_unavailable','git_refused','pinned_config_refused','actual_config_mismatch','stable_key_refused','private_file_required','transactional_source_required','recovery_root_isolation_refused','source_transaction_active','recovery_directory_unavailable','archive_digest_unavailable','class_source_unavailable','untrusted_class_location','class_digest_mismatch','restore_report_mismatch','immutable_source_archive_changed','journal_unavailable','journal_identity_refused','journal_durability_refused','target_storage_unavailable','archive_unavailable','manifest_unavailable','archived_identity_mismatch','snapshot_table_mismatch','snapshot_content_mismatch','snapshot_evidence_absent'))
+REHEARSAL_FUNCTIONS = frozenset(('run','account','canonical','privateDirectory','privateFile','privateTree','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'))
+REHEARSAL_DIAGNOSTICS = ('failureStage','knownReason','failureFile','failureFunction','failureLine','repositoryMode','repositoryOwner','repositoryCanonical','storageMode','storageOwner','storageCanonical','gitCommandAvailability','fixedGitBinaryAvailability','lastCompletedStage')
+
+
+def rehearsal_diagnostics_safe(data):
+    for key in REHEARSAL_DIAGNOSTICS:
+        if key not in data:
+            continue
+        value = data[key]
+        if key == 'failureStage': valid = isinstance(value, str) and value in REHEARSAL_STAGES
+        elif key == 'knownReason': valid = isinstance(value, str) and value in REHEARSAL_REASONS
+        elif key == 'failureFile': valid = value == 'CpanelRestoreRehearsal.php'
+        elif key == 'failureFunction': valid = isinstance(value, str) and value in REHEARSAL_FUNCTIONS
+        elif key == 'failureLine': valid = type(value) is int and 0 < value < 100000
+        elif key.endswith('Mode'): valid = isinstance(value, str) and (value == 'unavailable' or re.fullmatch(r'0[0-7]{3}',value) is not None)
+        elif key.endswith('Owner'): valid = value in ('account','other','unavailable')
+        elif key.endswith('Canonical'): valid = value in ('canonical','noncanonical')
+        elif key.endswith('Availability'): valid = value in ('available','unavailable')
+        else: valid = value is None or value in ('backup-created','target-provisioned','rehearsal-verified')
+        if not valid: return False
+    return True
+
+
 def rehearsal_safe(data, permissions_authorized=False):
     if not isinstance(data, dict) or data.get('format') != 'a777-cpanel-restore-rehearsal-v1' or data.get('mode') != 'restore-rehearsal':
         return False
@@ -413,6 +438,8 @@ def rehearsal_safe(data, permissions_authorized=False):
     if any(data.get(k, False) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
         return False
     if type(data.get('targetDatabaseDdlTouched')) is not bool or type(data.get('isolatedRehearsalPassed')) is not bool:
+        return False
+    if not rehearsal_diagnostics_safe(data):
         return False
     envelope = dict(data, databaseDdlTouched=False)
     if not permission_only_safe(envelope) or (data.get('liveFilesTouched') is not False and not permissions_authorized):
@@ -450,6 +477,8 @@ def rehearsal_receipts(client, commit, plan_sha, previous, permissions_authorize
         permission_intent_guard(client, dict(data, databaseDdlTouched=False))
         safe = {'report_id':name, 'commit':commit, 'planSha256':plan_sha}
         for key in ('status','sourceDatabaseDdlTouched','targetDatabaseDdlTouched','isolatedRehearsalPassed','liveFilesTouched','apacheConfigurationTouched','cronConfigurationTouched','targetDatabase','archiveSha256','backupId','rowCount','fileCount','tableCount'):
+            if key in data: safe[key] = data[key]
+        for key in REHEARSAL_DIAGNOSTICS:
             if key in data: safe[key] = data[key]
         reports.append(safe)
     if len(reports) > 1:
@@ -603,7 +632,49 @@ def cleanup_token(client, state):
     return True
 
 
-def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight'):
+def retry_initial_rehearsal_plan(client, old, original, plan):
+    if (plan['mode'] != 'restore-rehearsal' or old['expectedCommit'] == plan['expectedCommit']
+            or old.get('expectedRuntimeConfigSha256') != plan.get('expectedRuntimeConfigSha256')):
+        raise CpanelError('Initial rehearsal retry binding refused.')
+    authorize(client)
+    digest = hashlib.sha256(original.encode('ascii')).hexdigest()
+    matched = []
+    for row in entries(client, DEPLOY_ROOT):
+        name = row.get('name', '')
+        if not isinstance(name, str): raise CpanelError('Retry inventory refused.')
+        if name.startswith('recovery-' + old['expectedCommit'] + '-') or re.fullmatch(r'restore-archite4_ar_[a-f0-9]{16}_test\.json', name):
+            raise CpanelError('Retained recovery effects prohibit initial retry.')
+        if re.fullmatch(r'restore-rehearsal-' + re.escape(old['expectedCommit']) + r'-[a-f0-9]{16}\.json', name):
+            path = DEPLOY_ROOT + '/' + name
+            owned_mode(client, path, '0600')
+            receipt = json.loads(read(client, path))
+            if (not rehearsal_safe(receipt, True) or receipt.get('planSha256') != digest
+                    or receipt.get('status') != 'failed' or receipt.get('targetDatabaseDdlTouched') is not False
+                    or receipt.get('databaseDdlTouched') is not False or receipt.get('isolatedRehearsalPassed') is not False
+                    or receipt.get('lastCompletedStage') is not None
+                    or any(k in receipt for k in ('targetDatabase','backupId','archiveSha256'))):
+                raise CpanelError('Initial retry requires proof of no recovery effects.')
+            matched.append(receipt)
+    if len(matched) != 1: raise CpanelError('Exact initial failure receipt required.')
+    databases = client._uapi('Mysql', 'list_databases', {})
+    if (not isinstance(databases, list) or any(not isinstance(r, dict) or not isinstance(r.get('database'), str) for r in databases)
+            or any(re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', r['database']) for r in databases)):
+        raise CpanelError('Provider inventory prohibits initial rehearsal retry.')
+    archive = DEPLOY_ROOT + '/plan-roll-' + digest + '.json'
+    intent = json.dumps({'format':'a777-preflight-plan-roll-intent-v1',
+                         'originalBytesBase64':base64.b64encode(original.encode('ascii')).decode('ascii'),
+                         'originalSha256':digest}, sort_keys=True, separators=(',', ':')) + '\n'
+    if exists(client, archive):
+        owned_mode(client, archive, '0600')
+        if read(client, archive) != intent: raise CpanelError('Retry intent collision.')
+    else:
+        client.save_file(archive, intent); private_chmod(client, archive)
+    if read(client, archive) != intent or read(client, PLAN) != original:
+        raise CpanelError('Retry intent read-back refused.')
+    client.save_file(PLAN, json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n')
+
+
+def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False):
     if mode not in ('preflight', 'restore-rehearsal') or (mode == 'restore-rehearsal' and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
         raise CpanelError('Explicit rehearsal config pin required.')
     if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
@@ -640,8 +711,10 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False, expe
                 or ('readOnlyUapiTransport' in old and old['readOnlyUapiTransport'] != plan['readOnlyUapiTransport'])):
             raise CpanelError('Existing operator plan collision; refused.')
         if old.get('mode') == 'restore-rehearsal':
-            raise CpanelError('Retained rehearsal plan requires independent operator review; no replay.')
-        if old != plan:
+            if retry_initial_rehearsal is not True:
+                raise CpanelError('Retained rehearsal plan requires independent operator review; no replay.')
+            retry_initial_rehearsal_plan(client, old, original, plan)
+        if old != plan and old.get('mode') != 'restore-rehearsal':
             old_sha = hashlib.sha256(original.encode('ascii')).hexdigest()
             matched = False
             for row in entries(client, DEPLOY_ROOT):
@@ -758,7 +831,7 @@ def receipts(client, commit, plan_sha, previous, mode='preflight', permissions_a
     return sorted(reports, key=lambda r: r['report_id'])
 
 
-def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight'):
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False):
     report = {'mode': ('restore-rehearsal' if mode == 'restore-rehearsal' else 'native-preflight'), 'status': 'failed', 'runtime_deployed': False,
               'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
               'tokenAbsenceVerified': False}
@@ -783,7 +856,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
             raise CpanelError('Remote HEAD differs from workflow commit.')
         stage = 'private_plan'
-        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256, mode=mode)
+        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256, mode=mode, retry_initial_rehearsal=retry_initial_rehearsal)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
         stage = 'private_token'
         provision_token(client, token_state)

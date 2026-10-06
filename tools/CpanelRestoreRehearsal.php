@@ -25,12 +25,17 @@ final class CpanelRestoreRehearsal
         $result = ['status'=>'failed', 'isolatedRehearsalPassed'=>false,
             'sourceDatabaseDdlTouched'=>false, 'liveFilesTouched'=>false,
             'targetDatabaseDdlTouched'=>false, 'lastCompletedStage'=>null];
+        $currentStage = 'plan';
         $journal = null; $oldMask = umask(0077);
         try {
             if ($planMode !== 'restore-rehearsal' || !preg_match('/\A[a-f0-9]{40}\z/', $expectedCommit)) throw new RuntimeException('Plan refused.');
+            $currentStage = 'account';
             self::account();
+            $currentStage = 'repository';
+            $result += self::metadata($trustedRepository, $canonicalStorage);
             self::privateDirectory($trustedRepository);
             if (self::git($trustedRepository, ['rev-parse','HEAD']) !== $expectedCommit || self::git($trustedRepository, ['status','--porcelain','--untracked-files=all']) !== '') throw new RuntimeException('Clean commit required.');
+            $currentStage = 'trustedclasses';
             // Never load incoming PHP: verify the already loaded implementation and runtime dependencies.
             foreach (get_declared_classes() as $class) {
                 if (str_starts_with($class, 'Architex\\')) self::trustedClass($class, $trustedRepository);
@@ -46,6 +51,7 @@ final class CpanelRestoreRehearsal
                 \Architex\Infrastructure\Database\DdlSchemaValidator::class] as $class) self::trustedClass($class, $trustedRepository);
             // Hash every application source too, covering classes autoloaded later by real services.
             self::trackedTree($trustedRepository, $trustedRepository . '/app/src');
+            $currentStage = 'runtimeconfig';
             self::privateDirectory(self::PRIVATE_ROOT);
             self::privateDirectory(self::RUNTIME . '/config');
             $runtimeFile = self::RUNTIME . '/config/runtime.php';
@@ -55,14 +61,18 @@ final class CpanelRestoreRehearsal
             if (!is_array($values) || AppConfig::fromEnvironment($values) != $config || ($values['FILE_STORAGE_PATH'] ?? null) !== $canonicalStorage) throw new RuntimeException('Actual config mismatch.');
             $key = $values['APP_KEY'] ?? null;
             if (!is_string($key) || strlen((string)base64_decode($key, true)) !== 32) throw new RuntimeException('Stable key refused.');
+            $currentStage = 'source-storage';
             self::privateTree($canonicalStorage);
             if (self::within(self::PRIVATE_ROOT, $canonicalStorage) || self::within(self::PRIVATE_ROOT, '/home/archite4/public_html')) throw new RuntimeException('Recovery root isolation refused.');
             if ($source->inTransaction()) throw new RuntimeException('Source transaction already active.');
+            $currentStage = 'provider';
             $provider = CpanelRestoreProvisioner::fromAccountToken();
             AccountOwnedRestoreTarget::preflightManaged($source, $config, $runtimePin, $provider);
+            $currentStage = 'source-engine';
             // A read-only consistent transactional snapshot is not a production writer fence.
             $engines = $source->query("SELECT ENGINE FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE'")->fetchAll(PDO::FETCH_COLUMN);
             if ($engines === [] || array_filter($engines, static fn($engine)=>$engine !== 'InnoDB')) throw new RuntimeException('Transactional source required.');
+            $currentStage = 'archive';
             $migrations = self::RUNTIME . '/database/migrations';
             self::canonical($migrations); // RestoreService checks every active checksum against archived schema_migrations.
             self::noLinks($migrations);
@@ -82,20 +92,24 @@ final class CpanelRestoreRehearsal
             $result['status']='backup-created'; $result['lastCompletedStage']='backup-created';
             self::append($journal, $result);
             // Durable provider issuance receipts retain even ambiguous failures; NEVER drop a target.
+            $currentStage = 'create';
             $result['targetDatabaseDdlTouched']=true; // conservative: a lost provisioning reply can have effected DDL
             self::append($journal, ['phase'=>'target-provision-intent']);
             $target = AccountOwnedRestoreTarget::provisionManaged($source, $config, $runtimePin, $provider);
             $result['targetDatabase']=$target->database();
             self::append($journal, ['phase'=>'target-provisioned','receipt'=>$target->receipt()]);
             $result['status']='target-provisioned'; $result['lastCompletedStage']='target-provisioned';
+            $currentStage = 'grant'; // ProvisionManaged combines creation and grant; conservative DDL flag remains set.
             $targetValues = $values; $targetValues['DB_NAME']=$target->database();
             $targetConfig = AppConfig::fromEnvironment($targetValues);
             $targetPdo = ConnectionFactory::create($targetConfig);
             $fileRoot = $recovery . '/restored-files';
             if (!mkdir($fileRoot, 0700)) throw new RuntimeException('Private target storage unavailable.');
+            $currentStage = 'restore';
             $report = (new RestoreService($migrations, $password, $key))->restoreIntoProvisionedEmptyDatabase($backup->path, $targetPdo, $target, $fileRoot);
             if ($report->backupId !== $backup->backupId || $report->database !== $target->database() || $report->rowCount !== $backup->rowCount || $report->fileCount !== $backup->fileCount) throw new RuntimeException('Restore report mismatch.');
             self::privateTree($fileRoot);
+            $currentStage = 'compare';
             // Reuse the real snapshot encoder: compare target against the IMMUTABLE archive,
             // never SELECT changing source rows after its snapshot has ended.
             $targetPdo->exec('SET TRANSACTION READ ONLY');
@@ -108,7 +122,8 @@ final class CpanelRestoreRehearsal
             $result['isolatedRehearsalPassed']=true;
             $result['tableCount']=count($sourceManifest['database']['tables']);
             self::append($journal, $result);
-        } catch (Throwable) {
+        } catch (Throwable $error) {
+            $result += self::failure($error, $currentStage);
             $result['status']='failed'; $result['isolatedRehearsalPassed']=false;
             // Never echo exception messages, credentials, paths, SQL, provider responses or stacks.
             if ($journal !== null) {
@@ -116,6 +131,74 @@ final class CpanelRestoreRehearsal
             }
         } finally { umask($oldMask); }
         return $result;
+    }
+
+    /** Only constants from this implementation, never exception text or arbitrary trace names. */
+    private static function failure(Throwable $error, string $stage): array
+    {
+        $stages = ['plan','account','repository','trustedclasses','runtimeconfig','source-storage','provider','source-engine','archive','create','grant','restore','compare'];
+        $reasons = [
+            'Plan refused.'=>'plan_refused', 'Linux account required.'=>'linux_account_required',
+            'Account refused.'=>'account_refused', 'Private directory required.'=>'private_directory_required',
+            'Canonical path required.'=>'canonical_path_required', 'Symlink refused.'=>'symlink_refused',
+            'Clean commit required.'=>'clean_commit_required', 'Git unavailable.'=>'git_unavailable',
+            'Git refused.'=>'git_refused', 'Pinned config refused.'=>'pinned_config_refused',
+            'Actual config mismatch.'=>'actual_config_mismatch', 'Stable key refused.'=>'stable_key_refused',
+            'Private file required.'=>'private_file_required', 'Transactional source required.'=>'transactional_source_required',
+            'Recovery root isolation refused.'=>'recovery_root_isolation_refused',
+            'Source transaction already active.'=>'source_transaction_active',
+            'Recovery directory unavailable.'=>'recovery_directory_unavailable',
+            'Archive digest unavailable.'=>'archive_digest_unavailable',
+            'Class source unavailable.'=>'class_source_unavailable', 'Untrusted class location.'=>'untrusted_class_location',
+            'Class digest mismatch.'=>'class_digest_mismatch', 'Restore report mismatch.'=>'restore_report_mismatch',
+            'Immutable source archive changed.'=>'immutable_source_archive_changed',
+            'Journal unavailable.'=>'journal_unavailable', 'Opened journal identity refused.'=>'journal_identity_refused',
+            'Journal durability refused.'=>'journal_durability_refused',
+            'Private target storage unavailable.'=>'target_storage_unavailable',
+            'Archive unavailable.'=>'archive_unavailable', 'Manifest unavailable.'=>'manifest_unavailable',
+            'Archived identity mismatch.'=>'archived_identity_mismatch',
+            'Snapshot table evidence mismatch.'=>'snapshot_table_mismatch',
+            'Snapshot content evidence mismatch.'=>'snapshot_content_mismatch', 'Snapshot evidence absent.'=>'snapshot_evidence_absent',
+        ];
+        $out = ['failureStage'=>in_array($stage,$stages,true)?$stage:'plan', 'knownReason'=>'unclassified'];
+        // Foreign exceptions cannot impersonate our static reasons.
+        if ($error->getFile() === __FILE__) $out['knownReason']=$reasons[$error->getMessage()] ?? 'unclassified';
+        $functions = ['run','account','canonical','privateDirectory','privateFile','privateTree','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'];
+        foreach ($error->getTrace() as $frame) {
+            if (($frame['class'] ?? null) === self::class && in_array($frame['function'] ?? null,$functions,true)) {
+                $out['failureFunction']=$frame['function'];
+                break;
+            }
+        }
+        if ($error->getFile() === __FILE__) {
+            $out['failureFile']='CpanelRestoreRehearsal.php';
+            $out['failureLine']=$error->getLine();
+        }
+        return $out;
+    }
+
+    /** Read-only metadata; no resolved paths or owner identifiers leave this component. */
+    private static function metadata(string $repository, string $storage): array
+    {
+        $out=[];
+        foreach (['repository'=>$repository,'storage'=>$storage] as $label=>$path) {
+            $stat=@lstat($path);
+            $out[$label.'Mode']=is_array($stat)?sprintf('%04o',$stat['mode'] & 0777):'unavailable';
+            $out[$label.'Owner']=is_array($stat)&&function_exists('posix_geteuid')?($stat['uid']===posix_geteuid()?'account':'other'):'unavailable';
+            $out[$label.'Canonical']=realpath($path)===$path?'canonical':'noncanonical';
+        }
+        // Observe fixed cPanel binary separately without changing the current PATH-based git guard.
+        $fixed='/usr/local/cpanel/3rdparty/bin/git';
+        $out['fixedGitBinaryAvailability']=is_file($fixed)&&is_executable($fixed)?'available':'unavailable';
+        $out['gitCommandAvailability']='unavailable';
+        if (function_exists('proc_open')) {
+            $process=@proc_open(['git','--version'],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,null,['bypass_shell'=>true]);
+            if (is_resource($process)) {
+                fclose($pipes[0]); stream_get_contents($pipes[1]); fclose($pipes[1]); stream_get_contents($pipes[2]); fclose($pipes[2]);
+                $out['gitCommandAvailability']=proc_close($process)===0?'available':'unavailable';
+            }
+        }
+        return $out;
     }
 
     private static function assertSnapshotEquality(array $source, array $target, string $sourceName, string $targetName): void
