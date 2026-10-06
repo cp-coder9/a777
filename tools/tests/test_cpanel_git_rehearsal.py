@@ -101,6 +101,13 @@ class RehearsalTests(unittest.TestCase):
         data=outcome(); data['targetDatabase']='archite4_dev_rel1'
         self.assertFalse(g.rehearsal_safe(data))
 
+    def test_retained_receipt_preserves_boolean_storage_inspection_contract(self):
+        f,path=self.initial_failure()
+        data=json.loads(f.files[path]); data['storageCanonical']=True
+        self.assertTrue(g.rehearsal_safe(data,True))
+        data['storageCanonical']='PRIVATE_SENTINEL'
+        self.assertFalse(g.rehearsal_safe(data,True))
+
     def test_failed_task_and_cleanup_failure_never_success(self):
         for terminal in ('failed','succeeded'):
             f=RehearsalFake(terminal=terminal)
