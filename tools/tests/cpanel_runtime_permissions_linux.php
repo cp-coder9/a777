@@ -8,24 +8,13 @@ mkdir($base,0700); mkdir($base.'/config',0700);
 $path=$base.'/config/runtime.php'; $intent=$base.'/runtime-permission-0123456789abcdef.json';
 $lock=fopen($base.'/deploy.lock','x+b'); flock($lock,LOCK_EX);
 function check(bool $ok): void { if (!$ok) throw new RuntimeException('fixture assertion failed'); }
-// Test-only real filesystem swap at journal close, before either target chmod.
-class SwapIntentStream {
-    public $context;
-    public static string $base;
-    public static string $intent;
-    private string $bytes = '';
-    public function url_stat($path, $flags) { return false; }
-    public function stream_open($path, $mode, $options, &$opened): bool { return true; }
-    public function stream_metadata($path, $option, $value): bool { return $option === STREAM_META_ACCESS; }
-    public function stream_write($bytes): int { $this->bytes .= $bytes; return strlen($bytes); }
-    public function stream_flush(): bool { return true; }
-    public function stream_close(): void {
-        file_put_contents(self::$intent, $this->bytes); chmod(self::$intent,0600);
-        rename(self::$base.'/config',self::$base.'/old-config'); mkdir(self::$base.'/config',0700); chmod(self::$base.'/config',0755);
-        rename(self::$base.'/old-config/runtime.php',self::$base.'/config/runtime.php');
-    }
+// Test-only barrier in a private copy: keep the real journal and fsync intact.
+// No instrumentation is added to the deployed production class.
+function a777_fixture_swap_parent(string $parent, string $path): void {
+    rename($parent, dirname($parent).'/old-config');
+    mkdir($parent,0700); chmod($parent,0755);
+    rename(dirname($parent).'/old-config/runtime.php',$path);
 }
-stream_wrapper_register('swapintent',SwapIntentStream::class);
 try {
     file_put_contents($path,'synthetic permission fixture only'); chmod($path,0644);
     $e=[]; CpanelGitDeploy::runtimePermissions($path,$base,$intent,false,$e);
@@ -50,17 +39,25 @@ try {
     catch (RuntimeException $x) { check($x->getMessage()==='runtime_permission_ancestor_write_refused'); }
     clearstatcache(); check((fileperms($path)&07777)===0644 && (fileperms($base.'/config')&07777)===0775 && !file_exists($intent));
     chmod($base.'/config',0755); clearstatcache(); $originalParent=lstat($base.'/config');
-    SwapIntentStream::$base=$base; SwapIntentStream::$intent=$intent; $e=[];
-    try { CpanelGitDeploy::runtimePermissions($path,$base,'swapintent://fixture/'.basename($intent),true,$e,str_repeat('a',40),str_repeat('b',64)); throw new RuntimeException('swapped parent accepted'); }
+    $source=file_get_contents(dirname(__DIR__).'/cpanel_git_deploy.php');
+    $anchor="            clearstatcache(true, \$parentPath);\n            self::requireValue(@lstat(\$parentPath) === \$parent";
+    check(substr_count($source,$anchor)===1);
+    $instrumented=str_replace('final class CpanelGitDeploy','final class CpanelGitDeploySwapFixture',$source);
+    $instrumented=str_replace($anchor,"            a777_fixture_swap_parent(\$parentPath, \$path);\n".$anchor,$instrumented);
+    $copy=$base.'/swap-fixture.php'; file_put_contents($copy,$instrumented); chmod($copy,0600); require $copy;
+    $e=[];
+    try { CpanelGitDeploySwapFixture::runtimePermissions($path,$base,$intent,true,$e,str_repeat('a',40),str_repeat('b',64)); throw new RuntimeException('swapped parent accepted'); }
     catch (RuntimeException $x) { check($x->getMessage()==='runtime_permission_parent_identity_refused'); }
     clearstatcache(); check(lstat($base.'/config')['ino']!==$originalParent['ino'] && (fileperms($path)&07777)===0644
         && (fileperms($base.'/config')&07777)===0755 && !$e['runtimeConfigParentPermissionsTouched'] && !$e['runtimeConfigPermissionsTouched']);
     check(json_decode(file_get_contents($intent),true)['parentInode']===$originalParent['ino']);
     rmdir($base.'/old-config');
-    print "Linux permission fixture: 6 cases passed\n";
+    print "Linux permission fixture: 5 production cases and 1 instrumented real-filesystem race case passed\n";
 } finally {
     if (is_link($path)||file_exists($path)) unlink($path);
     if (file_exists($intent)) unlink($intent);
     if (file_exists($base.'/hardlink')) unlink($base.'/hardlink');
+    if (file_exists($base.'/swap-fixture.php')) unlink($base.'/swap-fixture.php');
+    if (is_dir($base.'/old-config')) rmdir($base.'/old-config');
     flock($lock,LOCK_UN); fclose($lock); unlink($base.'/deploy.lock'); rmdir($base.'/config'); rmdir($base);
 }
