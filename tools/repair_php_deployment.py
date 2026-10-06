@@ -537,10 +537,11 @@ def _configured_remote(
     }
     missing = [name for name, value in required.items() if not value]
     password = environment.get("A777_CPANEL_PASSWORD", "").strip()
+    api_token = environment.get("A777_CPANEL_API_TOKEN", "").strip()
     session_id = environment.get("A777_CPANEL_SESSION", "").strip()
     session_cookie = environment.get("A777_CPANEL_SESSION_COOKIE", "").strip()
-    if not password and not session_id:
-        missing.append("A777_CPANEL_PASSWORD or A777_CPANEL_SESSION")
+    if not password and not session_id and not api_token:
+        missing.append("A777_CPANEL_API_TOKEN or A777_CPANEL_PASSWORD or A777_CPANEL_SESSION")
     if session_id and not session_cookie:
         missing.append("A777_CPANEL_SESSION_COOKIE")
     if missing:
@@ -559,6 +560,7 @@ def _configured_remote(
         session_id=session_id or None,
         session_cookie=session_cookie or None,
         ca_file=args.ca_file,
+        api_token=api_token or None,
     ))
 
 

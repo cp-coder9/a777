@@ -53,10 +53,11 @@ class CpanelConfig:
     session_cookie: str | None = None
     ca_file: str | None = None
     timeout: float = 45.0
+    api_token: str | None = None
 
     @property
     def secrets(self) -> tuple[str, ...]:
-        return (self.password, self.session_id or "", self.session_cookie or "")
+        return (self.password, self.session_id or "", self.session_cookie or "", self.api_token or "")
 
 
 class RejectRedirects(urllib.request.HTTPRedirectHandler):
@@ -113,8 +114,16 @@ def canonical_remote_path(allowed_root: str, candidate: str) -> str:
 class CpanelClient:
     def __init__(self, config: CpanelConfig, transport: HttpTransport | None = None) -> None:
         self.config = config
+        if config.api_token and (config.password or config.session_id or config.session_cookie):
+            raise CpanelError("API token cannot be combined with password or session authentication.")
+        if config.api_token and any(c in config.api_token for c in ('\r', '\n')):
+            raise CpanelError("Invalid cPanel API token.")
         self.transport = transport or UrllibTransport(config.ca_file)
-        if config.session_id is not None:
+        if config.api_token:
+            self._authorization = f"cpanel {config.username}:{config.api_token}"
+            self._path_prefix = ""
+            self._session_cookie = None
+        elif config.session_id is not None:
             if re.fullmatch(r"cpsess\d{6,20}", config.session_id) is None:
                 raise CpanelError("Invalid cPanel session identifier.")
             if config.session_cookie is None or re.fullmatch(r"cpsession=[A-Za-z0-9%._~-]+", config.session_cookie) is None:
@@ -124,7 +133,7 @@ class CpanelClient:
             self._session_cookie = config.session_cookie
         else:
             if not config.password:
-                raise CpanelError("A cPanel password or session identifier is required.")
+                raise CpanelError("A cPanel API token, password or session identifier is required.")
             token = base64.b64encode(f"{config.username}:{config.password}".encode("utf-8")).decode("ascii")
             self._authorization = f"Basic {token}"
             self._path_prefix = ""
