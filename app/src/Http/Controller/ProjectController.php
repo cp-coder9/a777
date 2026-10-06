@@ -5,6 +5,7 @@ namespace Architex\Http\Controller;
 use Architex\Http\Request;
 use Architex\Http\Response;
 use Architex\Platform\Project\CreateProject;
+use Architex\Platform\Project\UpdateProject;
 use Architex\Platform\Identity\AuthenticatedIdentity;
 use Architex\Platform\Project\LifecycleService;
 use Architex\Platform\Project\ProjectContext;
@@ -40,6 +41,26 @@ final readonly class ProjectController
         $scope = $this->scope($request);
         if ($scope instanceof Response) return $scope;
         return Response::success(array_map(fn($project):array=>$this->serialize($project,$scope[1]->userId), $this->projects->list($scope[0], $scope[1]->userId)));
+    }
+
+    public function updateDetails(Request $request): Response
+    {
+        $scope = $this->scope($request);
+        if ($scope instanceof Response) return $scope;
+        $projectId = $request->attribute('projectId');
+        if (!is_string($projectId) || preg_match('/\A[a-f0-9]{32}\z/i', $projectId) !== 1) return Response::error(404, 'project_not_found', 'Project not found.');
+        try {
+            $command = UpdateProject::fromArray($request->jsonBody());
+            $project = $this->projects->update(new ProjectContext($scope[0], $scope[1]->userId, strtolower($projectId), (string)$request->attribute('role')), $command);
+            return Response::success($this->serialize($project, $scope[1]->userId));
+        } catch (InvalidArgumentException $exception) {
+            return Response::error(422, 'validation_failed', $exception->getMessage());
+        } catch (ProjectWorkflowException $exception) {
+            $status = match ($exception->reason) { 'project_not_found' => 404, 'stale_project_version' => 409, 'project_code_conflict' => 409, default => 422 };
+            return Response::error($status, $exception->reason, $exception->getMessage());
+        } catch (\JsonException) {
+            return Response::error(400, 'invalid_json', 'Request body must contain valid JSON.');
+        }
     }
 
     public function show(Request $request): Response

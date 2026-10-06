@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import base64
 import tempfile
 import unittest
 import urllib.parse
@@ -38,6 +40,9 @@ class FakeCpanel:
     def account_home(self) -> str:
         self.events.append("account-home")
         return "/home/archite4"
+
+    def _uapi(self, module, function, params):
+        return {'content': "<?php return ['APP_KEY'=>'existing', 'DB_NAME'=>'existing-db', 'FILE_STORAGE_PATH'=>'existing-storage'];"}
 
     def exists(self, path: str) -> bool:
         return path in self.paths
@@ -128,16 +133,17 @@ class FakeHttp:
             self.transient_health_failures -= 1
             return HttpCheck(url, url, 404, "application/json", b'{"error":"not_found"}')
         status = 503 if self.fail_live and path == "/api/v1/readiness" else 200
-        return HttpCheck(url, url, status, "application/json", b'{"ok":true}')
+        return HttpCheck(url, url, status, "application/json", b'{"ok":true,"data":{"status":"ready","components":{"database":{"status":"ready"},"migrations":{"status":"ready"},"jobs":{"status":"ready"},"mail":{"status":"ready"}}}}')
 
 
 def make_release(root: Path) -> Path:
     release = root / "release"
     (release / "public").mkdir(parents=True)
-    (release / "release.json").write_text(json.dumps({"sourceCommit": "c6ec61c1d7b11ca9991277156a8a7227c764b7b4"}))
-    (release / "release-manifest.json").write_text(json.dumps({"format": "test"}))
+    (release / "release.json").write_text(json.dumps({"format":"architex-release-v1","environment":"production","sourceDirty":False,"sourceSnapshotSha256":"b"*64,"sourceCommit": "c6ec61c1d7b11ca9991277156a8a7227c764b7b4"}))
     (release / "public" / "index.php").write_text("<?php")
     (release / "public" / ".htaccess").write_text("RewriteEngine On\nRewriteRule ^ index.php [QSA,L]\n")
+    files={p.relative_to(release).as_posix():{'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'bytes':p.stat().st_size} for p in release.rglob('*') if p.is_file()}
+    (release / 'release-manifest.json').write_text(json.dumps({'format':'architex-release-manifest-v1','files':files}))
     return release
 
 
@@ -187,6 +193,66 @@ class ReleaseHelperTest(unittest.TestCase):
 
 
 class DeploymentOrchestratorTest(unittest.TestCase):
+    def test_each_rename_before_and_after_effect_rolls_back(self):
+        for fail_at in range(1, 5):
+            for after in (False, True):
+                with self.subTest(rename=fail_at, after=after), tempfile.TemporaryDirectory() as temporary:
+                    class Fault(FakeCpanel):
+                        calls = 0
+                        def rename(self, source, destination):
+                            self.calls += 1
+                            if self.calls == fail_at and not after:
+                                raise RuntimeError('lost response')
+                            super().rename(source, destination)
+                            if self.calls == fail_at and after:
+                                raise RuntimeError('lost response')
+                    remote = Fault([])
+                    owner = deployment(make_release(Path(temporary)), remote, FakeHttp([]))
+                    with self.assertRaises(DeploymentFailure):
+                        owner.deploy()
+                    self.assertIn(DOCUMENT_ROOT, remote.paths)
+                    self.assertIn(ROOT + '/.a777-runtime-active', remote.paths)
+                    self.assertNotIn(owner.paths.prior_runtime, remote.paths)
+                    self.assertNotIn(owner.paths.rollback_public, remote.paths)
+                    self.assertEqual([], owner.completed_renames)
+
+    def test_cleanup_failure_cannot_report_success(self):
+        class Fault(FakeCpanel):
+            def rename(self, source, destination):
+                raise RuntimeError('persistent unavailable')
+        with tempfile.TemporaryDirectory() as temporary:
+            remote = Fault([])
+            owner = deployment(make_release(Path(temporary)), remote, FakeHttp([]))
+            remote.paths.discard(DOCUMENT_ROOT)
+            remote.paths.add(owner.paths.rollback_public)
+            owner.completed_renames.append((DOCUMENT_ROOT, owner.paths.rollback_public))
+            with self.assertRaisesRegex(DeploymentFailure, 'retain journal'):
+                owner._rollback()
+            self.assertEqual([(DOCUMENT_ROOT, owner.paths.rollback_public)], owner.completed_renames)
+
+    def test_cleanup_failure_reports_recovery_required(self):
+        class Fault(FakeCpanel):
+            def trash(self, path):
+                if path.endswith('.zip'):
+                    return
+                super().trash(path)
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(DeploymentFailure, 'cleanup unverified'):
+                deployment(make_release(Path(temporary)), Fault([]), FakeHttp([])).deploy()
+
+    def test_wrong_readiness_json_rolls_back(self):
+        class Wrong(FakeHttp):
+            def request(self, url):
+                check = super().request(url)
+                if '/api/v1/readiness' in url:
+                    return HttpCheck(url, url, 200, 'application/json', b'{"ok":true}')
+                return check
+        with tempfile.TemporaryDirectory() as temporary:
+            remote = FakeCpanel([])
+            with self.assertRaisesRegex(DeploymentFailure, 'not ready'):
+                deployment(make_release(Path(temporary)), remote, Wrong([])).deploy()
+            self.assertIn(DOCUMENT_ROOT, remote.paths)
+
     def test_transient_live_routing_failure_is_retried(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             events: list[str] = []
@@ -256,6 +322,8 @@ class DeploymentCliTest(unittest.TestCase):
             "A777_SMTP_PASSWORD": "mail-secret",
             "A777_SMTP_FROM_EMAIL": "mailer@example.test",
             "A777_NVIDIA_API_KEY": "nvidia-secret",
+            "A777_APP_KEY": base64.b64encode(b'x'*32).decode(),
+            "A777_BACKUP_ARCHIVE_PASSWORD": "unit-backup-password-only",
         }
 
         runtime = build_runtime_config(TARGET_URL, ROOT + "/.a777-storage", environment).decode("utf-8")
@@ -292,7 +360,7 @@ class DeploymentCliTest(unittest.TestCase):
         self.assertEqual(200, result.endpoints["/api/v1/health"])
         self.assertFalse(any(event.startswith(("rename:", "save:", "upload:", "trash:")) for event in remote.events))
 
-    def test_deploy_requires_all_private_runtime_variables(self) -> None:
+    def test_deploy_preserves_private_runtime_without_environment_variables(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             release = make_release(Path(temporary))
             args = parse_args([
@@ -302,8 +370,10 @@ class DeploymentCliTest(unittest.TestCase):
                 "--document-root", DOCUMENT_ROOT,
                 "--deployment-id", DEPLOYMENT_ID,
             ])
-            with self.assertRaisesRegex(DeploymentFailure, "Missing private runtime environment keys"):
-                run_cli(args, environment={"A777_CPANEL_PASSWORD": "panel-only"}, remote=FakeCpanel([]), http=FakeHttp([]))
+            remote = FakeCpanel([])
+            result = run_cli(args, environment={"A777_APP_KEY": "wrong-but-wellformed"}, remote=remote, http=FakeHttp([]))
+            self.assertEqual('deployed', result.status)
+            self.assertIn("'APP_KEY'=>'existing'", next(v for k,v in remote.saved_content.items() if k.endswith('config/runtime.php')))
 
     def test_failure_output_is_one_redacted_json_object(self) -> None:
         output = render_failure(DeploymentFailure("password=secret-value"), secrets=("secret-value",))

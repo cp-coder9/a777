@@ -54,9 +54,16 @@ final readonly class SmtpMailer implements Mailer
             $this->command($socket, 'DATA', [354]);
             $messageId = bin2hex(random_bytes(16)) . '@' . $this->hostname();
             $content = $this->format($message, $messageId);
-            $this->write($socket, $content . "\r\n.");
-            $this->expect($socket, [250]);
-            $this->command($socket, 'QUIT', [221]);
+            try {
+                $this->write($socket, $content . "\r\n.");
+                $this->expect($socket, [250]);
+            } catch (RuntimeException $error) {
+                // Explicit SMTP rejection is conclusive; connection loss is not.
+                if ($error->getMessage() === 'SMTP server rejected the operation.') throw $error;
+                throw new DeliveryOutcomeUnknown('SMTP acceptance could not be confirmed.');
+            }
+            // Acceptance of DATA is the receipt; a failed QUIT must not resend it.
+            try { $this->command($socket, 'QUIT', [221]); } catch (RuntimeException) {}
             return new DeliveryReceipt($messageId, gmdate('c'));
         } finally {
             fclose($socket);
@@ -87,21 +94,29 @@ final readonly class SmtpMailer implements Mailer
     /** @param resource $socket @param list<int> $codes */
     private function expect($socket, array $codes): void
     {
-        $last = '';
+        $code = null;
         $lines = 0;
         do {
             if (++$lines > 100) {
                 throw new RuntimeException('SMTP response failed.');
             }
             $line = @fgets($socket, 2048);
-            if (!is_string($line)) {
+            // A partial read/EOF is not an acknowledgement. Every continuation
+            // must carry the same valid reply code and end in CRLF.
+            if (!is_string($line) || preg_match('/\A([2-5][0-5][0-9])([ -])[^\r\n]*\r\n\z/', $line, $parts) !== 1) {
                 throw new RuntimeException('SMTP response failed.');
             }
-            $last = $line;
-        } while (isset($line[3]) && $line[3] === '-');
-        $code = (int)substr($last, 0, 3);
+            $lineCode = (int)$parts[1];
+            if ($code !== null && $lineCode !== $code) {
+                throw new RuntimeException('SMTP response failed.');
+            }
+            $code = $lineCode;
+        } while ($parts[2] === '-');
         if (!in_array($code, $codes, true)) {
-            throw new RuntimeException('SMTP server rejected the operation.');
+            if ($code >= 400) {
+                throw new RuntimeException('SMTP server rejected the operation.');
+            }
+            throw new RuntimeException('SMTP response failed.');
         }
     }
 

@@ -1,0 +1,43 @@
+/* Shared navigator scope: self-contained, no main-workspace overrides. */
+.workspace-scope {
+  display: grid;
+  gap: 10px;
+  margin: 10px;
+  padding: 12px;
+  min-width: 0;
+  color: var(--text, #e8edf3);
+  background: var(--panel, #17212b);
+  border: 1px solid var(--line, #465360);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+}
+.workspace-scope-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.workspace-scope-modes button { flex: 1 1 85px; }
+.workspace-scope label { display: grid; gap: 6px; min-width: 0; font-weight: 600; }
+.workspace-scope button,
+.workspace-scope select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid var(--line, #465360);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--bg, #101820);
+  font: inherit;
+}
+.workspace-scope select { width: 100%; }
+.workspace-scope button { cursor: pointer; }
+.workspace-scope button[aria-pressed="true"] { border-color: #50c4be; background: #163f40; color: #fff; }
+.workspace-scope button:hover:not(:disabled) { border-color: #50c4be; }
+.workspace-scope :is(button, select):focus-visible { outline: 2px solid #50c4be; outline-offset: 3px; }
+.workspace-scope :disabled { opacity: .6; cursor: not-allowed; }
+.workspace-scope p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.workspace-scope-status { color: #ffbd9f; }
+.workspace-scope-status:empty { display: none; }
+@media (max-width: 600px) {
+  .workspace-scope { margin: 8px; padding: 10px; }
+  .workspace-scope :is(button, select) { min-height: 44px; }
+}

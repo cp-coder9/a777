@@ -1,0 +1,136 @@
+/* Architex iconography — inline pack styles.
+ *
+ * The icon geometry is inline SVG using the v1.html role model
+ * (.ax-icon .outline / .line / .fold). Those three rules live in
+ * reference-shell.css and take every colour from the theme, so this file
+ * only adds: the catalogue chrome, the tone carriers, the size ramp and the
+ * motion contract. No icon path is coloured here — an icon is always ink
+ * plus exactly one teal fold, and tone is carried by its container.
+ */
+
+/* ---- catalogue surface ---------------------------------------------------- */
+.icon-workspace{display:flex;flex-direction:column;gap:14px;min-width:0}
+.icon-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.9);box-shadow:var(--soft)}
+.icon-toolbar .spacer{flex:1}
+.icon-toolbar input[type="search"]{min-width:230px;min-height:38px;padding:8px 12px;border:1px solid rgba(16,32,51,.14);border-radius:10px;background:#fff;color:var(--ink);font-size:13.5px}
+.icon-toolbar input[type="search"]:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(25,183,176,.12)}
+.icon-toolbar select,.icon-toolbar .icon-select{min-height:38px;padding:8px 12px;border:1px solid rgba(16,32,51,.14);border-radius:10px;background:#fff;color:var(--ink);font-size:13.5px}
+.icon-count{font-size:13px;color:var(--muted)}
+.icon-count b{color:var(--ink)}
+
+/* ---- filter chips --------------------------------------------------------- */
+.icon-chips{display:flex;gap:6px;flex-wrap:wrap}
+.icon-chip{border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:99px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer;transition:.16s}
+.icon-chip:hover{border-color:color-mix(in srgb,var(--teal) 34%,transparent);color:var(--ink)}
+.icon-chip.active{background:var(--aqua);border-color:rgba(25,183,176,.34);color:var(--deep)}
+.icon-chip .n{font-weight:800;opacity:.72;margin-left:5px}
+
+/* ---- sections ------------------------------------------------------------- */
+.icon-section{padding:16px;border:1px solid var(--border);border-radius:16px;background:rgba(255,255,255,.9);box-shadow:var(--soft)}
+.icon-section>h2{margin:0 0 3px;font-size:17px}
+.icon-section>h2 small{font-size:12px;color:var(--muted);font-weight:600;margin-left:6px}
+.icon-section>p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
+
+/* ---- icon grid + tiles ---------------------------------------------------- */
+.icon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px}
+.icon-tile{--tone:var(--teal);margin:0;padding:13px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:var(--soft);display:flex;flex-direction:column;gap:9px;min-width:0;transition:transform .16s,border-color .16s,box-shadow .16s}
+.icon-tile:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--tone) 34%,transparent);box-shadow:0 14px 34px rgba(16,32,51,.09)}
+.icon-tile .icon-frame{width:var(--frame,56px);height:var(--frame,56px);border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--tone) 8%,white);border:1px solid color-mix(in srgb,var(--tone) 18%,transparent);transition:background .18s}
+.icon-tile:hover .icon-frame{background:color-mix(in srgb,var(--tone) 14%,white)}
+.icon-tile .icon-frame .ax-icon{width:var(--glyph,30px);height:var(--glyph,30px)}
+.icon-tile figcaption{min-width:0}
+.icon-tile .icon-name{font-size:13.5px;font-weight:700;color:var(--ink);display:block}
+.icon-tile .icon-key{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:#8b97a5;display:block;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-tile .icon-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.icon-tile .icon-tag{font-size:10px;font-weight:700;padding:3px 7px;border-radius:99px;background:#f1f6f5;color:#5b6a7c;border:1px solid var(--border)}
+.icon-tile .icon-tag.tone{background:color-mix(in srgb,var(--tone) 10%,white);color:var(--tone);border-color:color-mix(in srgb,var(--tone) 22%,transparent)}
+.icon-tile .icon-tag.p0{background:rgba(25,183,176,.09);color:var(--deep)}
+.icon-tile .icon-actions{display:flex;gap:6px;margin-top:auto;padding-top:9px;border-top:1px solid rgba(16,32,51,.06)}
+.icon-tile .icon-actions button{flex:1;min-height:30px;border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:8px;font-size:11.5px;font-weight:650;cursor:pointer}
+.icon-tile .icon-actions button:hover{border-color:rgba(25,183,176,.34);color:var(--deep);background:var(--aqua)}
+.icon-tile .icon-actions button[data-done="1"]{border-color:rgba(40,168,107,.34);color:#218956;background:rgba(40,168,107,.08)}
+
+/* tone carriers — tone lives on the container, never inside the icon */
+.icon-tile.module-core{--tone:var(--teal)}
+.icon-tile.module-cobalt{--tone:var(--cobalt)}
+.icon-tile.module-lavender{--tone:var(--lavender)}
+.icon-tile.module-coral{--tone:var(--coral)}
+.icon-tile.module-amber{--tone:var(--amber)}
+
+/* ---- size ramp ------------------------------------------------------------ */
+.icon-grid[data-size="16"]{--frame:36px;--glyph:16px}
+.icon-grid[data-size="20"]{--frame:40px;--glyph:20px}
+.icon-grid[data-size="24"]{--frame:44px;--glyph:24px}
+.icon-grid[data-size="32"]{--frame:52px;--glyph:32px}
+.icon-grid[data-size="48"]{--frame:64px;--glyph:48px}
+.icon-grid[data-size="64"]{--frame:82px;--glyph:64px}
+.icon-grid[data-size="16"]{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.icon-grid[data-size="64"]{grid-template-columns:repeat(auto-fill,minmax(196px,1fr))}
+.icon-size-ramp{display:flex;align-items:flex-end;gap:16px;padding:14px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.icon-size-ramp figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:7px}
+.icon-size-ramp figcaption{font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace}
+
+/* ---- anatomy + swatches --------------------------------------------------- */
+.icon-anatomy{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:13px}
+.icon-anatomy-card{padding:15px;border:1px solid var(--border);border-radius:15px;background:#fff;box-shadow:var(--soft)}
+.icon-anatomy-card h3{margin:0 0 4px;font-size:14.5px}
+.icon-anatomy-card p{margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.5}
+.icon-role-row{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(16,32,51,.06)}
+.icon-role-row:last-child{border-bottom:0}
+.icon-role-swatch{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:#fff;border:1px solid var(--border);flex:0 0 40px}
+.icon-role-row b{font-size:13px;display:block}
+.icon-role-row span{font-size:11.5px;color:var(--muted);display:block;margin-top:2px}
+.icon-role-row code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--deep)}
+.icon-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.icon-swatch{min-width:118px;padding:11px;border:1px solid var(--border);border-radius:12px;background:#fff}
+.icon-swatch i{display:block;height:26px;border-radius:8px;margin-bottom:8px}
+.icon-swatch b{font-size:12px;display:block}
+.icon-swatch code{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted)}
+.icon-dodont{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.icon-dodont .dd-list{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+.icon-dodont .dd-item{width:62px;height:62px;border-radius:14px;display:grid;place-items:center;background:#f5faf9;border:1px solid var(--border);position:relative}
+.icon-dodont .dd-item.no{background:repeating-linear-gradient(135deg,#fff,#fff 6px,#f4f7f6 6px,#f4f7f6 12px)}
+.icon-dodont .dd-item.no::after{content:"";position:absolute;inset:0;border-radius:14px;border:1.5px solid rgba(217,87,71,.45);background:linear-gradient(to bottom right,transparent calc(50% - 1px),rgba(217,87,71,.55) calc(50% - 1px),rgba(217,87,71,.55) calc(50% + 1px),transparent calc(50% + 1px))}
+.icon-dodont .dd-item.no .ax-icon{opacity:.45}
+
+/* anatomy demonstration: the same geometry decomposed */
+.icon-anatomy-demo{width:104px;height:104px;border-radius:20px;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,var(--aqua),#fff);border:1px solid var(--border);margin:0 auto 12px}
+.icon-anatomy-demo .ax-icon{width:64px;height:64px}
+.icon-anatomy-demo.body-only .ax-icon .line,.icon-anatomy-demo.body-only .ax-icon .fold{opacity:0}
+.icon-anatomy-demo.no-fold .ax-icon .fold{opacity:0}
+.icon-anatomy-demo.fold-only .ax-icon .outline,.icon-anatomy-demo.fold-only .ax-icon .line{opacity:0}
+.icon-tile .icon-tag.pack{background:rgba(25,183,176,.09);color:var(--deep)}
+.icon-tile .icon-tag.shell{background:rgba(37,99,235,.08);color:var(--cobalt)}
+
+/* ---- QA / validation panel ------------------------------------------------ */
+.icon-qa{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px}
+.icon-qa .qa-card{padding:13px;border:1px solid var(--border);border-radius:13px;background:#fff}
+.icon-qa .qa-card b{display:block;font-size:21px;color:var(--ink)}
+.icon-qa .qa-card span{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.icon-qa .qa-card.ok b{color:#218956}
+.icon-qa .qa-card.warn b{color:#a86600}
+.icon-checklist{display:grid;gap:7px;margin-top:12px}
+.icon-checklist div{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--muted);line-height:1.5}
+.icon-checklist svg{flex:0 0 15px;margin-top:2px}
+
+/* ---- empty state ---------------------------------------------------------- */
+.icon-empty{padding:32px;text-align:center;border:1px dashed var(--border);border-radius:15px;color:var(--muted);font-size:13px}
+
+/* ---- motion contract ------------------------------------------------------ */
+/* The pack's one teal fold is the only thing that moves on hover, matching
+   v1.html's .ax-icon .fold transition. Respect reduced motion. */
+.icon-tile .ax-icon .fold{transition:opacity 180ms ease-out,transform 220ms ease-out}
+.icon-tile:hover .ax-icon .fold{opacity:.86}
+@media(prefers-reduced-motion:reduce){
+  .icon-tile,.icon-tile .ax-icon .fold,.icon-tile .icon-frame{transition:none}
+  .icon-tile:hover{transform:none}
+}
+
+@media(max-width:1100px){
+  .icon-anatomy,.icon-dodont{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .icon-toolbar input[type="search"]{min-width:0;flex:1}
+  .icon-grid{grid-template-columns:repeat(auto-fill,minmax(146px,1fr))}
+  .icon-size-ramp{flex-wrap:wrap}
+}

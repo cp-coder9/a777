@@ -7,13 +7,20 @@
   let scopeKey = null;
   let dismissedRoute = null;
   let bootstrapRoute = null;
+  let tutorial = null;
+  let tutorialScope = null;
+  let tutorialBusy = false;
+  let tutorialVisible = false;
 
   function shellScope() {
     const shell = window.__ARCHITEX_SHELL_STATE__;
     const membership = shell?.session?.memberships?.[0];
     if (!shell?.session || !membership) return null;
-    const route = typeof state !== 'undefined' ? (state.tool || state.global || 'command') : 'command';
+    const workspaceRoute = typeof state !== 'undefined' ? (state.tool || state.global || 'command') : 'command';
     const projectId = typeof state !== 'undefined' && state.mode === 'project' ? shell.selectedProjectId || null : null;
+    // Keep general guidance available to every signed-in profile without
+    // granting tool permissions or inventing an authorised project context.
+    const route = !projectId || membership.role === 'viewer' ? 'command' : workspaceRoute;
     const selectedRecordId = document.querySelector('#main [data-record-id][aria-selected="true"]')?.dataset?.recordId || null;
     return { shell, membership, route, projectId, selectedRecordId };
   }
@@ -26,6 +33,11 @@
       scopeKey = nextKey;
       conversationId = null;
       bootstrapRoute = null;
+      tutorial = null;
+      tutorialScope = null;
+      tutorialVisible = false;
+      tutorialBusy = false;
+      renderTutorial();
       clearMessages();
     }
     api.setOrganisation(scope.membership.organisationId);
@@ -52,6 +64,22 @@
     root.setAttribute('aria-label', 'Architex guided Wingman');
     root.innerHTML = `<button class="wingman-bird" type="button" aria-label="Open guided Wingman" aria-expanded="false"><img src="/assets/img/wingman-bird.svg" alt=""></button><div class="wingman-suggestion"><span>Ask Wingman about this workspace.</span><button type="button">Ask</button></div><section class="wingman-panel" aria-label="Guided Wingman panel"><header class="wingman-head"><img src="/assets/img/wingman-bird.svg" alt=""><div><strong>Wingman</strong><span>Guided copilot · Nemotron 3.5 Lightning</span></div><button class="wingman-close" type="button" aria-label="Close Wingman">×</button></header><div class="wingman-context">Waiting for an authenticated workspace</div><div class="wingman-messages" aria-live="polite"></div><form class="wingman-compose"><textarea name="prompt" maxlength="4000" aria-label="Ask Wingman" placeholder="Ask what to review or where to go next…" required></textarea><button type="submit">Send</button><span role="status"></span></form></section>`;
     document.body.appendChild(root);
+    const tutorialButton = document.createElement('button');
+    tutorialButton.type = 'button';
+    tutorialButton.className = 'wingman-tour-toggle';
+    tutorialButton.textContent = 'Tutorial';
+    tutorialButton.setAttribute('aria-label', 'Open or replay your role tutorial');
+    root.querySelector('.wingman-close').before(tutorialButton);
+    tutorialButton.addEventListener('click', async () => {
+      tutorialVisible = true;
+      if (!tutorial) await loadTutorial(true);
+      renderTutorial();
+    });
+    const tutorialPanel = document.createElement('section');
+    tutorialPanel.className = 'wingman-tour';
+    tutorialPanel.setAttribute('aria-label', 'Your role tutorial');
+    tutorialPanel.hidden = true;
+    root.querySelector('.wingman-context').after(tutorialPanel);
     root.querySelector('.wingman-bird').addEventListener('click', open);
     root.querySelector('.wingman-suggestion button').addEventListener('click', open);
     root.querySelector('.wingman-close').addEventListener('click', close);
@@ -100,6 +128,9 @@
       return;
     }
     updateContext();
+    if (!tutorial) await loadTutorial(true);
+    if (tutorial && ['new','in_progress'].includes(tutorial.progress.status)) tutorialVisible = true;
+    renderTutorial();
     if (bootstrapRoute === `${scope.route}:${scope.projectId || ''}`) return;
     bootstrapRoute = `${scope.route}:${scope.projectId || ''}`;
     const query = new URLSearchParams({ route: scope.route });
@@ -125,13 +156,117 @@
     const context = root.querySelector('.wingman-context');
     const suggestion = root.querySelector('.wingman-suggestion span');
     if (!scope) {
+      tutorial = null;
+      tutorialScope = null;
+      tutorialVisible = false;
+      scopeKey = null;
+      renderTutorial();
       context.textContent = 'Sign in to use permission-aware guidance';
       if (root.dataset.wingmanState !== 'expanded') setState('quiet');
       return;
     }
+    if (tutorialScope !== scopeKey) loadTutorial();
     context.textContent = `${scope.route}${scope.projectId ? ' · current project' : ' · portfolio scope'}`;
-    suggestion.textContent = `Ask Wingman about ${scope.route.replaceAll('_', ' ')}.`;
+    suggestion.textContent = tutorial?.progress.status === 'new' ? `New here? Start your ${tutorial.label} tour.` : `Ask Wingman about ${scope.route.replaceAll('_', ' ')}.`;
     if (root.dataset.wingmanState !== 'expanded' && dismissedRoute !== scope.route) setState('suggestion');
+  }
+
+  async function loadTutorial(retry = false) {
+    const scope = configureApi();
+    if (!scope || (!retry && tutorialScope === scopeKey)) return;
+    const requestedScope = scopeKey;
+    tutorialScope = requestedScope;
+    try {
+      const result = await api.get('/wingman/tutorial');
+      if (scopeKey !== requestedScope) return;
+      tutorial = result;
+      if (result.progress.status === 'new') {
+        root.querySelector('.wingman-suggestion span').textContent = `New here? Start your ${result.label} tour.`;
+        if (root.dataset.wingmanState === 'expanded') tutorialVisible = true;
+      }
+      renderTutorial();
+    } catch (error) {
+      if (scopeKey !== requestedScope) return;
+      if (tutorialVisible) renderTutorial('Could not load your tutorial. Use Retry; chat is still available.');
+    }
+  }
+
+  function renderTutorial(error = '') {
+    const panel = root?.querySelector('.wingman-tour');
+    if (!panel) return;
+    panel.replaceChildren();
+    panel.hidden = !tutorialVisible;
+    if (!tutorialVisible) return;
+    const add = (tag, text, className) => {
+      const element = document.createElement(tag);
+      element.textContent = text;
+      if (className) element.className = className;
+      panel.appendChild(element);
+      return element;
+    };
+    const actions = document.createElement('div');
+    actions.className = 'wingman-tour-actions';
+    const button = (label, action) => {
+      const element = document.createElement('button');
+      element.type = 'button'; element.textContent = label;
+      element.disabled = tutorialBusy;
+      element.addEventListener('click', action);
+      actions.appendChild(element);
+      return element;
+    };
+    if (!tutorial) {
+      add('p', error || 'Loading your role tutorial…');
+      button('Retry', () => loadTutorial(true));
+      panel.appendChild(actions);
+      return;
+    }
+    const progress = tutorial.progress;
+    const step = tutorial.steps[progress.step];
+    add('small', `${tutorial.label} · ${progress.status === 'completed' ? 'Tour complete' : `Step ${progress.step + 1} of ${tutorial.steps.length}`}`);
+    const heading = add('h3', progress.status === 'completed' ? 'You are ready to explore' : step.title);
+    heading.tabIndex = -1;
+    add('p', progress.status === 'completed' ? 'Tutorial finished. Ask Wingman whenever you need help, or replay the tour.' : step.body);
+    if (error) add('p', error, 'wingman-tour-error').setAttribute('role','alert');
+    if (progress.status === 'in_progress') {
+      button('Show me', () => navigateToRoute(step.route));
+      const back = button('Back', () => tutorialAction('back'));
+      back.disabled = tutorialBusy || progress.step === 0;
+      button(progress.step === tutorial.steps.length - 1 ? 'Finish' : 'Next', () => tutorialAction(progress.step === tutorial.steps.length - 1 ? 'finish' : 'next'));
+      button('Ask Wingman', () => {
+        const input = root.querySelector('[name="prompt"]');
+        input.value = `I am a ${tutorial.label}. Please explain this tutorial step and my next safe action: ${step.title}. ${step.body}`;
+        input.focus();
+      });
+      button('Skip for now', () => tutorialAction('skip'));
+    } else {
+      button(progress.status === 'completed' ? 'Replay' : progress.status === 'dismissed' ? 'Resume tour' : 'Start tour', () => tutorialAction(progress.status === 'completed' ? 'replay' : 'start'));
+      if (progress.status !== 'new') button('Restart', () => tutorialAction('replay'));
+      button('Skip for now', () => tutorialAction('skip'));
+    }
+    panel.appendChild(actions);
+  }
+
+  async function tutorialAction(action) {
+    if (tutorialBusy || !tutorial || !configureApi()) return;
+    const requestedScope = scopeKey;
+    tutorialBusy = true;
+    renderTutorial();
+    try {
+      const result = await api.post('/wingman/tutorial', {action, revision:tutorial.progress.revision, profile:tutorial.profile, version:tutorial.version});
+      if (scopeKey !== requestedScope) return;
+      tutorial = result;
+      tutorialVisible = action !== 'skip';
+      tutorialBusy = false;
+      renderTutorial();
+      root.querySelector('.wingman-tour h3')?.focus();
+    } catch (error) {
+      if (scopeKey !== requestedScope) return;
+      tutorialBusy = false;
+      if (error.code === 'tutorial_revision_conflict') {
+        await loadTutorial(true);
+        renderTutorial('Progress changed in another tab. Review the current step and try again.');
+      } else renderTutorial('Progress was not saved. Please try again.');
+    }
   }
 
   function installTopButton() {
@@ -237,7 +372,7 @@
 
   function navigateToRoute(route) {
     if (!route) return;
-    const globalRoutes = ['command', 'projects', 'tools', 'inbox', 'documents', 'finance', 'cpd', 'feedback', 'dedicated', 'completeness', 'settings'];
+    const globalRoutes = ['command', 'projects', 'tools', 'inbox', 'documents', 'finance', 'knowledge', 'cpd', 'feedback', 'dedicated', 'completeness', 'settings'];
     if (globalRoutes.includes(route) && typeof window.openGlobal === 'function') {
       window.openGlobal(route);
       return;

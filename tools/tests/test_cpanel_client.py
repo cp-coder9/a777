@@ -93,6 +93,20 @@ class RedactionTest(unittest.TestCase):
 
 
 class CpanelClientTest(unittest.TestCase):
+    def test_redirects_reject_cross_origin_downgrade_and_same_origin(self):
+        import urllib.request
+        from tools.cpanel_client import RejectRedirects
+        request = urllib.request.Request('https://account.example:2083/path', headers={'Authorization':'Basic fixture', 'Cookie':'fixture'})
+        for target in ('https://evil.example/path', 'http://account.example:2083/path', 'https://account.example:443/path', 'https://account.example:2083/other'):
+            with self.subTest(target=target), self.assertRaises(CpanelError):
+                RejectRedirects().redirect_request(request, None, 302, 'redirect', {}, target)
+
+    def test_provider_error_does_not_expose_unknown_runtime_secrets(self):
+        client = configured_client(FakeTransport([response({'result': {'status':0, 'errors':['DB_PASSWORD=unknown-runtime-secret']}})]))
+        with self.assertRaises(CpanelError) as caught:
+            client.list_files('/home/archite4/public_html')
+        self.assertNotIn('unknown-runtime-secret', str(caught.exception))
+
     def test_session_auth_uses_validated_cpsess_prefix_without_authorization_header(self) -> None:
         transport = FakeTransport([response({"status": 1, "errors": None, "data": {"home": "/home/archite4"}})])
         client = CpanelClient(
@@ -170,14 +184,14 @@ class CpanelClientTest(unittest.TestCase):
         with self.assertRaises(CpanelError) as caught:
             client.list_files("/home/archite4/public_html")
 
-        self.assertIn("denied", str(caught.exception))
+        self.assertIn("operation failed", str(caught.exception))
         self.assertNotIn("panel-secret", str(caught.exception))
 
     def test_rejects_non_json_response(self) -> None:
         transport = FakeTransport([HttpResponse(200, {"Content-Type": "text/html"}, b"<html>login</html>")])
         client = configured_client(transport)
 
-        with self.assertRaisesRegex(CpanelError, "valid JSON"):
+        with self.assertRaisesRegex(CpanelError, "JSON contract"):
             client.list_files("/home/archite4/public_html")
 
     def test_upload_uses_multipart_and_target_filename(self) -> None:
@@ -275,7 +289,7 @@ class CpanelClientTest(unittest.TestCase):
         transport = FakeTransport([api2_ok([{"result": 0, "err": "extract failed"}])])
         client = configured_client(transport)
 
-        with self.assertRaisesRegex(CpanelError, "extract failed"):
+        with self.assertRaisesRegex(CpanelError, "operation failed"):
             client.extract_archive("/home/archite4/public_html/release.zip")
 
     def test_exists_matches_exact_basename(self) -> None:

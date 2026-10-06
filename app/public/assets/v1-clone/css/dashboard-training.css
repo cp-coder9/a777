@@ -1,0 +1,51 @@
+/* Production-only responsive corrections and account-scoped training. Reference assets stay immutable. */
+.v1-training-entry{display:block;margin:0 0 12px;padding:10px 14px;border:1px solid var(--teal);border-radius:10px;background:var(--aqua);color:var(--ink);cursor:pointer;text-align:left;max-width:100%;min-height:44px}
+.v1-training{width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;border:1px solid var(--border);border-radius:16px;background:var(--white);color:var(--ink);box-shadow:var(--shadow);font-size:15px;line-height:1.6;overflow-wrap:anywhere}
+.v1-training::backdrop{background:rgba(16,32,51,.55)}
+.v1-training header,.v1-training footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.v1-training h2{margin:0;font-size:22px}.v1-training h3{font-size:19px}.v1-training h4{margin-bottom:4px}
+.v1-training button{min-height:44px;white-space:normal}
+.v1-training button:disabled{opacity:.5;cursor:default}.v1-training :focus-visible,.v1-training-entry:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px}
+.v1-training progress{width:100%;accent-color:var(--deep)}.v1-training li{margin-bottom:10px}.v1-training details{margin:16px 0}.v1-training summary{cursor:pointer}
+.v1-training-checkpoint{display:flex;gap:12px;align-items:flex-start;margin:22px 0;cursor:pointer}.v1-training-checkpoint input{width:22px;height:22px;flex-shrink:0}
+@media(max-width:760px){
+ .app,.app.rail-expanded{--rail:58px;--nav:0px;--inspector:0px;grid-template-columns:58px 0 minmax(0,1fr) 0;width:100%;max-width:100vw;transition:none}
+ .app .topbar{grid-column:3/5;overflow-x:auto;overflow-y:hidden;gap:8px;padding:0 8px;max-width:100%}.topbar>*{flex-shrink:0}.topbar .crumb{max-width:160px;overflow:hidden;text-overflow:ellipsis}.topbar .role-switch{flex-shrink:0}
+ .app .main{grid-column:3/5;min-width:0;max-width:100%;padding:12px 10px}.app .navigator,.app .inspector{display:none}
+ .app .project-hero,.app .role-banner,.app .page-head{flex-wrap:wrap;min-width:0}.app .tool-library{grid-template-columns:minmax(0,1fr)}
+ .v1-training{padding:16px}.v1-training footer{align-items:stretch}.v1-training footer button{flex:1 1 100%}
+}
+@media(max-width:760px){.app .os-label,.app .os-meta,.app .brand-copy,.app .user-copy,.app .rail-caption,.app .rail-close{display:none}.app .os-item{width:58px;padding:0 8px}.app .os-rail{overflow:hidden}.app .role-switch{display:flex}}
+
+
+/* Keep shared module context readable without pushing mobile controls off canvas. */
+@media(max-width:760px){
+ .app .tool-banner,.app .mtg-context-ribbon{flex-wrap:wrap;overflow-wrap:anywhere}
+ .app .tool-banner>*{min-width:0;max-width:100%}.app .tool-banner .spacer{display:none}
+ .app .mtg-shell,.app .mtg-shell>*{min-width:0;max-width:100%;box-sizing:border-box}
+ .app .mtg-context-ribbon .spacer{display:none}
+ .app :is(.proc-workspace,.survey-workspace,.models-workspace,.compliance-workspace,.rg-workspace) .panel{max-width:100%;overflow-x:auto}
+}
+
+.cpd-workspace :is(select,input[type="text"]){font:inherit;color:var(--ink);background:var(--white);border:1px solid var(--border);border-radius:10px;padding:9px 12px;min-height:40px;max-width:100%;box-sizing:border-box}
+.cpd-workspace label{display:inline-flex;align-items:center;flex-wrap:wrap;gap:8px;max-width:100%}
+.cpd-workspace button{min-height:40px}
+
+/* Production-only native forms, using the canonical Refuse form tokens. */
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px 14px;align-items:end}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) label:has(input,select,textarea){display:flex;flex-direction:column;align-items:stretch;gap:4px;font-size:12.5px;color:var(--muted);min-width:0;margin:8px 0}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font:inherit;font-size:12.5px;color:var(--ink);background:var(--white);border:1px solid rgba(16,32,51,.14);border-radius:9px;padding:8px 10px;min-height:40px;width:100%;max-width:100%;box-sizing:border-box}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) textarea{resize:vertical;min-height:80px}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) label:has(textarea){grid-column:1/-1}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) label:has(input[type=checkbox],input[type=radio]){flex-direction:row;align-items:center;gap:7px}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) :is(input[type=checkbox],input[type=radio]){width:18px;height:18px;flex-shrink:0;accent-color:var(--teal)}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) :is(input,select,textarea):focus-visible{outline:2px solid rgba(25,183,176,.35);outline-offset:1px;border-color:var(--teal)}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) form>.btn{justify-self:start;min-height:40px;margin:8px 0}
+
+/* Match the canonical page heading when Team Workspace replaces its permission/loading shell. */
+#main .gov-workspace:is([data-gov-tool="Team Workspace"],[data-gov-tool="Admin Review"]) h1{font-size:28px}
+
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) .panel{padding:16px;margin:12px 0;max-width:100%;box-sizing:border-box;overflow-x:auto}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) table{border-collapse:collapse;min-width:100%}
+#main :is(.cpd-workspace,.models-workspace,.survey-workspace,.proc-workspace,.proposals-workspace,.documents-workspace,.reg-workspace,.rfi-workspace,.sf-workspace,.mun-workspace,.sc-workspace,.calc-workspace,.com-workspace,.compliance-workspace,.rg-workspace,.gov-workspace,.approvals-workspace,.closeout-workspace,.explorer-workspace) :is(th,td){padding:8px 10px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+#main .btn:disabled{opacity:.5;cursor:not-allowed}

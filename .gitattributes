@@ -1,0 +1,3 @@
+# Preserve canonical fixture and applied SQL migration bytes across platforms.
+v1.html -text
+app/database/migrations/*.sql -text

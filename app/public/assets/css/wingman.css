@@ -8,7 +8,7 @@
 .wingman-assistant[data-wingman-state="suggestion"] .wingman-suggestion{display:flex}
 .wingman-suggestion button{flex:0 0 auto;border:0;border-radius:8px;padding:6px 8px;background:#eaf8f6;color:#0b6560;font-weight:750;cursor:pointer}
 .wingman-panel{display:none;width:min(420px,calc(100vw - 32px));max-height:calc(100vh - 92px);overflow:hidden;border:1px solid #cbd9d6;border-radius:22px;background:#fff;box-shadow:0 28px 80px rgba(16,32,51,.24);pointer-events:auto}
-.wingman-assistant[data-wingman-state="expanded"] .wingman-panel{display:grid;grid-template-rows:auto auto minmax(140px,1fr) auto}
+.wingman-assistant[data-wingman-state="expanded"] .wingman-panel{display:grid;grid-template-rows:auto auto auto minmax(100px,1fr) auto}
 .wingman-assistant[data-wingman-state="expanded"]>.wingman-bird,.wingman-assistant[data-wingman-state="expanded"]>.wingman-suggestion{display:none}
 .wingman-head{display:flex;align-items:center;gap:11px;padding:15px 16px;border-bottom:1px solid #dbe5e3;background:linear-gradient(135deg,#eaf8f6,#fff)}
 .wingman-head img{width:38px;height:38px}
@@ -39,12 +39,23 @@ button.wingman-citation,button.wingman-navigation{cursor:pointer}
 .wingman-compose textarea{min-height:44px;max-height:120px;resize:vertical;padding:10px;border:1px solid #adc1bd;border-radius:11px;color:#102033;font:500 13px/1.35 var(--fp-body,Aptos,sans-serif)}
 .wingman-compose button{align-self:end;min-height:42px;padding:0 14px;border:0;border-radius:11px;background:#0f817b;color:#fff;font-weight:800;cursor:pointer}
 .wingman-compose [role="status"]{grid-column:1/-1;color:#526966;font-size:10px}
+.wingman-tour-toggle{margin-left:auto;border:1px solid #b9d8d4;background:#fff;color:#0b6560;border-radius:8px;padding:7px 9px;font:inherit;font-size:11px;cursor:pointer}
+.wingman-tour-toggle+.wingman-close{margin-left:0}
+.wingman-tour{padding:12px 14px;border-bottom:1px solid #cde2df;background:#eaf8f6;color:#24413e;max-height:42vh;overflow:auto;font-size:12px;line-height:1.5}
+.wingman-tour[hidden]{display:none}
+.wingman-tour h3{margin:6px 0;font-size:15px;color:#102033}
+.wingman-tour p{margin:6px 0 10px}
+.wingman-tour-actions{display:flex;gap:6px;flex-wrap:wrap}
+.wingman-tour-actions button{border:1px solid #b9d8d4;border-radius:9px;background:#fff;color:#0b6560;padding:8px 10px;min-height:36px;cursor:pointer;font:inherit;font-weight:650}
+.wingman-tour-actions button:disabled{opacity:.5;cursor:default}
+.wingman-tour-error{color:#8c332e}
+.wingman-tour :focus-visible,.wingman-tour-toggle:focus-visible{outline:2px solid #0f817b;outline-offset:2px}
 
 @media (max-width: 760px){
   .wingman-assistant{top:auto;right:12px;bottom:76px}
   .wingman-bird{width:54px;height:54px}
   .wingman-panel{position:fixed;inset:10px;width:auto;max-height:none;border-radius:18px}
-  .wingman-assistant[data-wingman-state="expanded"] .wingman-panel{grid-template-rows:auto auto minmax(0,1fr) auto}
+  .wingman-assistant[data-wingman-state="expanded"] .wingman-panel{grid-template-rows:auto auto auto minmax(0,1fr) auto}
   .wingman-compose textarea{font-size:16px}
 }
 

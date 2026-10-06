@@ -23,14 +23,21 @@ final readonly class ReleaseBuilder
         $this->dependencyInstaller = $dependencyInstaller ?? $this->installDependencies(...);
     }
 
-    public function build(string $version): string
+    public function build(string $version, string $environment = 'production', bool $allowDirtyStaging = false): string
     {
+        if (!in_array($environment, ['production', 'staging'], true) || ($allowDirtyStaging && $environment !== 'staging')) {
+            throw new InvalidArgumentException('Dirty source overrides are permitted only for explicit staging builds.');
+        }
         if (preg_match('/\A[a-z0-9][a-z0-9._-]{0,63}\z/i', $version) !== 1) {
             throw new InvalidArgumentException('The release version is invalid.');
         }
         $source = realpath($this->projectRoot);
         if (!is_string($source) || !is_file($source . '/composer.lock') || !is_dir($source . '/app/public')) {
             throw new RuntimeException('The project source is incomplete.');
+        }
+        $provenance = $this->provenance($source);
+        if (($provenance['dirty'] || $provenance['commit'] === null) && !$allowDirtyStaging) {
+            throw new RuntimeException('A clean, identifiable Git revision is required for this release.');
         }
         if (!is_dir($this->outputRoot) && !mkdir($this->outputRoot, 0700, true) && !is_dir($this->outputRoot)) {
             throw new RuntimeException('The release output directory is unavailable.');
@@ -42,7 +49,7 @@ final readonly class ReleaseBuilder
         $staging = $output . DIRECTORY_SEPARATOR . '.build-' . $version . '-' . bin2hex(random_bytes(6));
         if (!mkdir($staging, 0700, true)) throw new RuntimeException('The release staging directory is unavailable.');
         try {
-            foreach (['public','src','database','cron','config'] as $directory) {
+            foreach (['public','src','views','database','cron','config'] as $directory) {
                 $this->copyTree($source . '/app/' . $directory, $staging . '/' . $directory);
             }
             mkdir($staging . '/bin', 0700, true);
@@ -55,11 +62,17 @@ final readonly class ReleaseBuilder
             $composer['autoload']['psr-4']['Architex\\'] = 'src/';
             file_put_contents($staging . '/composer.json', json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
             copy($source . '/composer.lock', $staging . '/composer.lock');
+            $sourceFiles = $this->manifestFiles($staging);
+            unset($sourceFiles['public/build-info.json']);
+            $snapshot = hash('sha256', json_encode($sourceFiles, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
             ($this->dependencyInstaller)($staging);
             if (!is_file($staging . '/vendor/autoload.php')) throw new RuntimeException('Production dependencies were not installed.');
-            $sourceCommit=$this->commit($source);$builtAt=(new \DateTimeImmutable())->format(DATE_ATOM);$branch=$this->branch($source);
-            file_put_contents($staging . '/release.json', json_encode(['format'=>'architex-release-v1','version'=>$version,'php'=>'8.3','sourceCommit'=>$sourceCommit,'branch'=>$branch,'builtAt'=>$builtAt,'apiMode'=>'php-shared-hosting'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
-            file_put_contents($staging . '/public/build-info.json', json_encode(['format'=>'architex-build-info-v1','version'=>$version,'branch'=>$branch,'sourceCommit'=>$sourceCommit,'builtAt'=>$builtAt,'php'=>'8.3','apiMode'=>'php-shared-hosting'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+            $after = $this->provenance($source);
+            $dirty = $provenance['dirty'] || $after['dirty'] || $provenance['commit'] !== $after['commit'];
+            if (($dirty || $provenance['commit'] === null) && !$allowDirtyStaging) throw new RuntimeException('Source must remain clean and unchanged while building.');
+            $metadata = ['version'=>$version,'php'=>'8.3','sourceCommit'=>$dirty ? null : $provenance['commit'],'sourceBaseCommit'=>$provenance['commit'],'sourceDirty'=>$dirty,'sourceSnapshotSha256'=>$snapshot,'environment'=>$environment,'branch'=>$provenance['branch'],'builtAt'=>(new \DateTimeImmutable())->format(DATE_ATOM),'apiMode'=>'php-shared-hosting'];
+            file_put_contents($staging . '/release.json', json_encode(['format'=>'architex-release-v1']+$metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
+            file_put_contents($staging . '/public/build-info.json', json_encode(['format'=>'architex-build-info-v1']+$metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
             $files = $this->manifestFiles($staging);
             file_put_contents($staging . '/release-manifest.json', json_encode(['format'=>'architex-release-manifest-v1','version'=>$version,'files'=>$files], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
             $report = (new ReleaseVerifier())->verify($staging);
@@ -116,6 +129,7 @@ final readonly class ReleaseBuilder
         foreach ($iterator as $item) {
             if ($item->isLink()) throw new RuntimeException('Release sources may not contain symbolic links.');
             $relative = substr($item->getPathname(), strlen($source) + 1);
+            if (basename($source) === 'config' && str_replace('\\', '/', $relative) === 'runtime.php') continue;
             $target = $destination . DIRECTORY_SEPARATOR . $relative;
             if ($item->isDir()) {
                 if (!is_dir($target) && !mkdir($target, 0700, true)) throw new RuntimeException('A release directory could not be created.');
@@ -139,21 +153,21 @@ final readonly class ReleaseBuilder
         return $files;
     }
 
-    private function commit(string $source): ?string
+    /** @return array{commit:?string,branch:string,dirty:bool} */
+    private function provenance(string $source): array
     {
-        $head = $source . '/.git/HEAD';
-        if (!is_file($head)) return null;
-        $value = trim((string)file_get_contents($head));
-        if (str_starts_with($value, 'ref: ')) {
-            $ref = $source . '/.git/' . substr($value, 5);
-            $value = is_file($ref) ? trim((string)file_get_contents($ref)) : '';
-        }
-        return preg_match('/\A[a-f0-9]{40}\z/', $value) === 1 ? $value : null;
+        $commit = $this->git($source, ['rev-parse', '--verify', 'HEAD']);
+        $status = $this->git($source, ['status', '--porcelain', '--untracked-files=all']);
+        return ['commit'=>is_string($commit) && preg_match('/\A[a-f0-9]{40}\z/', $commit) === 1 ? $commit : null,'branch'=>$this->git($source, ['rev-parse', '--abbrev-ref', 'HEAD']) ?? 'unknown','dirty'=>$status === null || $status !== ''];
     }
 
-    private function branch(string$source):string
+    /** @param list<string> $arguments */
+    private function git(string $source, array $arguments): ?string
     {
-        $head=$source.'/.git/HEAD';if(!is_file($head))return'unknown';$value=trim((string)file_get_contents($head));return str_starts_with($value,'ref: refs/heads/')?substr($value,16):'detached';
+        $process = proc_open(['git', '-C', $source, ...$arguments], [['pipe','r'],['pipe','w'],['pipe','w']], $pipes);
+        if (!is_resource($process)) return null;
+        fclose($pipes[0]);$output = stream_get_contents($pipes[1]);fclose($pipes[1]);stream_get_contents($pipes[2]);fclose($pipes[2]);
+        return proc_close($process) === 0 && is_string($output) ? trim($output) : null;
     }
 
     private function removeTree(string $path): void

@@ -67,14 +67,38 @@ abstract class MariaDbTestCase extends TestCase
 
     private function resetData(): void
     {
-        $tables = $this->pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND table_name<>'schema_migrations' AND table_name NOT LIKE '__architex\\_test\\_baseline\\_%' ESCAPE '\\\\' ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
+        // A failed test must not leak its transaction into cleanup or the next test.
+        if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+        $rows = $this->pdo->query("SELECT table_name, engine FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' ORDER BY table_name")->fetchAll(PDO::FETCH_ASSOC);
+        $tables = [];
+        $transactional = true;
+        foreach ($rows as $row) {
+            $table = (string) $row['table_name'];
+            if ($table === 'schema_migrations' || str_starts_with($table, self::BASELINE_PREFIX)) continue;
+            $tables[] = $table;
+            if (strtoupper((string) $row['engine']) !== 'INNODB') $transactional = false;
+        }
+        // DELETE preserves auto-increment counters and invokes triggers, unlike TRUNCATE.
+        // Keep the original reset semantics if a future fixture introduces either feature.
+        $hasSequences = (int) $this->pdo->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND extra LIKE '%auto_increment%'")->fetchColumn() > 0;
+        $hasTriggers = (int) $this->pdo->query("SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema=DATABASE()")->fetchColumn() > 0;
+        $transactional = $transactional && !$hasSequences && !$hasTriggers;
         $this->pdo->exec('SET FOREIGN_KEY_CHECKS=0');
         try {
-            foreach ($tables as $table) $this->pdo->exec('TRUNCATE TABLE `' . str_replace('`', '``', (string) $table) . '`');
+            if ($transactional) $this->pdo->beginTransaction();
+            // Windows TRUNCATE recreates every table's files; one DELETE transaction avoids
+            // hundreds of synchronous DDL operations without weakening data isolation.
+            foreach ($tables as $table) {
+                $this->pdo->exec(($transactional ? 'DELETE FROM `' : 'TRUNCATE TABLE `') . str_replace('`', '``', $table) . '`');
+            }
             foreach (self::SEED_TABLES as $table) {
                 $baseline = self::BASELINE_PREFIX . $table;
                 $this->pdo->exec("INSERT INTO `$table` SELECT * FROM `$baseline`");
             }
+            if ($transactional) $this->pdo->commit();
+        } catch (\Throwable $error) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
         } finally {
             $this->pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         }

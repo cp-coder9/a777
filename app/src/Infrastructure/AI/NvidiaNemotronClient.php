@@ -10,6 +10,12 @@ final readonly class NvidiaNemotronClient implements WingmanModel
 {
     public function __construct(private WingmanConfig $config, private NvidiaTransport $transport) {}
 
+    /** Configuration only: this does not claim a successful provider response. */
+    public function diagnostics(): array
+    {
+        return $this->config->diagnostics();
+    }
+
     /**
      * @param list<array{role:string,content:string}> $messages
      * @param list<array<string,mixed>> $tools
@@ -72,11 +78,12 @@ final readonly class NvidiaNemotronClient implements WingmanModel
                 throw new NvidiaNemotronException('provider_response_invalid');
             }
             try {
+                $object = json_decode($call['function']['arguments'], false, 32, JSON_THROW_ON_ERROR);
                 $arguments = json_decode($call['function']['arguments'], true, 32, JSON_THROW_ON_ERROR);
             } catch (JsonException) {
                 throw new NvidiaNemotronException('provider_response_invalid');
             }
-            if (!is_array($arguments) || array_is_list($arguments)) throw new NvidiaNemotronException('provider_response_invalid');
+            if (!$object instanceof \stdClass || !is_array($arguments)) throw new NvidiaNemotronException('provider_response_invalid');
             $toolCalls[] = [
                 'id' => is_string($call['id'] ?? null) ? $call['id'] : '',
                 'name' => $call['function']['name'],

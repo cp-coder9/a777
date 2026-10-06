@@ -7,7 +7,7 @@ namespace Architex\Platform\OperatingSystem;
 final readonly class ApiCapabilityService
 {
     /** @return array<string,mixed> */
-    public function report():array
+    public function report(string $membershipRole='',?string $profileRole=null):array
     {
         $capabilities=[
             'projects'=>$this->capability('api_backed','review','Authenticated MariaDB project passport, lifecycle and record routes.',false),
@@ -20,7 +20,7 @@ final readonly class ApiCapabilityService
             'municipal'=>$this->capability('human_gated','municipal_submission','Readiness is advisory; actual authority submission and approval remain external human actions.',false),
             'deployment'=>$this->capability('human_gated','approval','Exact build provenance and smoke evidence are recorded; FTP promotion remains human controlled.',false),
         ];
-        return['status'=>'warn','generatedAt'=>(new \DateTimeImmutable())->format(DATE_ATOM),'capabilities'=>$capabilities,'warnings'=>['External payment, municipal, professional-body and deployment actions remain provider or human gated.']];
+        return['status'=>'warn','generatedAt'=>(new \DateTimeImmutable())->format(DATE_ATOM),'capabilities'=>$capabilities,'workspaces'=>\Architex\Platform\Toolbox\ProductionToolRegistry::workspaceCatalogue($membershipRole,$profileRole),'authorizationSource'=>'server_membership','warnings'=>['External payment, municipal, professional-body and deployment actions remain provider or human gated.']];
     }
 
     /** @return array{status:string,humanGate:string,detail:string,movesMoney:bool} */

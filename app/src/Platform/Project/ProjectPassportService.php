@@ -12,6 +12,31 @@ final readonly class ProjectPassportService
 {
     public function __construct(private PDO $pdo) {}
 
+    public function update(ProjectContext $context, UpdateProject $command): ProjectPassport
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $update = $this->pdo->prepare('UPDATE projects SET project_code=:code,project_name=:name,client_name=:client,municipality=:municipality,property_reference=:reference,property_use=:property_use,land_use_notes=:notes,lead_professional_role=:lead_role,version=version+1 WHERE id=UNHEX(:project_id) AND organisation_id=UNHEX(:organisation_id) AND version=:expected_version');
+            $update->execute(['code'=>$command->projectCode,'name'=>$command->projectName,'client'=>$command->clientName,'municipality'=>$command->municipality,'reference'=>$command->propertyReference,'property_use'=>$command->propertyUse,'notes'=>$command->landUseNotes,'lead_role'=>$command->leadProfessionalRole,'project_id'=>$context->projectId,'organisation_id'=>$context->organisationId,'expected_version'=>$command->expectedVersion]);
+            if ($update->rowCount() !== 1) {
+                // Distinguish a missing project from a stale optimistic version before raising.
+                $exists = $this->pdo->prepare('SELECT 1 FROM projects WHERE id=UNHEX(:project_id) AND organisation_id=UNHEX(:organisation_id)');
+                $exists->execute(['project_id'=>$context->projectId,'organisation_id'=>$context->organisationId]);
+                throw new ProjectWorkflowException($exists->fetchColumn() === false ? 'project_not_found' : 'stale_project_version');
+            }
+            $project = $this->find($context) ?? throw new ProjectWorkflowException('project_not_found');
+            (new AuditService($this->pdo))->append($context->organisationId, $context->userId, 'project.details_updated', 'project', $context->projectId, ['projectCode'=>$project->projectCode,'version'=>$project->version]);
+            $this->pdo->commit();
+            return $project;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            // A duplicate project_code within the organisation violates the unique key;
+            // translate it like create() so the controller's 409 mapping is reachable.
+            if ($exception instanceof \PDOException && ($exception->errorInfo[1] ?? null) === 1062) throw new ProjectWorkflowException('project_code_conflict');
+            throw $exception;
+        }
+    }
+
     public function create(CreateProject $command): ProjectPassport
     {
         $this->pdo->beginTransaction();

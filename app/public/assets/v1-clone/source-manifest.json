@@ -1,0 +1,54 @@
+{
+  "source": "v1.html",
+  "sourceSha256": "7dbfafdcfa52644fd32fb7cb7d73891b78593ca0287c089240db4439e0fa97bf",
+  "blocks": [
+    {
+      "kind": "style",
+      "attributes": "",
+      "path": "css/reference-shell.css",
+      "sha256": "50e505a381aab8fe8dc02395b38b3c7f541d57da3ea2704b0735f6f5b6ce81d9"
+    },
+    {
+      "kind": "script",
+      "attributes": "",
+      "path": "js/reference-001.js",
+      "sha256": "b572cab23b2a897ab0cf6eb44452352c0e78559226582da8bc3b2105fbc0af78"
+    },
+    {
+      "kind": "style",
+      "attributes": " id=\"architex-v6-style\"",
+      "path": "css/reference-style-002.css",
+      "sha256": "5fa7bd1bff323aa7d0b8e853741f0cd3b5deab3fb26d7dae4dde153d5164d40f"
+    },
+    {
+      "kind": "script",
+      "attributes": " id=\"architex-v6-script\"",
+      "path": "js/reference-002.js",
+      "sha256": "19574a7ec37965669243b0c274ed83f91ba5bc4cce1a98f03da7a8c9b294cef5"
+    },
+    {
+      "kind": "style",
+      "attributes": " id=\"architex-v7-meetings-style\"",
+      "path": "css/reference-style-003.css",
+      "sha256": "2e3fec83723914d41d9ca91d89811d6ba6074f4f35c5cf617c28528ab5e0c698"
+    },
+    {
+      "kind": "script",
+      "attributes": " id=\"architex-v7-meetings-script\"",
+      "path": "js/reference-003.js",
+      "sha256": "f3b8a32f790b0dd026dc6f303c4d4a926ec2399be4f3b11936c7d372da1f7210"
+    },
+    {
+      "kind": "style",
+      "attributes": " id=\"architex-v8-engineering-godmode-style\"",
+      "path": "css/reference-style-004.css",
+      "sha256": "d100ffeff946c4c74e7e042bb8989ec4990b983b56b09ccb20d718e4768023de"
+    },
+    {
+      "kind": "script",
+      "attributes": " id=\"architex-v8-engineering-godmode-script\"",
+      "path": "js/reference-004.js",
+      "sha256": "0427644dc40dc27cbe7e75a59ceea98042cf9a859900815567326ea97a043561"
+    }
+  ]
+}

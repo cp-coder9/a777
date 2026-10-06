@@ -21,6 +21,10 @@
   });
   let placement = null;
 
+  function isClientProfile() {
+    return window.__ARCHITEX_SHELL_STATE__?.session?.memberships?.[0]?.profileRole === 'client';
+  }
+
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character]);
@@ -43,7 +47,7 @@
   }
 
   window.flightpathOpenDestination = function flightpathOpenDestination(destination) {
-    const route = destinationRoutes[destination];
+    const route = destination === 'knowledge-cpd' && isClientProfile() ? 'knowledge' : destinationRoutes[destination];
     if (!route || typeof window.openGlobal !== 'function') return;
     window.openGlobal(route);
   };
@@ -54,8 +58,9 @@
     const active = activeDestination();
     menu.innerHTML = placement.globalDestinations.map(destination => {
       const selected = destination.id === active;
+      const label = destination.id === 'knowledge-cpd' && isClientProfile() ? 'Knowledge' : destination.label;
       const iconMarkup = typeof icon === 'function' ? icon(destinationIcons[destination.id] || 'document', 24) : '';
-      return `<button class="os-item fp-global-destination ${selected ? 'active' : ''}" type="button" data-destination="${escapeHtml(destination.id)}" data-flightpath-focus="destination-${escapeHtml(destination.id)}" aria-label="${escapeHtml(destination.label)}" ${selected ? 'aria-current="page"' : ''}><span class="icon-wrap">${iconMarkup}</span><span class="os-label">${escapeHtml(destination.label)}</span><span class="os-meta">${String(destination.order / 10).padStart(2, '0')}</span></button>`;
+      return `<button class="os-item fp-global-destination ${selected ? 'active' : ''}" type="button" data-destination="${escapeHtml(destination.id)}" data-flightpath-focus="destination-${escapeHtml(destination.id)}" aria-label="${escapeHtml(label)}" ${selected ? 'aria-current="page"' : ''}><span class="icon-wrap">${iconMarkup}</span><span class="os-label">${escapeHtml(label)}</span><span class="os-meta">${String(destination.order / 10).padStart(2, '0')}</span></button>`;
     }).join('');
     menu.querySelectorAll('[data-destination]').forEach(button => button.addEventListener('click', () => {
       window.flightpathOpenDestination(button.dataset.destination);
@@ -158,6 +163,11 @@
   const previousRenderAll = window.renderAll;
   window.renderAll = function flightpathRenderAll() {
     const focusKey = document.activeElement?.dataset?.flightpathFocus || null;
+    if (isClientProfile() && typeof state !== 'undefined' &&
+        (state.global === 'cpd' || ['cpd_learning', 'cpd_standalone'].includes(state.tool))) {
+      state.global = 'knowledge';
+      state.tool = null;
+    }
     previousRenderAll();
     enhanceShell();
     if (focusKey) requestAnimationFrame(() => document.querySelector(`[data-flightpath-focus="${CSS.escape(focusKey)}"]`)?.focus());

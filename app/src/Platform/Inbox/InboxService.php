@@ -14,7 +14,21 @@ final readonly class InboxService
     {
         $id = Identifier::generate();
         $statement = $this->pdo->prepare('INSERT INTO inbox_items(id,organisation_id,project_id,assigned_user_id,assigned_role,event_type,title,detail,priority,payload) VALUES(UNHEX(:id),UNHEX(:organisation_id),UNHEX(:project_id),UNHEX(:user_id),:role,:event_type,:title,:detail,:priority,:payload)');
-        $statement->execute(['id'=>$id,'organisation_id'=>$context->organisationId,'project_id'=>$context->projectId,'user_id'=>$context->userId,'role'=>$context->role,'event_type'=>$type,'title'=>$title,'detail'=>$detail,'priority'=>$priority,'payload'=>json_encode($payload, JSON_THROW_ON_ERROR)]);
+        $recipients = [$context->userId => $context->role];
+        foreach ((new WorkflowRecipients($this->pdo))->forEvent($context->organisationId,$context->projectId,$type) as $recipient) {
+            $recipients[$recipient['id']] = $recipient['role'];
+        }
+        $ownsTransaction = !$this->pdo->inTransaction();
+        if ($ownsTransaction) $this->pdo->beginTransaction();
+        try {
+            foreach ($recipients as $user => $role) {
+                $statement->execute(['id'=>$user===$context->userId?$id:Identifier::generate(),'organisation_id'=>$context->organisationId,'project_id'=>$context->projectId,'user_id'=>$user,'role'=>$role,'event_type'=>$type,'title'=>$title,'detail'=>$detail,'priority'=>$priority,'payload'=>json_encode($payload, JSON_THROW_ON_ERROR)]);
+            }
+            if ($ownsTransaction) $this->pdo->commit();
+        } catch (\Throwable $error) {
+            if ($ownsTransaction && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $error;
+        }
         return $id;
     }
 
@@ -22,8 +36,9 @@ final readonly class InboxService
     public function list(string $organisationId, string $userId, string $role, int $limit = 100): array
     {
         $limit = max(1, min(100, $limit));
-        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) projectId,event_type eventType,title,detail,priority,status,payload,DATE_FORMAT(created_at,'%Y-%m-%dT%H:%i:%s.%fZ') createdAt FROM inbox_items WHERE organisation_id=UNHEX(:organisation_id) AND (assigned_user_id IS NULL OR assigned_user_id=UNHEX(:user_id) OR assigned_role=:role) ORDER BY created_at DESC LIMIT {$limit}");
-        $statement->execute(['organisation_id'=>$organisationId,'user_id'=>$userId,'role'=>$role]);
+        $audience = InboxRecipients::predicate();
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(i.id)) id,LOWER(HEX(i.project_id)) projectId,i.event_type eventType,i.title,i.detail,i.priority,i.status,i.payload,DATE_FORMAT(i.created_at,'%Y-%m-%dT%H:%i:%s.%fZ') createdAt FROM inbox_items i JOIN organisation_memberships m ON {$audience} WHERE i.organisation_id=UNHEX(:organisation_id) AND m.user_id=UNHEX(:user_id) ORDER BY i.created_at DESC,i.id DESC LIMIT {$limit}");
+        $statement->execute(['organisation_id'=>$organisationId,'user_id'=>$userId]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
         foreach ($rows as &$row) $row['payload'] = json_decode((string)$row['payload'], true, flags: JSON_THROW_ON_ERROR);
         return $rows;

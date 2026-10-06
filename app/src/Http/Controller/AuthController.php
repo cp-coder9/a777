@@ -106,7 +106,7 @@ final readonly class AuthController
         }
     }
 
-    /** @return array{userId:string,email:string,memberships:list<array{organisationId:string,role:string}>} */
+    /** @return array{userId:string,email:string,memberships:list<array{organisationId:string,role:string,profileRole?:string}>} */
     private function identityData(AuthenticatedIdentity $identity): array
     {
         return ['userId' => $identity->userId, 'email' => $identity->email, 'memberships' => $identity->memberships];

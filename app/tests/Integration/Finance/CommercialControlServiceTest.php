@@ -9,9 +9,12 @@ use Architex\Platform\Finance\CommercialControlException;
 use Architex\Platform\Finance\CommercialControlService;
 use Architex\Platform\Identity\Identifier;
 use Architex\Platform\Proposal\ProposalService;
-use Architex\Tests\Support\MariaDbTestCase;
+use Architex\Tests\Support\IntegrationBoundaryTestCase;
+use Architex\Infrastructure\Integration\BridgeConfig;
+use Architex\Infrastructure\Integration\BridgeTransport;
+use Architex\Infrastructure\Integration\IntegrationException;
 
-final class CommercialControlServiceTest extends MariaDbTestCase
+final class CommercialControlServiceTest extends IntegrationBoundaryTestCase
 {
     public function testReleaseRequestsNeverPretendToMoveMoneyWithoutProviderConfiguration(): void
     {
@@ -42,6 +45,15 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         $certificate = $service->certifyClaim($organisationId, $qsId, 'member', $claim['id'], [
             'grossCertifiedToDateCents' => 9_000_000, 'otherDeductionsCents' => 0, 'humanConfirmed' => true, 'reason' => 'QS certified.',
         ]);
+        $beforeDispatch=$certificate;
+        $undispatched=$service->createReleaseRequest($organisationId,$ownerId,'owner',$beforeDispatch['revisionId'],['providerId'=>$provider['id'],'humanConfirmed'=>true,'reason'=>'Synthetic pre-dispatch request.']);
+        $certificate=$service->certifyClaim($organisationId,$qsId,'member',$claim['id'],['grossCertifiedToDateCents'=>9_000_000,'otherDeductionsCents'=>0,'humanConfirmed'=>true,'reason'=>'Synthetic pre-dispatch correction.']);
+        self::assertSame($beforeDispatch['id'],$certificate['id']);
+        self::assertNotSame($beforeDispatch['revisionId'],$certificate['revisionId']);
+        self::assertSame(8_550_000,$certificate['netPayableCents']);
+        try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$undispatched['id'],['humanConfirmed'=>true,'expectedVersion'=>$undispatched['version']]); self::fail('Superseded pre-dispatch release cannot launch.'); }
+        catch (CommercialControlException $e) { self::assertSame('provider_release_not_submittable',$e->reason); }
+        self::assertSame(0,(int)$this->pdo->query('SELECT COUNT(*) FROM provider_release_dispatches')->fetchColumn());
         $release = $service->createReleaseRequest($organisationId, $ownerId, 'owner', $certificate['revisionId'], [
             'providerId' => $provider['id'], 'humanConfirmed' => true, 'reason' => 'Prepare provider-mediated request only.',
         ]);
@@ -54,6 +66,8 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         $service->approveReleaseRequest($organisationId, $leadId, 'member', $release['id'], [
             'approvalType' => 'lead_professional', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Professional approved exact certificate.',
         ]);
+        try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>2]); self::fail('One approval is insufficient.'); }
+        catch (CommercialControlException $e) { self::assertSame('provider_release_approvals_required',$e->reason); }
         $approved = $service->approveReleaseRequest($organisationId, $ownerId, 'owner', $release['id'], [
             'approvalType' => 'client', 'decision' => 'approved', 'humanConfirmed' => true, 'reason' => 'Client approved exact release amount.',
         ]);
@@ -63,7 +77,7 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         $workspace = $service->workspace($organisationId, $ownerId, $projectId);
         self::assertSame($baseline['id'], $workspace['baseline']['id']);
         self::assertCount(1, $workspace['providers']);
-        self::assertCount(1, $workspace['releaseRequests']);
+        self::assertCount(2, $workspace['releaseRequests']);
         self::assertFalse($workspace['providerBoundary']['fundsHeldByArchitex']);
         self::assertFalse($workspace['providerBoundary']['livePaymentClaimed']);
 
@@ -85,12 +99,75 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertContains('retention_release', $this->recordTypes($organisationId, $projectId));
         self::assertContains('finance_retention_release_due', $this->inboxEventTypes($organisationId, $projectId));
 
+        try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>$approved['version']]); self::fail('Missing transport configuration must not release.'); }
+        catch (IntegrationException $e) { self::assertSame('integration_not_configured',$e->reason); }
         $secret = 'test-provider-webhook-secret-with-32-bytes';
-        putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET='.$secret);
-        $this->pdo->prepare("UPDATE financial_providers SET live_configured=1,configuration_reference='test-only-fixture' WHERE id=UNHEX(:id)")->execute(['id' => $provider['id']]);
-        $this->pdo->prepare("UPDATE provider_release_requests SET status='submitted_to_provider',provider_reference='PROV-REL-001' WHERE id=UNHEX(:id)")->execute(['id' => $release['id']]);
+        $transport=new class implements BridgeTransport {
+            public int $submissions=0; public int $requests=0; public bool $unknown=true; public array $bodies=[]; public array $keys=[];
+            public function request(string $method,string $url,array $headers,string $body): array {
+                $this->requests++;
+                if ($method==='GET') { parse_str((string)parse_url($url,PHP_URL_QUERY),$scope); return ['status'=>200,'body'=>json_encode($scope+['contract'=>'architex.integration.v1','capabilities'=>['release','webhook_status'],'idempotentRelease'=>true,'signedCallbacks'=>true],JSON_THROW_ON_ERROR)]; }
+                $this->submissions++; $this->bodies[]=$body; $this->keys[]=$headers['Idempotency-Key'];
+                if ($this->unknown) throw new IntegrationException('integration_transport_unknown',502);
+                $payload=json_decode($body,true,flags:JSON_THROW_ON_ERROR);
+                return ['status'=>202,'body'=>json_encode($payload+['status'=>'accepted','providerReference'=>'PROV-REL-001'],JSON_THROW_ON_ERROR)];
+            }
+        };
+        $config=BridgeConfig::fromValues(['URL'=>'https://fixture.example','TOKEN'=>str_repeat('test-token-',4),'WEBHOOK_SECRET'=>$secret]);
+        $service=new CommercialControlService($this->pdo,$transport,static fn(string $id): BridgeConfig=>$config);
+        foreach ([['humanConfirmed'=>false,'expectedVersion'=>$approved['version']],['humanConfirmed'=>true,'expectedVersion'=>1]] as $invalid) {
+            try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],$invalid); self::fail('Invalid authorization/version must fail.'); }
+            catch (CommercialControlException $e) { self::assertContains($e->reason,['provider_release_confirmation_required','provider_release_version_conflict']); }
+        }
+        self::assertSame(0,$transport->submissions);
+        // Active membership/team cannot authorize an inactive identity.
+        $auditBefore = (int)$this->pdo->query('SELECT COUNT(*) FROM audit_events')->fetchColumn();
+        foreach ([['users', $leadId, 'suspended'], ['users', $ownerId, 'suspended'], ['organisations', $organisationId, 'suspended']] as [$table, $actor, $status]) {
+            $this->pdo->prepare("UPDATE $table SET status=:status WHERE id=UNHEX(:id)")->execute(['status'=>$status,'id'=>$actor]);
+            try {
+                $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>$approved['version']]);
+                self::fail('Inactive identity cannot authorize release.');
+            } catch (CommercialControlException $e) { self::assertSame('commercial_permission_denied',$e->reason); }
+            self::assertSame(0,$transport->submissions);
+            self::assertSame(0,$transport->requests);
+            self::assertSame([], $transport->bodies);
+            self::assertSame(0,(int)$this->pdo->query('SELECT COUNT(*) FROM provider_release_dispatches')->fetchColumn());
+            self::assertSame($auditBefore,(int)$this->pdo->query('SELECT COUNT(*) FROM audit_events')->fetchColumn());
+            self::assertSame(2,(int)$this->pdo->query("SELECT COUNT(*) FROM provider_release_approvals WHERE decision='approved'")->fetchColumn());
+            $s=$this->pdo->prepare("SELECT status FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u)");
+            $s->execute(['o'=>$organisationId,'u'=>$leadId]); self::assertSame('active',$s->fetchColumn());
+            $s=$this->pdo->prepare('SELECT status FROM project_team_members WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u)');
+            $s->execute(['o'=>$organisationId,'u'=>$leadId]); self::assertSame('active',$s->fetchColumn());
+            $this->pdo->prepare("UPDATE $table SET status='active' WHERE id=UNHEX(:id)")->execute(['id'=>$actor]);
+        }
+        $earlyBody=json_encode(['organisationId'=>$organisationId,'providerId'=>$provider['id'],'eventId'=>'evt-paid-001','eventType'=>'payment_paid','providerReference'=>'PROV-REL-001','amountCents'=>8_550_000,'currency'=>'ZAR'],JSON_THROW_ON_ERROR);
+        $earlyTime=(string)time();
+        try { $service->recordProviderWebhook($provider['id'],$earlyBody,$earlyTime,hash_hmac('sha256',$earlyTime.'.'.$earlyBody,$secret)); self::fail('Early callback must request retry, not consume event.'); }
+        catch (CommercialControlException $e) { self::assertSame('financial_provider_webhook_reference_pending',$e->reason); }
+        self::assertSame(0,(int)$this->pdo->query('SELECT COUNT(*) FROM provider_webhook_events')->fetchColumn());
+        try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>$approved['version']]); self::fail('Unknown outcome cannot represent acceptance.'); }
+        catch (IntegrationException $e) { self::assertSame('integration_transport_unknown',$e->reason); }
+        self::assertSame('unknown',$this->pdo->query('SELECT status FROM provider_release_dispatches')->fetchColumn());
+        $rejectReplacement=function () use ($service,$organisationId,$qsId,$claim,$ownerId,$certificate,$provider): void {
+            foreach ([fn()=> $service->certifyClaim($organisationId,$qsId,'member',$claim['id'],['grossCertifiedToDateCents'=>10_000_000,'otherDeductionsCents'=>0,'humanConfirmed'=>true,'reason'=>'Synthetic replacement attempt.']),fn()=> $service->createReleaseRequest($organisationId,$ownerId,'owner',$certificate['revisionId'],['providerId'=>$provider['id'],'humanConfirmed'=>true,'reason'=>'Synthetic replacement attempt.'])] as $operation) {
+                try { $operation(); self::fail('Dispatched obligation cannot be re-certified or replaced.'); }
+                catch (CommercialControlException $e) { self::assertSame('commercial_obligation_reconciliation_required',$e->reason); }
+            }
+            self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM provider_release_requests')->fetchColumn());
+            self::assertSame(2,(int)$this->pdo->query('SELECT COUNT(*) FROM commercial_payment_certificate_revisions')->fetchColumn());
+        };
+        $rejectReplacement();
+        $transport->unknown=false;
+        $submitted=$service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>$approved['version']]);
+        self::assertSame('submitted_to_provider',$submitted['status']); self::assertSame(0,$submitted['providerPaidCents']);
+        $rejectReplacement();
+        $service->submitReleaseRequest($organisationId,$ownerId,'owner',$release['id'],['humanConfirmed'=>true,'expectedVersion'=>$approved['version']]);
+        self::assertSame(2,$transport->submissions);
+        self::assertSame($transport->bodies[0],$transport->bodies[1]); self::assertSame($transport->keys[0],$transport->keys[1]);
+        self::assertSame($transport->bodies[0],$this->pdo->query('SELECT request_payload FROM provider_release_dispatches')->fetchColumn());
+        self::assertSame(hash('sha256',$transport->bodies[0]),$this->pdo->query('SELECT request_sha256 FROM provider_release_dispatches')->fetchColumn());
         $timestamp = time();
-        $body = json_encode(['eventId' => 'evt-paid-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 8_550_000, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $body = json_encode(['organisationId'=>$organisationId,'providerId'=>$provider['id'],'eventId' => 'evt-paid-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 8_550_000, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $signature = hash_hmac('sha256', $timestamp.'.'.$body, $secret);
 
         try {
@@ -106,7 +183,7 @@ final class CommercialControlServiceTest extends MariaDbTestCase
             self::assertSame('financial_provider_webhook_signature_invalid', $exception->reason);
         }
 
-        $mismatchBody = json_encode(['eventId' => 'evt-mismatch-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 1, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        $mismatchBody = json_encode(['organisationId'=>$organisationId,'providerId'=>$provider['id'],'eventId' => 'evt-mismatch-001', 'eventType' => 'payment_paid', 'providerReference' => 'PROV-REL-001', 'amountCents' => 1, 'currency' => 'ZAR'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $mismatchSignature = hash_hmac('sha256', $timestamp.'.'.$mismatchBody, $secret);
         $mismatch = $service->recordProviderWebhook($provider['id'], $mismatchBody, (string)$timestamp, $mismatchSignature);
         self::assertSame('rejected', $mismatch['outcome']);
@@ -119,9 +196,16 @@ final class CommercialControlServiceTest extends MariaDbTestCase
         self::assertFalse($event['duplicate']);
         self::assertSame('provider_confirmed_paid', $event['releaseStatus']);
         self::assertSame(8_550_000, $event['providerPaidCents']);
+        $rejectReplacement();
         $duplicate = $service->recordProviderWebhook($provider['id'], $body, (string)$timestamp, $signature);
         self::assertTrue($duplicate['duplicate']);
-        putenv('FINANCE_PROVIDER_REGISTERED_PROVIDER_PENDING_CONTRACT_WEBHOOK_SECRET');
+        $regressionBody=json_encode(['organisationId'=>$organisationId,'providerId'=>$provider['id'],'eventId'=>'evt-late-processing','eventType'=>'payment_processing','providerReference'=>'PROV-REL-001','amountCents'=>8_550_000,'currency'=>'ZAR'],JSON_THROW_ON_ERROR);
+        $regression=$service->recordProviderWebhook($provider['id'],$regressionBody,(string)$timestamp,hash_hmac('sha256',$timestamp.'.'.$regressionBody,$secret));
+        self::assertSame('rejected',$regression['outcome']); self::assertSame('provider_confirmed_paid',$regression['releaseStatus']);
+        self::assertSame(8_550_000,$regression['providerPaidCents']);
+        $changedBody=str_replace('8550000','8550001',$body);
+        try { $service->recordProviderWebhook($provider['id'],$changedBody,(string)$timestamp,hash_hmac('sha256',$timestamp.'.'.$changedBody,$secret)); self::fail('Event id reuse with changed body must fail.'); }
+        catch (CommercialControlException $e) { self::assertSame('financial_provider_webhook_event_conflict',$e->reason); }
 
         $disputedClaim = $service->submitClaim($organisationId, $ownerId, 'owner', $baseline['id'], [
             'claimNumber' => 'REL-002', 'claimedToDateCents' => 12_000_000, 'milestoneId' => $schedule['milestones'][0]['id'],
@@ -134,6 +218,9 @@ final class CommercialControlServiceTest extends MariaDbTestCase
             'providerId' => $provider['id'], 'humanConfirmed' => true, 'reason' => 'Record blocked request for audit.',
         ]);
         self::assertSame('disputed_locked', $locked['status']);
+        try { $service->submitReleaseRequest($organisationId,$ownerId,'owner',$locked['id'],['humanConfirmed'=>true,'expectedVersion'=>$locked['version']]); self::fail('Dispute lock must prevent transport.'); }
+        catch (CommercialControlException $e) { self::assertSame('provider_release_not_submittable',$e->reason); }
+        self::assertSame(2,$transport->submissions);
     }
 
     public function testClaimsCertificatesRetentionPreviousPaymentsAndDisputesStaySeparate(): void

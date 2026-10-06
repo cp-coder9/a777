@@ -18,6 +18,8 @@ final readonly class WingmanRoutes
 
     public function register(Router $router): void
     {
+        $router->get('/api/v1/wingman/tutorial', fn (Request $request): Response => $this->read->process($request, $this->controller->tutorial(...)));
+        $router->post('/api/v1/wingman/tutorial', fn (Request $request): Response => $this->read->process($request, fn (Request $allowed): Response => $this->messageLimit->process($allowed, $this->controller->updateTutorial(...))));
         $router->get('/api/v1/wingman/bootstrap', fn (Request $request): Response => $this->read->process($request, $this->controller->bootstrap(...)));
         $router->post('/api/v1/wingman/messages', fn (Request $request): Response => $this->read->process($request, fn (Request $allowed): Response => $this->messageLimit->process($allowed, $this->controller->message(...))));
         $router->get('/api/v1/wingman/conversations/{conversationId}', fn (Request $request): Response => $this->read->process($request, $this->controller->conversation(...)));

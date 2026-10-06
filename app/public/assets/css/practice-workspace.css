@@ -1,0 +1,39 @@
+/* Scoped Practice V1 presentation; office forms remain in the existing shell. */
+#practiceExperience, .practice-experience { min-width: 0; max-width: 100%; }
+#practiceManagementBody[hidden] { display: none !important; }
+#practiceManagementBody:not([hidden]) { display: grid; gap: 16px; }
+.practice-experience { color: var(--ink, #182a3b); background: var(--panel, #fff); border: 1px solid var(--line, #d8e0e9); border-radius: 16px; overflow: hidden; }
+.practice-tabs { display: flex; gap: 6px; padding: 12px; overflow-x: auto; border-bottom: 1px solid var(--line, #d8e0e9); }
+.practice-tabs button { flex: 0 0 auto; min-height: 44px; padding: 10px 15px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.practice-tabs button[aria-selected="true"] { background: #eaf0ff; color: #163e88; border-color: #a8bde8; font-weight: 700; }
+.practice-tabs button:hover { background: #edf2f8; }
+.practice-experience :focus-visible { outline: 3px solid #3761b1; outline-offset: 2px; }
+#practice-view-panel { padding: 20px; min-width: 0; }
+.practice-experience h2 { margin: 0 0 12px; font-size: 22px; }
+.practice-experience h3 { margin: 14px 0 10px; font-size: 16px; }
+.practice-notice { margin: 10px 0; border-left: 3px solid #a8bde8; padding: 10px 12px; color: var(--muted, #526273); font-size: 13px; line-height: 1.6; background: #f5f7fb; overflow-wrap: anywhere; }
+.practice-notice[role="alert"] { border-color: #b9413c; color: #8c2823; background: #fff3f2; }
+.practice-metrics { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 12px; margin: 16px 0; }
+.practice-metrics article { border: 1px solid var(--line, #d8e0e9); border-radius: 12px; padding: 16px; min-width: 0; overflow-wrap: anywhere; }
+.practice-metrics span { display: block; font-size: 12px; color: var(--muted, #526273); }
+.practice-metrics strong { display: block; margin-top: 8px; font-size: 24px; font-variant-numeric: tabular-nums; }
+.practice-board { display: grid; grid-template-columns: repeat(5,minmax(220px,1fr)); gap: 12px; overflow-x: auto; max-width: 100%; padding-bottom: 12px; }
+.practice-lane { min-width: 0; padding: 10px; background: #f3f6fa; border-radius: 12px; }
+.practice-lane h3 { text-transform: capitalize; display: flex; justify-content: space-between; gap: 8px; }
+.practice-record { margin: 10px 0; padding: 14px; background: var(--panel, #fff); border: 1px solid var(--line, #d8e0e9); border-radius: 10px; overflow-wrap: anywhere; }
+.practice-record h4 { margin: 0 0 8px; font-size: 14px; }
+.practice-record p, .practice-record small { margin: 5px 0; font-size: 12px; line-height: 1.5; }
+.practice-record strong { color: #943e26; }
+.practice-day { border-top: 1px solid var(--line, #d8e0e9); padding-top: 6px; }
+.practice-table-scroll { max-width: 100%; overflow-x: auto; }
+.practice-experience table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.practice-experience th, .practice-experience td { text-align: left; vertical-align: top; padding: 12px; border-bottom: 1px solid var(--line, #d8e0e9); max-width: 300px; overflow-wrap: anywhere; }
+.practice-experience th { background: #f3f6fa; white-space: nowrap; }
+@media (max-width: 640px) {
+  #practice-view-panel { padding: 12px; }
+  .practice-tabs { padding: 8px; }
+  .practice-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .practice-metrics article { padding: 12px; }
+  .practice-metrics strong { font-size: 20px; }
+  .practice-board { grid-template-columns: repeat(5,minmax(230px,85%)); }
+}

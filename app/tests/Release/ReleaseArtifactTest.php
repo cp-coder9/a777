@@ -15,6 +15,18 @@ final class ReleaseArtifactTest extends TestCase
 {
     private string $outputRoot;
 
+    public function testPrivateBackupAndAllStoragePathsAreForbidden(): void
+    {
+        $method = new \ReflectionMethod(ReleaseVerifier::class, 'forbidden');
+        $verifier = new ReleaseVerifier();
+        foreach (['.private/credentials', 'nested/.private/key', 'backups/archive.zip', 'nested/backups/db.sql', 'storage/unknown/file', '.env.production', 'config/runtime.php', 'vendor/phpunit/file'] as $path) {
+            self::assertTrue($method->invoke($verifier, $path), $path);
+        }
+        foreach (['config/runtime.example.php', 'public/assets/file.js', 'src/BackupService.php'] as $path) {
+            self::assertFalse($method->invoke($verifier, $path), $path);
+        }
+    }
+
     protected function setUp(): void
     {
         $this->outputRoot = dirname(__DIR__, 2) . '/storage/tmp/release-test-' . bin2hex(random_bytes(8));
@@ -37,7 +49,7 @@ final class ReleaseArtifactTest extends TestCase
             file_put_contents($release . '/vendor/autoload.php', "<?php return true;\n");
             file_put_contents($release . '/vendor/composer/installed.json', json_encode(['packages'=>[],'dev'=>false], JSON_THROW_ON_ERROR));
         };
-        $release = (new ReleaseBuilder($root, $this->outputRoot, $installer))->build('test-release');
+        $release = (new ReleaseBuilder($root, $this->outputRoot, $installer))->build('test-release', 'staging', true);
 
         self::assertFileExists($release . '/public/index.php');
         self::assertFileExists($release . '/public/maintenance.php');
@@ -49,7 +61,8 @@ final class ReleaseArtifactTest extends TestCase
         $buildInfo=json_decode((string)file_get_contents($release.'/public/build-info.json'),true,512,JSON_THROW_ON_ERROR);
         self::assertSame('test-release',$buildInfo['version']);
         self::assertSame('php-shared-hosting',$buildInfo['apiMode']);
-        self::assertMatchesRegularExpression('/\A[a-f0-9]{40}\z/',$buildInfo['sourceCommit']);
+        self::assertMatchesRegularExpression('/\A[a-f0-9]{40}\z/',$buildInfo['sourceBaseCommit']);
+        if ($buildInfo['sourceDirty']) self::assertNull($buildInfo['sourceCommit']);
         self::assertNotEmpty($buildInfo['builtAt']);
         self::assertFileDoesNotExist($release . '/.env');
         self::assertDirectoryDoesNotExist($release . '/tests');
@@ -77,7 +90,7 @@ final class ReleaseArtifactTest extends TestCase
             mkdir($release . '/vendor', 0700, true);
             file_put_contents($release . '/vendor/autoload.php', "<?php return true;\n");
         };
-        $release = (new ReleaseBuilder($root, $this->outputRoot, $installer))->build('tamper-test');
+        $release = (new ReleaseBuilder($root, $this->outputRoot, $installer))->build('tamper-test', 'staging', true);
         file_put_contents($release . '/public/index.php', "\nTAMPERED", FILE_APPEND);
 
         $report = (new ReleaseVerifier())->verify($release);

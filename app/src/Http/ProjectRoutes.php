@@ -13,6 +13,7 @@ final readonly class ProjectRoutes
         $router->get('/api/v1/projects', $this->through($this->readPermission, $this->controller->index(...)));
         $router->get('/api/v1/projects/{projectId}', $this->through($this->readPermission, $this->controller->show(...)));
         $router->post('/api/v1/projects', $this->through($this->writePermission, $this->controller->create(...)));
+        $router->post('/api/v1/projects/{projectId}/details', $this->through($this->writePermission, $this->controller->updateDetails(...)));
         $router->post('/api/v1/projects/transition', $this->through($this->writePermission, $this->controller->transition(...)));
     }
     /** @param Closure(Request):Response $handler @return Closure(Request):Response */

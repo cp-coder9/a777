@@ -68,7 +68,16 @@ final readonly class MunicipalRequirementRegistry
 
     /** @param array<int,mixed> $requirements */
     private function validate(array$requirements):void{if(count($requirements)!==8)throw new MunicipalReadinessException('invalid_municipal_requirements');$seen=[];foreach($requirements as$category){if(!is_array($category))throw new MunicipalReadinessException('invalid_municipal_requirements');$key=$category['category']??null;$items=$category['items']??null;if(!is_string($key)||!in_array($key,self::CATEGORIES,true)||isset($seen[$key])||!is_array($items)||$items===[])throw new MunicipalReadinessException('invalid_municipal_requirements');$seen[$key]=true;foreach($items as$item)if(!is_array($item)||!is_string($item['id']??null)||!is_string($item['label']??null)||!is_string($item['owner']??null))throw new MunicipalReadinessException('invalid_municipal_requirements');}if(count($seen)!==8)throw new MunicipalReadinessException('invalid_municipal_requirements');}
-    private function assertGovernor(string$o,string$u,string$r):void{if(!in_array($r,['owner','admin'],true))throw new MunicipalReadinessException('municipal_matrix_role_denied');$s=$this->pdo->prepare("SELECT COUNT(*) FROM organisation_memberships WHERE organisation_id=UNHEX(:o) AND user_id=UNHEX(:u) AND role=:r AND status='active'");$s->execute(['o'=>$o,'u'=>$u,'r'=>$r]);if((int)$s->fetchColumn()!==1)throw new MunicipalReadinessException('membership_not_found');}
+    private function assertGovernor(string$o,string$u,string$r):void
+    {
+        if(!in_array($r,['owner','admin'],true))throw new MunicipalReadinessException('municipal_matrix_role_denied');
+        $s=$this->pdo->prepare("SELECT m.role,p.role_key FROM organisation_memberships m LEFT JOIN registration_profiles p ON p.organisation_id=m.organisation_id AND p.user_id=m.user_id WHERE m.organisation_id=UNHEX(:o) AND m.user_id=UNHEX(:u) AND m.role=:r AND m.status='active'");
+        $s->execute(['o'=>$o,'u'=>$u,'r'=>$r]);$membership=$s->fetch(PDO::FETCH_ASSOC);
+        if(!is_array($membership))throw new MunicipalReadinessException('membership_not_found');
+        // Matrix governance has the same professional-profile restriction as
+        // readiness review; organisation ownership cannot override it.
+        if(in_array($membership['role_key'],['client','contractor'],true))throw new MunicipalReadinessException('municipal_matrix_role_denied');
+    }
     /** @return array{string,string} */private function municipality(mixed$v):array{$name=$this->text($v,180,'invalid_municipality');$key=strtolower(trim((string)preg_replace('/[^a-z0-9]+/i','-',$name),'-'));if($key===''||strlen($key)>120)throw new MunicipalReadinessException('invalid_municipality');return[$key,$name];}
     private function pattern(mixed$v,string$p,string$e):string{if(!is_string($v)||preg_match($p,$v)!==1)throw new MunicipalReadinessException($e);return$v;}
     private function text(mixed$v,int$m,string$e):string{$v=is_string($v)?trim($v):'';if($v===''||mb_strlen($v)>$m)throw new MunicipalReadinessException($e);return$v;}

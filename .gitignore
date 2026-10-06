@@ -14,9 +14,17 @@
 /app/storage/evidence/
 /app/storage/files/
 /app/storage/backups/
+/app/storage/maintenance/
 /coverage/
 /dist/
 /node_modules/
 /packs/**/node_modules/
 *.log
 *.tmp
+/app/config/runtime.php
+/.private/
+/.hermes/
+/.worktrees/
+__pycache__/
+*.py[cod]
+/tools/**/node_modules/

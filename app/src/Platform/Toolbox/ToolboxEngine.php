@@ -88,7 +88,7 @@ final readonly class ToolboxEngine
     /** @return list<array<string,mixed>> */
     public function exports(string $organisationId,string $userId,string $runId):array
     {
-        $this->get($organisationId,$userId,$runId);$statement=$this->pdo->prepare('SELECT LOWER(HEX(e.id)) id,e.format,e.filename,e.mime_type,e.sha256,e.created_at FROM tool_run_exports e WHERE e.organisation_id=UNHEX(:organisation_id) AND e.run_id=UNHEX(:run_id) ORDER BY FIELD(e.format,\'json\',\'csv\',\'html\')');$statement->execute(['organisation_id'=>$organisationId,'run_id'=>$runId]);return$statement->fetchAll();
+        $this->get($organisationId,$userId,$runId);$statement=$this->pdo->prepare('SELECT LOWER(HEX(e.id)) id,e.format,e.filename,e.mime_type,e.sha256,e.created_at FROM tool_run_exports e WHERE e.organisation_id=UNHEX(:organisation_id) AND e.run_id=UNHEX(:run_id) ORDER BY FIELD(e.format,\'json\',\'csv\',\'html\',\'pdf\')');$statement->execute(['organisation_id'=>$organisationId,'run_id'=>$runId]);return$statement->fetchAll();
     }
 
     /** @return array{filename:string,mimeType:string,byteSize:int,sha256:string,content:string} */
@@ -107,6 +107,7 @@ final readonly class ToolboxEngine
     private function storeExports(string $organisationId,array $run):void
     {
         $json=json_encode($run,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);$rows=[['json','application/json',$json],['csv','text/csv',$this->csv($run)],['html','text/html',$this->html($run)]];
+        if($run['toolId']==='boq_takeoff')$rows[]=['pdf','application/pdf',BoqPdf::render($run)];
         $statement=$this->pdo->prepare('INSERT INTO tool_run_exports(id,organisation_id,run_id,format,filename,mime_type,content,sha256) VALUES(UNHEX(:id),UNHEX(:organisation_id),UNHEX(:run_id),:format,:filename,:mime,:content,:sha256)');foreach($rows as[$format,$mime,$content])$statement->execute(['id'=>Identifier::generate(),'organisation_id'=>$organisationId,'run_id'=>$run['id'],'format'=>$format,'filename'=>$run['toolId'].'-'.$run['id'].'.'.$format,'mime'=>$mime,'content'=>$content,'sha256'=>hash('sha256',$content)]);
     }
 
