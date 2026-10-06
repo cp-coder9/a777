@@ -316,7 +316,9 @@ def clone(client, expected, attempts=24, pause=5):
 DEPLOY_ROOT = HOME + '/.a777-deploy'
 PLAN = DEPLOY_ROOT + '/operator-plan.json'
 DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
-BOOL_FIELDS = frozenset(('sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
+BOOL_FIELDS = frozenset(('storageExists', 'storageCanonical', 'storageOutsidePublic', 'archiveOutsideStorage',
+    'migrationAuthorized', 'backupAuthorized', 'promotionAuthorized', 'appuserHasScopedOnly',
+    'appuserGrantsInspectionAvailable', 'accountPhpWorkerInventoryAvailable', 'sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
     'databaseUserInventoryMatches', 'databaseInventoryMatches', 'pdoDatabaseMatches', 'pdoUserMatches',
     'databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
     'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
@@ -354,6 +356,8 @@ def private_chmod(client, path):
 
 
 def permission_only_safe(data):
+    if any(data.get(k, False) is not False for k in ('migrationAuthorized', 'backupAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
+        return False
     if data.get('databaseDdlTouched') is not False:
         return False
     if data.get('liveFilesTouched') is False:
@@ -619,7 +623,12 @@ def receipts(client, commit, plan_sha, previous):
             safe['databaseHostClass'] = data['databaseHostClass']
         for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter', 'runtimeConfigParentModeBefore', 'runtimeConfigParentModeAfter'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[0-7]{4}', data[key]): safe[key] = data[key]
-        for key in ('cronEntryCount', 'otherSourceConnectionCount', 'runtimeConfigBytesUnchanged'):
+        if data.get('storageClass') in ('missing', 'canonical-unproven', 'archive-inside-storage', 'outside-public', 'under-public-privacy-unproven'):
+            safe['storageClass'] = data['storageClass']
+        workers = data.get('accountPhpWorkerTypes')
+        if isinstance(workers, dict) and all(k in ('php-cli', 'php-fpm', 'lsphp') and type(v) is int and 0 <= v <= 1000000 for k, v in workers.items()):
+            safe['accountPhpWorkerTypes'] = workers
+        for key in ('accountPhpWorkerCount', 'cronEntryCount', 'otherSourceConnectionCount', 'runtimeConfigBytesUnchanged'):
             if type(data.get(key)) is int and 0 <= data[key] <= 1000000: safe[key] = data[key]
         for key in ('runtimePermissionDevice','runtimePermissionInode','runtimePermissionOwner',
                     'runtimePermissionParentDevice','runtimePermissionParentInode','runtimePermissionParentOwner'):
