@@ -117,7 +117,13 @@ final class CpanelGitDeploy
     {
         $key = $function === 'list_databases' ? 'mysqlDatabaseTransport' : 'mysqlUserTransport';
         $evidence[$key] = 'native-cli';
-        try { return self::uapi('Mysql', $function); }
+        try {
+            $identity = self::uapi('Variables', 'get_user_information', ['name'=>'home']);
+            self::requireValue(($identity['home'] ?? null) === '/home/archite4', 'api_account_home_mismatch');
+            $data = self::uapi('Mysql', $function);
+            $evidence['apiAccountHomeValidated'] = true;
+            return $data;
+        }
         catch (Throwable $error) {
             $evidence[$key . 'Cli'] = self::commandDiagnostics();
             $evidence[$key . 'Cli']['absoluteExecutablePresent'] = is_file('/usr/local/cpanel/bin/uapi');
@@ -136,6 +142,45 @@ final class CpanelGitDeploy
             $evidence['apiAccountHomeValidated'] = true;
             return $data;
         }
+    }
+
+    /** Reviewed application parser; no environment overrides or runtime config rewrites. */
+    public static function databaseConfig(array $config, array $users, array $databases, array &$evidence): \Architex\Infrastructure\Config\AppConfig
+    {
+        $evidence += ['databaseConfigParsed'=>false, 'databaseHostLocal'=>false,
+            'databaseHostClass'=>'refused', 'databaseNameMatches'=>false,
+            'databaseUserInventoryMatches'=>false, 'databaseInventoryMatches'=>false,
+            'pdoDatabaseMatches'=>false, 'pdoUserMatches'=>false];
+        try { $typed = \Architex\Infrastructure\Config\AppConfig::fromEnvironment($config); }
+        catch (Throwable) { throw new RuntimeException('active_database_config_identity_mismatch'); }
+        $evidence['databaseConfigParsed'] = true;
+        $evidence['databaseHostClass'] = match ($typed->dbHost) {
+            '127.0.0.1', '::1' => 'tcp-loopback', 'localhost' => 'local-socket', default => 'refused'
+        };
+        $evidence['databaseHostLocal'] = $evidence['databaseHostClass'] !== 'refused';
+        $evidence['databaseNameMatches'] = $typed->dbName === 'archite4_dev_rel1';
+        self::requireValue($evidence['databaseHostLocal'] && $evidence['databaseNameMatches'], 'active_database_config_identity_mismatch');
+        // Official Mysql/list_users result.data is a list of {user,shortuser,databases}.
+        // Account ownership comes from the authenticated account's home-validated inventory,
+        // not a guessed username prefix. Require its exact database assignment too.
+        $matches = [];
+        if (array_is_list($users)) foreach ($users as $row) {
+            if (is_array($row) && ($row['user'] ?? null) === $typed->dbUser) $matches[] = $row;
+        }
+        $assigned = count($matches) === 1 ? ($matches[0]['databases'] ?? null) : null;
+        $evidence['databaseUserInventoryMatches'] = is_array($assigned) && array_is_list($assigned)
+            && in_array($typed->dbName, $assigned, true);
+        $dbMatches = array_values(array_filter($databases, static fn($row) => is_array($row) && ($row['database'] ?? null) === $typed->dbName));
+        $evidence['databaseInventoryMatches'] = array_is_list($databases) && count($dbMatches) === 1;
+        self::requireValue($evidence['databaseUserInventoryMatches'] && $evidence['databaseInventoryMatches'], 'active_database_config_identity_mismatch');
+        return $typed;
+    }
+
+    public static function pdoIdentity(PDO $pdo, \Architex\Infrastructure\Config\AppConfig $config, array &$evidence): void
+    {
+        $evidence['pdoDatabaseMatches'] = $pdo->query('SELECT DATABASE()')->fetchColumn() === $config->dbName;
+        $evidence['pdoUserMatches'] = explode('@', (string)$pdo->query('SELECT CURRENT_USER()')->fetchColumn(), 2)[0] === $config->dbUser;
+        self::requireValue($evidence['pdoDatabaseMatches'] && $evidence['pdoUserMatches'], 'actual_source_pdo_identity_mismatch');
     }
 
     public static function exclusiveGrantUser(array $databases, string $user): void
@@ -265,7 +310,7 @@ final class CpanelGitDeploy
             'liveDdlAuthorized'=>false];
         $databases = self::inspectInventory('list_databases', $apiAllowed, $evidence);
         $evidence['mysqlInventoryAvailable'] = true;
-        self::inspectInventory('list_users', $apiAllowed, $evidence);
+        $users = self::inspectInventory('list_users', $apiAllowed, $evidence);
         $evidence['mysqlUserInventoryAvailable'] = true;
         $cron = [];
         $cronAvailable = false;
@@ -283,12 +328,15 @@ final class CpanelGitDeploy
         self::runtimePermissions($configPath, self::ACTIVE, self::PRIVATE_ROOT . '/runtime-permission-' . bin2hex(random_bytes(8)) . '.json', $securePermissions, $evidence, $commit, $planSha);
         self::requireValue(is_file($configPath) && !is_link($configPath) && fileowner($configPath) === posix_geteuid() && (fileperms($configPath) & 0077) === 0, 'active_config_missing_or_not_private');
         $config = require $configPath;
-        self::requireValue(is_array($config) && ($config['DB_HOST'] ?? null) === '127.0.0.1' && ($config['DB_NAME'] ?? null) === 'archite4_dev_rel1' && preg_match('/\\Aarchite4_[A-Za-z0-9_]+\\z/', $config['DB_USER'] ?? '') === 1, 'active_database_config_identity_mismatch');
-        self::requireValue(is_string($config['DB_PASSWORD'] ?? null), 'active_database_password_missing');
-        $pdo = new PDO('mysql:host=127.0.0.1;dbname=archite4_dev_rel1;charset=utf8mb4', $config['DB_USER'], $config['DB_PASSWORD'], [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES=>false]);
-        self::requireValue($pdo->query('SELECT DATABASE()')->fetchColumn() === 'archite4_dev_rel1' && explode('@', (string)$pdo->query('SELECT CURRENT_USER()')->fetchColumn(), 2)[0] === $config['DB_USER'], 'actual_source_pdo_identity_mismatch');
+        self::requireValue(is_array($config), 'active_database_config_identity_mismatch');
+        // Load the reviewed repository's real classes, never candidate vendor/bootstrap.
+        require_once self::REPO . '/app/src/Infrastructure/Config/AppConfig.php';
+        require_once self::REPO . '/app/src/Infrastructure/Database/ConnectionFactory.php';
+        $typed = self::databaseConfig($config, $users, $databases, $evidence);
+        $pdo = \Architex\Infrastructure\Database\ConnectionFactory::create($typed);
+        self::pdoIdentity($pdo, $typed, $evidence);
         $exclusive = true;
-        try { self::exclusiveGrantUser($databases, $config['DB_USER']); } catch (RuntimeException) { $exclusive = false; }
+        try { self::exclusiveGrantUser($databases, $typed->dbUser); } catch (RuntimeException) { $exclusive = false; }
         $evidence['exclusiveGrantUserVisible'] = $exclusive;
         if ($exclusive) {
             $own = (int)$pdo->query('SELECT CONNECTION_ID()')->fetchColumn();

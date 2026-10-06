@@ -200,6 +200,23 @@ class TokenLifecycleTests(unittest.TestCase):
                      'stderr': 'PRIVATE_SENTINEL'},
                 'mysqlUserTransportCli': {'status': 'PRIVATE_SENTINEL', 'exitCode': 'PRIVATE_SENTINEL',
                      'stderrClass': 'PRIVATE_SENTINEL', 'absoluteExecutablePresent': 'PRIVATE_SENTINEL'}}
+        for host_class in ('tcp-loopback', 'local-socket', 'refused', 'PRIVATE_SENTINEL'):
+            data['databaseHostClass'] = host_class
+            data['databaseConfigParsed'] = True
+            data['databaseHostLocal'] = 'PRIVATE_SENTINEL'
+            data['pdoUserMatches'] = False
+            data['dbUser'] = 'PRIVATE_SENTINEL'
+            data['dbPassword'] = 'PRIVATE_SENTINEL'
+            f.files[path] = json.dumps(data)
+            clean = g.receipts(f, SHA, plan_sha, set())[0]
+            self.assertNotIn('PRIVATE_SENTINEL', json.dumps(clean))
+            self.assertTrue(clean['databaseConfigParsed'])
+            self.assertFalse(clean['pdoUserMatches'])
+            self.assertNotIn('databaseHostLocal', clean)
+            if host_class == 'PRIVATE_SENTINEL':
+                self.assertNotIn('databaseHostClass', clean)
+            else:
+                self.assertEqual(clean['databaseHostClass'], host_class)
         f.files[path] = json.dumps(data)
         safe = g.receipts(f, SHA, plan_sha, set())[0]
         self.assertNotIn('PRIVATE_SENTINEL', json.dumps(safe))
