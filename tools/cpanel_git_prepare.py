@@ -321,8 +321,8 @@ BOOL_FIELDS = frozenset(('databaseDdlTouched', 'liveFilesTouched', 'zipAvailable
     'runtimeConfigAvailable', 'liveDdlAuthorized', 'mysqlInventoryAvailable',
     'mysqlUserInventoryAvailable', 'cronInventoryAvailable', 'exclusiveGrantUserVisible',
     'sourceConnectionsDrainedAtInspection', 'runtimeConfigRegular', 'runtimeConfigNotSymlink',
-    'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600', 'privateConfigPermissionsChanged', 'runtimeConfigPermissionsTouched'))
-GATES = frozenset(('active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
+    'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600', 'privateConfigPermissionsChanged', 'runtimeConfigPermissionsTouched', 'runtimeConfigParentOwnerMatches', 'runtimeConfigCanonical', 'runtimeConfigAncestorSafe', 'runtimeConfigParentPermissionsTouched', 'privateConfigParentPermissionsChanged'))
+GATES = frozenset(('active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_canonical_refused','runtime_permission_ancestor_path_refused','runtime_permission_ancestor_write_refused','runtime_permission_ancestor_owner_refused','runtime_permission_parent_owner_refused','runtime_permission_parent_mode_refused','runtime_permission_parent_identity_refused','runtime_permission_parent_chmod_failed','runtime_permission_parent_readback_failed','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
     'active_database_config_identity_mismatch', 'active_database_password_missing',
     'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
     'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
@@ -355,12 +355,20 @@ def permission_only_safe(data):
     if data.get('databaseDdlTouched') is not False:
         return False
     if data.get('liveFilesTouched') is False:
-        return not data.get('runtimeConfigPermissionsTouched', False)
+        return not data.get('runtimeConfigPermissionsTouched', False) and not data.get('runtimeConfigParentPermissionsTouched', False)
     return (data.get('liveFilesTouched') is True
         and data.get('runtimeConfigPermissionsTouched') is True
         and data.get('privateConfigPermissionsChanged') is True
         and all(data.get(k) is True for k in ('runtimeConfigRegular', 'runtimeConfigNotSymlink', 'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600'))
         and data.get('runtimeConfigModeAfter') == '0600'
+        and all(data.get(k) is True for k in ('runtimeConfigParentOwnerMatches', 'runtimeConfigCanonical', 'runtimeConfigAncestorSafe'))
+        and data.get('runtimeConfigParentModeAfter') == '0700'
+        and type(data.get('runtimeConfigParentPermissionsTouched')) is bool
+        and data.get('privateConfigParentPermissionsChanged') is data.get('runtimeConfigParentPermissionsTouched')
+        and isinstance(data.get('runtimeConfigParentModeBefore'), str)
+        and re.fullmatch(r'0[0-7]{3}', data['runtimeConfigParentModeBefore']) is not None
+        and (int(data['runtimeConfigParentModeBefore'], 8) & 0o022) == 0
+        and data.get('runtimeConfigParentPermissionsTouched') is (data['runtimeConfigParentModeBefore'] != '0700')
         and isinstance(data.get('configContentUnchangedSHA'), str)
         and re.fullmatch(r'[a-f0-9]{64}', data['configContentUnchangedSHA']) is not None
         and type(data.get('runtimeConfigBytesUnchanged')) is int and data['runtimeConfigBytesUnchanged'] >= 0)
@@ -381,8 +389,12 @@ def permission_intent_guard(client, receipt):
                 'path':HOME + '/public_html/.a777-runtime-active/config/runtime.php',
                 'device':receipt.get('runtimePermissionDevice'), 'inode':receipt.get('runtimePermissionInode'),
                 'owner':receipt.get('runtimePermissionOwner'), 'bytes':receipt.get('runtimeConfigBytesUnchanged'),
-                'beforeMode':receipt.get('runtimeConfigModeBefore'), 'sha256':receipt.get('configContentUnchangedSHA')}
-    if (intent != expected or any(type(expected[k]) is not int or expected[k] < 0 for k in ('device','inode','owner','bytes'))
+                'beforeMode':receipt.get('runtimeConfigModeBefore'), 'sha256':receipt.get('configContentUnchangedSHA'),
+                'parentPath':HOME + '/public_html/.a777-runtime-active/config',
+                'parentDevice':receipt.get('runtimePermissionParentDevice'), 'parentInode':receipt.get('runtimePermissionParentInode'),
+                'parentOwner':receipt.get('runtimePermissionParentOwner'), 'parentBeforeMode':receipt.get('runtimeConfigParentModeBefore'),
+                'parentAfterMode':'0700', 'parentRepair':receipt.get('runtimeConfigParentPermissionsTouched')}
+    if (intent != expected or any(type(expected[k]) is not int or expected[k] < 0 for k in ('device','inode','owner','bytes','parentDevice','parentInode','parentOwner'))
             or not permission_only_safe(receipt)):
         raise CpanelError('Private permission intent binding refused.')
 
@@ -575,10 +587,15 @@ def receipts(client, commit, plan_sha, previous):
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
             if type(data.get(key)) is bool: safe[key] = data[key]
-        for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter'):
+        for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter', 'runtimeConfigParentModeBefore', 'runtimeConfigParentModeAfter'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[0-7]{4}', data[key]): safe[key] = data[key]
         for key in ('cronEntryCount', 'otherSourceConnectionCount', 'runtimeConfigBytesUnchanged'):
             if type(data.get(key)) is int and 0 <= data[key] <= 1000000: safe[key] = data[key]
+        for key in ('runtimePermissionDevice','runtimePermissionInode','runtimePermissionOwner',
+                    'runtimePermissionParentDevice','runtimePermissionParentInode','runtimePermissionParentOwner'):
+            if type(data.get(key)) is int and data[key] >= 0: safe[key] = data[key]
+        if isinstance(data.get('runtimePermissionIntent'), str) and re.fullmatch(r'runtime-permission-[a-f0-9]{16}\.json', data['runtimePermissionIntent']):
+            safe['runtimePermissionIntent'] = data['runtimePermissionIntent']
         if 'blockingGate' in data:
             safe['blockingGate'] = data['blockingGate'] if data['blockingGate'] in GATES else 'native_preflight_failed'
         for key in ('runtimeConfigSha256', 'activeSqlTreeSha256', 'configContentUnchangedSHA'):
