@@ -438,7 +438,9 @@ def deployment_inventory_guard(client):
             path = DEPLOY_ROOT + '/' + name
             owned_mode(client, path, '0600')
             data = json.loads(read(client, path))
-            if (not isinstance(data, dict) or set(data) != {'format','operation','commit','planSha256','path','device','inode','owner','bytes','beforeMode','sha256'}
+            base_keys = {'format','operation','commit','planSha256','path','device','inode','owner','bytes','beforeMode','sha256'}
+            parent_keys = {'parentPath','parentDevice','parentInode','parentOwner','parentBeforeMode','parentAfterMode','parentRepair'}
+            if (not isinstance(data, dict) or set(data) not in (base_keys, base_keys | parent_keys)
                     or data.get('format') != 'a777-runtime-permission-intent-v1' or data.get('operation') != 'private0600'
                     or not isinstance(data.get('commit'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['commit'])
                     or not isinstance(data.get('planSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['planSha256'])
@@ -447,6 +449,24 @@ def deployment_inventory_guard(client):
                     or not isinstance(data.get('sha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['sha256'])
                     or not isinstance(data.get('beforeMode'), str) or not re.fullmatch(r'[0-7]{4}', data['beforeMode'])):
                 raise CpanelError('Private permission intent collision; refused.')
+            if parent_keys <= set(data):
+                if (data['parentPath'] != HOME + '/public_html/.a777-runtime-active/config'
+                        or any(type(data[k]) is not int or data[k] < 0 for k in ('parentDevice','parentInode','parentOwner'))
+                        or not isinstance(data['parentBeforeMode'], str) or not re.fullmatch(r'[0-7]{4}', data['parentBeforeMode'])
+                        or int(data['parentBeforeMode'], 8) & 0o22 or data['parentAfterMode'] != '0700'
+                        or type(data['parentRepair']) is not bool):
+                    raise CpanelError('Private permission parent intent collision; refused.')
+                bound = []
+                for candidate in entries(client, DEPLOY_ROOT):
+                    filename = candidate.get('name', '')
+                    if isinstance(filename, str) and re.fullmatch(r'preflight-' + re.escape(data['commit']) + r'-[a-f0-9]{16}\.json', filename):
+                        owned_mode(client, DEPLOY_ROOT + '/' + filename, '0600')
+                        receipt = json.loads(read(client, DEPLOY_ROOT + '/' + filename))
+                        if isinstance(receipt, dict) and receipt.get('runtimePermissionIntent') == name:
+                            permission_intent_guard(client, receipt)
+                            bound.append(receipt)
+                if not bound:
+                    raise CpanelError('Private permission parent intent has no completed receipt.')
             continue
         raise CpanelError('Private deployment inventory collision; refused.')
 
