@@ -195,17 +195,27 @@ class CpanelClient:
         return result.get("data")
 
     def _api2(self, function: str, params: Mapping[str, str]) -> object:
+        return self.api2('Fileman', function, params)
+
+    def api2(self, module: str, function: str, params: Mapping[str, str]) -> object:
+        """API 2 form POST: parameters (including pass) never enter the URL."""
+        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', module) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', function):
+            raise CpanelError('Invalid API 2 operation.')
         params = {
+            **params,
             "cpanel_jsonapi_user": self.config.username,
             "cpanel_jsonapi_apiversion": "2",
-            "cpanel_jsonapi_module": "Fileman",
+            "cpanel_jsonapi_module": module,
             "cpanel_jsonapi_func": function,
-            **params,
         }
-        payload = self._request_json("GET", "/json-api/cpanel", params)
+        if module == 'Fileman':
+            payload = self._request_json("GET", "/json-api/cpanel", params)
+        else:
+            payload = self._request_json("POST", "/json-api/cpanel", body=urllib.parse.urlencode(params).encode('utf-8'),
+                                         headers={'Content-Type': 'application/x-www-form-urlencoded'})
         result = payload.get("cpanelresult")
         if not isinstance(result, dict) or not isinstance(result.get("event"), dict) or result["event"].get("result") != 1:
-            raise CpanelError("cPanel Fileman contract failed.")
+            raise CpanelError("cPanel SSH contract failed." if module == 'SSH' else "cPanel Fileman contract failed.")
         data = result.get("data", [])
         if isinstance(data, list):
             failed = [item for item in data if isinstance(item, dict) and "result" in item and item.get("result") not in (1, "1", True)]
@@ -217,7 +227,7 @@ class CpanelClient:
                 )
             )
             if failed:
-                raise CpanelError("cPanel Fileman operation failed.")
+                raise CpanelError("cPanel SSH operation failed." if module == 'SSH' else "cPanel Fileman operation failed.")
         return data
 
     def _account_relative(self, path: str) -> str:

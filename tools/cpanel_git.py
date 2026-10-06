@@ -128,6 +128,10 @@ def main():
         }
         reason = reasons.get(str(error), 'configuration_or_operation_refused') if isinstance(error, CpanelError) else 'configuration_or_operation_refused'
         report = {"mode": args.mode, "status": "failed", "error": reason, "runtime_deployed": False}
+        from cpanel_git_prepare import NativeKeyFailure
+        if type(error) is NativeKeyFailure:
+            report.update(error=error.code, api_operation=error.stage, native_key_state=error.state,
+                          key_generation='cpanel_native')
         import traceback
         # Locations only: never include source lines, locals or exception messages.
         report['failure_locations'] = [

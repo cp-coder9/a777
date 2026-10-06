@@ -12,6 +12,10 @@ from cpanel_client import CpanelConfig, CpanelError
 
 HOST = 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl\n'
 SHA = 'a' * 40
+# Synthetic wire-format-only RSA public fixture, not cryptographic key generation.
+import base64
+def wire(value): return len(value).to_bytes(4, 'big') + value
+RSA_PUBLIC = 'ssh-rsa ' + base64.b64encode(wire(b'ssh-rsa') + wire(b'\x01\x00\x01') + wire(b'\x00\x80' + b'\x01' * 511)).decode() + ' synthetic-test\n'
 
 class Fake:
     config = CpanelConfig('cp73.domains.co.za', 2083, 'archite4', '', g.HOME, g.HOME, api_token='DO_NOT_LOG_TOKEN')
@@ -41,7 +45,21 @@ class Fake:
         self.calls.append(('API2', function, params))
         self.modes[g.HOME + '/' + params['sourcefiles']] = int(params['metadata'])
     def mkdir(self, path, permissions): self.dirs.add(path)
-    def upload_file(self, local, remote): self.files[remote] = local.read_text(encoding='ascii')
+    def api2(self, module, function, params):
+        self.calls.append((module, function, params))
+        assert module == 'SSH'
+        if function == 'listkeys':
+            return [{'ctime': 1413917058, 'mtime': 1413917058, 'file': g.KEY,
+                     'name': 'a777-deploy-key', 'haspub': int(g.KEY+'.pub' in self.files),
+                     'key': 'a777-deploy-key', 'auth': None, 'authaction': 0, 'authstatus': 0}] if g.KEY in self.files else []
+        assert function == 'genkey'
+        assert params == {'bits':'4096', 'name':'a777-deploy-key', 'pass':'', 'type':'rsa'}
+        assert g.KEY not in self.files and g.KEY+'.pub' not in self.files
+        self.files[g.KEY] = 'PRIVATE_SENTINEL_NEVER_READ'
+        self.files[g.KEY+'.pub'] = RSA_PUBLIC
+        return [{'reason': 'RAW_PROVIDER_REASON_NEVER_LOG', 'result': 1,
+                 'warnings': 'SECURITY RISK: The passphrase is empty. This is allowed but STRONGLY discouraged.'}]
+    def upload_file(self, local, remote): raise AssertionError('Private upload forbidden')
     def save_file(self, remote, content): self.files[remote] = content
 
 class PreparationTests(unittest.TestCase):
@@ -67,13 +85,13 @@ class PreparationTests(unittest.TestCase):
     def prepare(self, fake, destination, expected=None):
         with patch.object(g, 'github_host_key', return_value=HOST):
             return g.prepare_key(fake, destination, expected)
-    def test_real_key_upload_preservation_permissions_and_no_logs(self):
+    def test_native_key_preservation_permissions_and_no_logs(self):
         f = Fake()
         old = dict(f.files)
         with tempfile.TemporaryDirectory() as d, contextlib.redirect_stdout(io.StringIO()) as output:
             public = Path(d)/'public.pub'
             report = self.prepare(f, public)
-            self.assertTrue(public.read_text().startswith('ssh-ed25519 '))
+            self.assertTrue(public.read_text().startswith('ssh-rsa '))
             self.assertNotIn('PRIVATE', public.read_text())
             self.assertNotIn('PRIVATE', json.dumps(report) + output.getvalue())
             self.assertNotIn('DO_NOT_LOG_TOKEN', json.dumps(report) + output.getvalue())
