@@ -55,6 +55,54 @@ final class AccountOwnedRestoreTarget
         return $target;
     }
 
+    /** Read-only caller rehearsal; validates the actual pinned runtime, source PDO and provider inventory. */
+    public static function preflightManaged(PDO $sourcePdo, \Architex\Infrastructure\Config\AppConfig $config, string $runtimeSha256, CpanelRestoreProvisioner $provider): array
+    {
+        $pin = '5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8';
+        $runtime = '/home/archite4/public_html/.a777-runtime-active/config/runtime.php';
+        if (PHP_OS_FAMILY !== 'Linux' || !function_exists('posix_geteuid') || (posix_getpwuid(posix_geteuid())['name'] ?? '') !== 'archite4') throw new RuntimeException('Actual managed account owner mismatch.');
+        foreach (['/home', '/home/archite4', '/home/archite4/public_html', '/home/archite4/public_html/.a777-runtime-active', dirname($runtime)] as $directory) {
+            if (is_link($directory) || realpath($directory) !== $directory) throw new RuntimeException('Actual managed runtime canonical path mismatch.');
+        }
+        if (fileowner(dirname($runtime)) !== posix_geteuid() || (fileperms(dirname($runtime)) & 0777) !== 0700 || fileowner($runtime) !== posix_geteuid() || (fileperms($runtime) & 0777) !== 0600) throw new RuntimeException('Actual managed runtime privacy mismatch.');
+        if ($runtimeSha256 !== $pin || is_link($runtime) || realpath($runtime) !== $runtime || !is_file($runtime) || !hash_equals($pin, (string)hash_file('sha256', $runtime))) throw new RuntimeException('Actual managed runtime pin mismatch.');
+        $values = require $runtime;
+        if (!is_array($values)) throw new RuntimeException('Actual runtime unavailable.');
+        $actual = \Architex\Infrastructure\Config\AppConfig::fromEnvironment($values);
+        self::assertManagedSourceConfig($actual, $config);
+        if (!hash_equals($pin, (string)hash_file('sha256', $runtime))) throw new RuntimeException('Actual managed runtime changed during load.');
+        $connection = (string)$sourcePdo->getAttribute(PDO::ATTR_CONNECTION_STATUS);
+        if (!str_starts_with($connection, $config->dbHost . ' ')) throw new RuntimeException('Actual configured source transport mismatch.');
+        if ($sourcePdo->query('SELECT DATABASE()')->fetchColumn() !== $config->dbName) throw new RuntimeException('Actual configured source database mismatch.');
+        $user = (string)$sourcePdo->query('SELECT CURRENT_USER()')->fetchColumn();
+        if (explode('@', $user, 2)[0] !== $config->dbUser) throw new RuntimeException('Actual configured source grant owner mismatch.');
+        $server = self::serverIdentity($sourcePdo);
+        $tuple = json_decode($server, true, 64, JSON_THROW_ON_ERROR);
+        if ((int)($tuple['port'] ?? 0) !== $config->dbPort || empty($tuple['hostname']) || !isset($tuple['server_id'])) throw new RuntimeException('Actual configured source server tuple mismatch.');
+        $provider->preflight($config->dbName, $config->dbUser);
+        return ['host'=>$config->dbHost,'port'=>$config->dbPort,'source'=>$config->dbName,'user'=>$config->dbUser,'currentUser'=>$user,'server'=>$server,'runtimeSha256'=>$pin];
+    }
+
+    /** AppConfig validates APP_ENV; production is valid for the fixed source, never a target. */
+    private static function assertManagedSourceConfig(\Architex\Infrastructure\Config\AppConfig $actual, \Architex\Infrastructure\Config\AppConfig $config): void
+    {
+        if ($actual != $config || $config->dbName !== 'archite4_dev_rel1') throw new RuntimeException('Actual managed source configuration mismatch.');
+    }
+
+    /** Capability factory: managed transport accepted only after pinned source + authenticated inventory proof. */
+    public static function provisionManaged(PDO $sourcePdo, \Architex\Infrastructure\Config\AppConfig $actualConfig, string $pinnedRuntimeSha256, CpanelRestoreProvisioner $provider): self
+    {
+        $binding = self::preflightManaged($sourcePdo, $actualConfig, $pinnedRuntimeSha256, $provider);
+        $name = 'archite4_ar_' . bin2hex(random_bytes(8)) . '_test';
+        $receipt = $provider->provision($name, $binding['source'], $binding['user'], $binding);
+        $receipt['host'] = $binding['host']; $receipt['server'] = $binding['server'];
+        $receipt['managed'] = true; $receipt['nonce'] = bin2hex(random_bytes(32));
+        $target = new self($name, $binding['source'], $binding['host'], $binding['server'], $binding['user'], $receipt);
+        self::$issued ??= new \WeakMap();
+        self::$issued[$target] = hash('sha256', json_encode($receipt, JSON_THROW_ON_ERROR));
+        return $target;
+    }
+
     public function database(): string { return $this->name; }
     public function receipt(): array { return $this->receipt; }
 
@@ -66,11 +114,12 @@ final class AccountOwnedRestoreTarget
     public function assertEmpty(PDO $pdo): void
     {
         if (self::$issued === null || !isset(self::$issued[$this]) || !hash_equals(self::$issued[$this], hash('sha256', json_encode($this->receipt, JSON_THROW_ON_ERROR)))) throw new RuntimeException('Unissued or altered provisioning receipt.');
-        if (!preg_match('/\Aarchite4_ar_[a-f0-9]{16}_test\z/', $this->name) || $this->source !== 'archite4_dev_rel1' || $this->name === $this->source || !in_array($this->host, ['127.0.0.1','::1'], true) || ($this->receipt['account'] ?? '') !== 'archite4' || ($this->receipt['target'] ?? '') !== $this->name || ($this->receipt['user'] ?? '') !== $this->databaseUser) throw new RuntimeException('Owned target binding mismatch.');
+        if (!preg_match('/\Aarchite4_ar_[a-f0-9]{16}_test\z/', $this->name) || $this->source !== 'archite4_dev_rel1' || $this->name === $this->source || (!(($this->receipt['managed'] ?? false) === true && ($this->receipt['binding']['host'] ?? null) === $this->host && ($this->receipt['binding']['runtimeSha256'] ?? '') === '5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8') && !in_array($this->host, ['127.0.0.1','::1'], true)) || ($this->receipt['account'] ?? '') !== 'archite4' || ($this->receipt['target'] ?? '') !== $this->name || ($this->receipt['user'] ?? '') !== $this->databaseUser) throw new RuntimeException('Owned target binding mismatch.');
         if ($pdo->query('SELECT DATABASE()')->fetchColumn() !== $this->name || self::serverIdentity($pdo) !== $this->server) throw new RuntimeException('Actual target PDO identity mismatch.');
         $connection = (string)$pdo->getAttribute(PDO::ATTR_CONNECTION_STATUS);
         if (!str_starts_with($connection, $this->host . ' ')) throw new RuntimeException('Actual PDO must use the bound loopback transport.');
         $user = (string)$pdo->query('SELECT CURRENT_USER()')->fetchColumn();
+        if (($this->receipt['managed'] ?? false) === true && $user !== ($this->receipt['binding']['currentUser'] ?? null)) throw new RuntimeException('Exact managed CURRENT_USER binding mismatch.');
         if (explode('@', $user, 2)[0] !== $this->databaseUser) throw new RuntimeException('Actual target grant owner mismatch.');
         foreach (['tables'=>'table_schema','routines'=>'routine_schema','events'=>'event_schema'] as $table=>$column) {
             $query = $pdo->prepare("SELECT COUNT(*) FROM information_schema.$table WHERE $column = :database");
