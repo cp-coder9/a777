@@ -53,9 +53,11 @@ The workflow now accepts `prepare-key` and `clone` as explicit mutation authoriz
 `/home/archite4/public_html/architex.co.za/ai/repo` (observed branch NULL,
 deployable 0). Discovery run 37498946419 established retrieve availability.
 
-1. Dispatch `mode=prepare-key` with no fingerprint for first use. Dedicated
-   Ed25519 private material exists only in a temporary 0700 runner directory and
-   `/home/archite4/.ssh/a777-deploy-key` (0600), never Git/logs/artifacts.
+1. Dispatch `mode=prepare-key` with no fingerprint only if the exact owned key
+   paths are absent. cPanel SSH Management generates RSA4096 **on the host** via
+   API 2 `SSH/genkey`; private bytes are never uploaded, retrieved, logged or
+   present on the runner. Only `/home/archite4/.ssh/a777-deploy-key` holds the
+   private key (0600). GitHub host trust remains independently pinned Ed25519.
 2. Download **a777-github-read-only-deploy-key**, containing only
    `a777-deploy-key.pub`; register it as a **read-only** deploy key on private
    `cp-coder9/a777` (`read_only=true`; never enable write access). Retain its
@@ -66,9 +68,13 @@ deployable 0). Discovery run 37498946419 established retrieve availability.
    clone completion, update specifies `branch=master` to pull. Only read-back
    branch master plus actual HEAD SHA and no pending tasks yields
    `cloned_and_pulled`; `queued_or_incomplete` is NOT deployment or clone proof.
-4. Existing-key prepare reruns require the same fingerprint and derive the public
-   key from the existing private key to verify ownership. Partial/colliding keys
-   refuse rather than overwrite. Runner workflow concurrency is serialized.
+4. Existing-key prepare reruns require the same public fingerprint, a matching
+   native SSH metadata inventory and both exact owned files. Only the public
+   file is retrieved; private/public cryptographic pairing is not proven by an
+   API metadata inventory. No existing private key is exported to prove pairing.
+   Partial/colliding keys refuse rather than overwrite; nothing is deleted.
+   Runner workflow concurrency is serialized. Do not automatically clean up a
+   key left by an earlier failed upload or generation.
 
 Local CLI equivalents (same existing cPanel token environment):
 ```
@@ -93,6 +99,51 @@ References:
 - https://api.docs.cpanel.net/cpanel-api-2/cpanel-api-2-modules-fileman/cpanel-api-2-functions-fileman-fileop
 - https://api.docs.cpanel.net/specifications/cpanel.openapi/manage-files/fileman-get_file_content
 - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+
+## Native SSH Management contract and safe partial completion
+
+The implementation uses cPanel API 2 because the official SSH documentation
+states there is no equivalent UAPI function. Official `SSH/genkey` documents
+`bits` (positive integer >=1024), required `name`, `pass`, and `type` (`rsa` or
+`dsa`, not Ed25519). We send `bits=4096`, `name=a777-deploy-key`, `pass=` (empty),
+`type=rsa` in an HTTPS form **POST** to `/json-api/cpanel`, with API 2 routing
+fields in the body. Empty passphrases are explicitly allowed in the documented
+`warnings` return (added in cPanel 82), although discouraged for general usage.
+Here it permits noninteractive outbound Git access using a GitHub read-only
+repository deploy key; it does not grant inbound SSH or GitHub write access.
+No `authkey`, `importkey`, private `fetchkey`, or private Fileman upload is used.
+
+`SSH/listkeys` is metadata-only; inspect both key types with no `pub` or `types`
+filter so partial keys are not hidden. Compare exact `file` and owned `name/key`
+against Fileman inventories; unrelated keys are not changed. Public bytes are
+retrieved only through documented UAPI `Fileman/get_file_content` for
+`a777-deploy-key.pub`. There is no `SSH/fetchpubkey` page in the current official
+API 2 catalog (that URL returns 404), so no invented endpoint is used.
+
+Success envelopes contain `cpanelresult.event.result=1`; `genkey` additionally
+returns `data=[{result:1, reason:..., warnings:...}]`. Provider reasons/warnings
+are never emitted. The public key parser validates the encoded SSH algorithm,
+field lengths and canonical RSA mpints, and requires 4096 modulus bits for a
+new native key. RSA authentication does not change the independently pinned
+Ed25519 GitHub **host** key or strict host verification.
+
+Safe failure reports identify `api_operation` (`SSH/listkeys`, `SSH/genkey`,
+`SSH/public_readback`, `SSH/config_readback`) and `native_key_state` (`unknown`,
+`possibly_generated`, `generated`, `existing`). An unavailable/refused SSH call
+is not automatically evidence of a disabled hosting feature: report the exact
+unavailable operation without guessing the provider reason. A genkey lost
+response is `possibly_generated`, never automatic retry or cleanup. A generated
+pair followed by config failure remains `generated`; only a validated public
+recovery artifact may be retained, even on that failed run. The mode remains
+failed until permissions/config/known_hosts readbacks finish. Do not register a
+recovery artifact as proof that SSH preparation succeeded. The API has no atomic
+create-if-absent parameter; serialized workflow plus immediate inventories guards
+observed collisions, but cannot fence a concurrent out-of-band account operator.
+
+Official parameter and response sources:
+- https://api.docs.cpanel.net/cpanel-api-2/cpanel-api-2-modules-ssh/cpanel-api-2-functions-ssh-genkey
+- https://api.docs.cpanel.net/cpanel-api-2/cpanel-api-2-modules-ssh/cpanel-api-2-functions-ssh-listkeys
+- https://api.docs.cpanel.net/specifications/cpanel.openapi/manage-files/fileman-get_file_content
 
 ## Next deployment hook remains separately gated
 

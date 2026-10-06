@@ -3,11 +3,7 @@ import base64
 import fnmatch
 import hashlib
 import json
-import os
-from pathlib import Path
 import re
-import subprocess
-import tempfile
 import time
 from urllib.request import Request, build_opener, HTTPSHandler
 from cpanel_client import CpanelError, RejectRedirects
@@ -26,12 +22,43 @@ BLOCK = ('# BEGIN a777 owned GitHub alias\nHost a777-github\n'
          '# END a777 owned GitHub alias\n')
 
 
-def fingerprint(public):
+def fingerprint(public, required_rsa_bits=None):
+    if not isinstance(public, str) or not public.isascii() or len(public.strip().splitlines()) != 1 or any(ord(c) < 32 and c not in '\n\r\t' for c in public) or 'PRIVATE KEY' in public:
+        raise CpanelError('Invalid owned public key.')
     parts = public.strip().split()
-    if len(parts) < 2 or parts[0] != 'ssh-ed25519':
+    if len(parts) < 2 or parts[0] not in ('ssh-ed25519', 'ssh-rsa'):
         raise CpanelError('Invalid owned public key.')
     try:
         raw = base64.b64decode(parts[1], validate=True)
+        offset = 0
+        def field():
+            nonlocal offset
+            if offset + 4 > len(raw):
+                raise ValueError()
+            size = int.from_bytes(raw[offset:offset + 4], 'big')
+            offset += 4
+            if not size or offset + size > len(raw):
+                raise ValueError()
+            value = raw[offset:offset + size]
+            offset += size
+            return value
+        if field().decode('ascii') != parts[0]:
+            raise ValueError()
+        if parts[0] == 'ssh-ed25519':
+            if len(field()) != 32:
+                raise ValueError()
+        else:
+            numbers = [field(), field()]
+            for number in numbers:
+                if number[0] & 128 or (len(number) > 1 and number[0] == 0 and not number[1] & 128):
+                    raise ValueError()
+            exponent, modulus = [int.from_bytes(n, 'big') for n in numbers]
+            if exponent < 3 or exponent % 2 == 0 or modulus.bit_length() < 2048 or modulus % 2 == 0:
+                raise ValueError()
+        if required_rsa_bits and (parts[0] != 'ssh-rsa' or modulus.bit_length() != required_rsa_bits):
+            raise ValueError()
+        if offset != len(raw):
+            raise ValueError()
     except Exception:
         raise CpanelError('Invalid owned public key.') from None
     return 'SHA256:' + base64.b64encode(hashlib.sha256(raw).digest()).decode().rstrip('=')
@@ -46,13 +73,6 @@ def github_host_key():
         if key.startswith('ssh-ed25519 ') and fingerprint(key) == PIN:
             return 'github.com ' + key + '\n'
     raise CpanelError('Official GitHub host key fingerprint mismatch.')
-
-
-def ssh_command(args):
-    result = subprocess.run(['ssh-keygen', *args], capture_output=True, check=False)
-    if result.returncode:
-        raise CpanelError('Local key operation failed.')
-    return result.stdout.decode('ascii')
 
 
 def authorize(client):
@@ -85,6 +105,8 @@ def exists(client, path):
 
 
 def read(client, path):
+    if path == KEY:
+        raise CpanelError('Private key retrieval forbidden.')
     directory, name = path.rsplit('/', 1)
     data = client._uapi('Fileman', 'get_file_content', {'dir': directory, 'file': name, 'from_charset': 'US-ASCII', 'to_charset': 'US-ASCII', 'update_html_document_encoding': '0'})
     content = data.get('content') if isinstance(data, dict) else None
@@ -136,8 +158,35 @@ def preserve_append(client, path, original, updated):
     chmod(client, path, '0600')
 
 
+class NativeKeyFailure(CpanelError):
+    """Locally selected safe stage/state; provider reasons are never retained."""
+    def __init__(self, stage, code, state):
+        super().__init__('Native SSH key preparation refused.')
+        self.stage, self.code, self.state = stage, code, state
+
+
+def native_inventory(client):
+    try:
+        rows = client.api2('SSH', 'listkeys', {})
+    except Exception:
+        raise NativeKeyFailure('SSH/listkeys', 'native_ssh_inventory_unavailable', 'unknown') from None
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise NativeKeyFailure('SSH/listkeys', 'native_ssh_inventory_contract', 'unknown')
+    matches = []
+    for row in rows:
+        names = (row.get('name'), row.get('key'))
+        if any(name in ('a777-deploy-key', 'a777-deploy-key.pub') for name in names) or row.get('file') in (KEY, KEY + '.pub'):
+            if row.get('file') not in (KEY, KEY + '.pub') or not any(name in ('a777-deploy-key', 'a777-deploy-key.pub') for name in names):
+                raise NativeKeyFailure('SSH/listkeys', 'native_ssh_inventory_collision', 'unknown')
+            matches.append(row)
+    if len({row['file'] for row in matches}) != len(matches):
+        raise NativeKeyFailure('SSH/listkeys', 'native_ssh_inventory_collision', 'unknown')
+    return matches
+
+
 def prepare_key(client, public_path, expected=None):
     authorize(client)
+    native_inventory(client)  # Discover SSH capability before any mutation.
     if not exists(client, SSH):
         client.mkdir(SSH, '0700')
     chmod(client, SSH, '0700')
@@ -153,38 +202,46 @@ def prepare_key(client, public_path, expected=None):
     known_updated = known if host.strip() in known.splitlines() else known + ('' if not known or known.endswith('\n') else '\n') + host
     key_exists = exists(client, KEY)
     pub_exists = exists(client, KEY + '.pub')
-    if key_exists != pub_exists or (key_exists and not expected):
+    listed = native_inventory(client)
+    if key_exists != pub_exists or (listed and not key_exists) or (key_exists and not listed) or (key_exists and not expected):
         raise CpanelError('Owned key collision: expected fingerprint required; no overwrite.')
-    with tempfile.TemporaryDirectory(prefix='a777-key-', dir=os.environ.get('RUNNER_TEMP')) as directory:
-        os.chmod(directory, 0o700)
-        private = Path(directory) / 'key'
-        if key_exists:
-            public = read(client, KEY + '.pub')
-            if fingerprint(public) != expected:
-                raise CpanelError('Owned public key fingerprint collision.')
-            private.write_text(read(client, KEY), encoding='ascii', newline='\n')
-            os.chmod(private, 0o600)
-            if fingerprint(ssh_command(['-y', '-f', str(private)])) != expected:
-                raise CpanelError('Owned private/public key mismatch.')
-        else:
-            if expected:
-                raise CpanelError('Expected owned key absent; refusing replacement.')
-            ssh_command(['-q', '-t', 'ed25519', '-N', '', '-C', 'a777-production-read-only', '-f', str(private)])
-            os.chmod(private, 0o600)
-            public = Path(str(private) + '.pub').read_text(encoding='ascii')
-            client.upload_file(private, KEY)
-            chmod(client, KEY, '0600')
-            if read(client, KEY) != private.read_text(encoding='ascii'):
-                raise CpanelError('Private key upload read-back mismatch.')
-            client.save_file(KEY + '.pub', public)
+    if not key_exists:
+        if expected:
+            raise CpanelError('Expected owned key absent; refusing replacement.')
+        # Recheck both inventories immediately before generating; never overwrite a partial pair.
+        if native_inventory(client) or exists(client, KEY) or exists(client, KEY + '.pub'):
+            raise CpanelError('Owned key collision: expected fingerprint required; no overwrite.')
+        try:
+            data = client.api2('SSH', 'genkey', {'bits': '4096', 'name': 'a777-deploy-key', 'pass': '', 'type': 'rsa'})
+            if not isinstance(data, list) or len(data) != 1 or not isinstance(data[0], dict) or data[0].get('result') not in (1, '1'):
+                raise CpanelError('Native generation contract failed.')
+        except Exception:
+            # Lost response may have generated a pair. Never retry, delete, or print reason.
+            raise NativeKeyFailure('SSH/genkey', 'native_ssh_generation_unavailable', 'possibly_generated') from None
+    try:
+        verified_inventory = native_inventory(client)
+        if not verified_inventory or any(row.get('file') == KEY and row.get('haspub') not in (1, '1', True) for row in verified_inventory) or not exists(client, KEY) or not exists(client, KEY + '.pub'):
+            raise CpanelError('Native pair read-back incomplete.')
+        public = read(client, KEY + '.pub')
+        actual = fingerprint(public)
+        if expected and actual != expected:
+            raise CpanelError('Owned public key fingerprint collision.')
+        if not key_exists:
+            fingerprint(public, required_rsa_bits=4096)
         chmod(client, KEY, '0600')
         chmod(client, KEY + '.pub', '0600')
         if read(client, KEY + '.pub') != public:
             raise CpanelError('Public key read-back mismatch.')
-    preserve_append(client, SSH + '/known_hosts', known, known_updated)
-    preserve_append(client, SSH + '/config', original, updated)
-    public_path.write_text(public, encoding='ascii')
-    return {'mode': 'prepare-key', 'status': 'prepared', 'public_key_fingerprint': fingerprint(public), 'runtime_deployed': False}
+        # Public recovery artifact remains safe even if SSH config preparation fails next.
+        public_path.write_text(public, encoding='ascii')
+    except Exception:
+        raise NativeKeyFailure('SSH/public_readback', 'native_ssh_key_verification_refused', 'existing' if key_exists else 'generated') from None
+    try:
+        preserve_append(client, SSH + '/known_hosts', known, known_updated)
+        preserve_append(client, SSH + '/config', original, updated)
+    except Exception:
+        raise NativeKeyFailure('SSH/config_readback', 'native_ssh_configuration_incomplete', 'existing' if key_exists else 'generated') from None
+    return {'mode': 'prepare-key', 'status': 'prepared', 'key_generation': 'cpanel_native', 'api_operation': 'SSH/genkey' if not key_exists else 'SSH/listkeys', 'public_key_fingerprint': actual, 'runtime_deployed': False}
 
 
 def inventory(client):

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Read-only repository discovery (no clone, pull or deploy)
+        description: inspect is read-only; prepare-key generates a native host key; clone never deploys runtime
         type: choice
         required: true
         default: inspect
@@ -62,10 +62,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
       - name: Public deploy key only
-        if: ${{ inputs.mode == 'prepare-key' && success() }}
+        if: ${{ inputs.mode == 'prepare-key' && always() }}
         uses: actions/upload-artifact@v4
         with:
           name: a777-github-read-only-deploy-key
           path: ${{ runner.temp }}/a777-deploy-key.pub
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 1
