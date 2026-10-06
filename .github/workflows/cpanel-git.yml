@@ -18,6 +18,10 @@ on:
         type: boolean
         default: false
         required: false
+      expected_runtime_config_sha256:
+        description: Optional exact lowercase SHA256 from independently confirmed runtime receipt (read-only managed DB transport only)
+        type: string
+        required: false
       expected_key_fingerprint:
         description: SHA256 fingerprint required for clone and existing-key preparation reruns
         type: string
@@ -54,6 +58,7 @@ jobs:
           MODE: ${{ inputs.mode }}
           SECURE_RUNTIME_CONFIG_PERMISSIONS: ${{ inputs.secure_runtime_config_permissions }}
           EXPECTED_COMMIT: ${{ github.sha }}
+          EXPECTED_RUNTIME_CONFIG_SHA256: ${{ inputs.expected_runtime_config_sha256 }}
           EXPECTED_KEY_FINGERPRINT: ${{ inputs.expected_key_fingerprint }}
           A777_CPANEL_HOST: cp73.domains.co.za
           A777_CPANEL_PORT: '2083'
@@ -68,6 +73,7 @@ jobs:
           if [[ "$MODE" == native-preflight ]]; then
             [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
             args+=(--expected-commit "$EXPECTED_COMMIT")
+            if [[ -n "$EXPECTED_RUNTIME_CONFIG_SHA256" ]]; then args+=(--expected-runtime-config-sha256 "$EXPECTED_RUNTIME_CONFIG_SHA256"); fi
             if [[ "$SECURE_RUNTIME_CONFIG_PERMISSIONS" == true ]]; then args+=(--secure-runtime-config-permissions); fi
           fi
           python tools/cpanel_git.py "${args[@]}"

@@ -316,7 +316,7 @@ def clone(client, expected, attempts=24, pause=5):
 DEPLOY_ROOT = HOME + '/.a777-deploy'
 PLAN = DEPLOY_ROOT + '/operator-plan.json'
 DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
-BOOL_FIELDS = frozenset(('databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
+BOOL_FIELDS = frozenset(('sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
     'databaseUserInventoryMatches', 'databaseInventoryMatches', 'pdoDatabaseMatches', 'pdoUserMatches',
     'databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
     'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
@@ -325,7 +325,7 @@ BOOL_FIELDS = frozenset(('databaseConfigParsed', 'databaseHostLocal', 'databaseN
     'sourceConnectionsDrainedAtInspection', 'runtimeConfigRegular', 'runtimeConfigNotSymlink',
     'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600', 'privateConfigPermissionsChanged', 'runtimeConfigPermissionsTouched', 'runtimeConfigParentOwnerMatches', 'runtimeConfigCanonical', 'runtimeConfigAncestorSafe', 'runtimeConfigParentPermissionsTouched', 'privateConfigParentPermissionsChanged'))
 GATES = frozenset(('active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_canonical_refused','runtime_permission_ancestor_path_refused','runtime_permission_ancestor_write_refused','runtime_permission_ancestor_owner_refused','runtime_permission_parent_owner_refused','runtime_permission_parent_mode_refused','runtime_permission_parent_identity_refused','runtime_permission_parent_chmod_failed','runtime_permission_parent_readback_failed','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
-    'active_database_config_identity_mismatch', 'active_database_password_missing',
+    'runtime_config_pin_mismatch', 'active_database_config_identity_mismatch', 'active_database_password_missing',
     'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
     'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
     'active_sql_empty', 'backup_storage_not_private_or_archive_inside_storage', 'native_preflight_failed',
@@ -513,7 +513,9 @@ def cleanup_token(client, state):
     return True
 
 
-def preflight_plan(client, commit, secure_runtime_config_permissions=False):
+def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256=''):
+    if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
+        raise CpanelError('Explicit runtime config hash required.')
     if not exists(client, DEPLOY_ROOT):
         client.mkdir(DEPLOY_ROOT, '0700')
     # Existing directories are not repaired or broadened. Native helper checks UID too.
@@ -526,15 +528,19 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False):
         raise CpanelError('Explicit permission authorization required.')
     if secure_runtime_config_permissions:
         plan['secureRuntimeConfigPermissions'] = True
+    if expected_runtime_config_sha256:
+        plan['expectedRuntimeConfigSha256'] = expected_runtime_config_sha256
     deployment_inventory_guard(client)
     text = json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n'
     if exists(client, PLAN):
         owned_mode(client, PLAN, '0600')
         original = read(client, PLAN)
         old = json.loads(original)
-        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions')}
+        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256')}
         if (not isinstance(old, dict) or any(old.get(k) != v for k, v in base.items())
-                or set(old) not in (set(base) | {'expectedCommit'}, set(base) | {'expectedCommit', 'readOnlyUapiTransport'}, set(base) | {'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions'})
+                or not set(base) | {'expectedCommit'} <= set(old)
+                or not set(old) <= set(base) | {'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256'}
+                or ('expectedRuntimeConfigSha256' in old and (not isinstance(old['expectedRuntimeConfigSha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', old['expectedRuntimeConfigSha256'])))
                 or not isinstance(old.get('expectedCommit'), str)
                 or not re.fullmatch(r'[a-f0-9]{40}', old['expectedCommit'])
                 or ('secureRuntimeConfigPermissions' in old and type(old['secureRuntimeConfigPermissions']) is not bool)
@@ -609,7 +615,7 @@ def receipts(client, commit, plan_sha, previous):
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
             if type(data.get(key)) is bool: safe[key] = data[key]
-        if data.get('databaseHostClass') in ('tcp-loopback', 'local-socket', 'refused'):
+        if data.get('databaseHostClass') in ('tcp-loopback', 'local-socket', 'configured-managed', 'refused'):
             safe['databaseHostClass'] = data['databaseHostClass']
         for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter', 'runtimeConfigParentModeBefore', 'runtimeConfigParentModeAfter'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[0-7]{4}', data[key]): safe[key] = data[key]
@@ -648,7 +654,7 @@ def receipts(client, commit, plan_sha, previous):
     return sorted(reports, key=lambda r: r['report_id'])
 
 
-def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False):
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256=''):
     report = {'mode': 'native-preflight', 'status': 'failed', 'runtime_deployed': False,
               'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
               'tokenAbsenceVerified': False}
@@ -658,6 +664,8 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
     try:
         if not isinstance(expected_commit, str) or not re.fullmatch(r'[a-f0-9]{40}', expected_commit) or expected_key != DEPLOY_KEY_PIN:
             raise CpanelError('Native preflight input refused.')
+        if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
+            raise CpanelError('Explicit runtime config hash required.')
         stage = 'pull_master'
         # Preflight must never create a new repository implicitly.
         authorize(client)
@@ -668,7 +676,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
             raise CpanelError('Remote HEAD differs from workflow commit.')
         stage = 'private_plan'
-        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions)
+        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
         stage = 'private_token'
         provision_token(client, token_state)
