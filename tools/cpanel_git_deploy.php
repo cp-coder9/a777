@@ -30,7 +30,7 @@ final class CpanelGitDeploy
         return $bytes === '' ? 'empty' : 'unclassified';
     }
 
-    public static function command(array $argv, string $cwd): string
+    public static function command(array $argv, string $cwd, bool $raw = false): string
     {
         self::$commandEvidence = ['status'=>'unavailable', 'exitCode'=>null, 'stderrClass'=>'empty'];
         // File-backed pipes avoid stdout/stderr deadlock and never print command bytes.
@@ -48,7 +48,7 @@ final class CpanelGitDeploy
                 'stderrClass'=>self::stderrClass(is_string($stderr) ? $stderr : '')];
             self::requireValue($exit === 0 && is_string($output), 'command_failed');
             self::requireValue(strlen($output) <= 1048576, 'command_output_too_large');
-            return trim($output);
+            return $raw ? $output : trim($output);
         } finally { fclose($out); fclose($err); }
     }
 
@@ -363,6 +363,7 @@ final class CpanelGitDeploy
             'activeRootAvailable'=>realpath(self::ACTIVE) === self::ACTIVE,
             'documentRootAvailable'=>realpath(self::DOCROOT) === self::DOCROOT,
             'runtimeConfigAvailable'=>is_file(self::ACTIVE . '/config/runtime.php'),
+            'managedRestoreSourceBound'=>false, 'managedRestoreProviderStatus'=>'not-rehearsed',
             'liveDdlAuthorized'=>false];
         $databases = self::inspectInventory('list_databases', $apiAllowed, $evidence);
         $evidence['mysqlInventoryAvailable'] = true;
@@ -409,6 +410,26 @@ final class CpanelGitDeploy
         self::requireValue(hash_file('sha256', $configPath) === $configSha, 'runtime_config_pin_mismatch');
         $pdo = \Architex\Infrastructure\Database\ConnectionFactory::create($typed);
         self::pdoIdentity($pdo, $typed, $evidence);
+        $evidence['managedRestoreSourceBound'] = false;
+        $evidence['managedRestoreProviderStatus'] = 'not-rehearsed';
+        if ($apiAllowed) {
+            // Only reviewed clean-commit repository bytes; never incoming artifact code.
+            foreach (['Backup/CpanelRestoreProvisioner', 'Backup/AccountOwnedRestoreTarget', 'Config/AppConfig', 'Database/ConnectionFactory'] as $relativeClass) {
+                $relative = 'app/src/Infrastructure/' . $relativeClass . '.php';
+                $path = self::REPO . '/' . $relative;
+                self::requireValue(!is_link($path) && realpath($path) === $path, 'managed_restore_class_path_mismatch');
+                $committed = self::command(['/usr/local/cpanel/3rdparty/bin/git', 'show', 'HEAD:' . $relative], self::REPO, true);
+                self::requireValue(hash_equals((string)hash_file('sha256', $path), hash('sha256', $committed)), 'managed_restore_class_commit_mismatch');
+                require_once $path;
+                $class = 'Architex\\Infrastructure\\' . str_replace('/', '\\', $relativeClass);
+                self::requireValue((new ReflectionClass($class))->getFileName() === $path, 'managed_restore_class_loading_mismatch');
+            }
+            $provider = \Architex\Infrastructure\Backup\CpanelRestoreProvisioner::fromAccountToken();
+            \Architex\Infrastructure\Backup\AccountOwnedRestoreTarget::preflightManaged($pdo, $typed, $configSha, $provider);
+            self::requireValue(hash_file('sha256', $configPath) === $configSha, 'runtime_config_pin_mismatch');
+            $evidence['managedRestoreSourceBound'] = true;
+            $evidence['managedRestoreProviderStatus'] = 'authenticated-inventory-read-only';
+        }
         $exclusive = true;
         try { self::exclusiveGrantUser($databases, $typed->dbUser); } catch (RuntimeException) { $exclusive = false; }
         $evidence['exclusiveGrantUserVisible'] = $exclusive;
@@ -435,6 +456,7 @@ final class CpanelGitDeploy
             'exclusiveGrantUserVisible'=>$exclusive, 'cronInventoryAvailable'=>$cronAvailable,
             'cronEntryCount'=>$cronAvailable ? count($cron) : null, 'nativeRestoreCapabilityPresent'=>is_file(self::REPO . '/app/src/Infrastructure/Backup/AccountOwnedRestoreTarget.php'),
             'zipAvailable'=>class_exists('ZipArchive'), 'curlAvailable'=>function_exists('curl_init'),
+            'managedRestoreSourceBound'=>$evidence['managedRestoreSourceBound'], 'managedRestoreProviderStatus'=>$evidence['managedRestoreProviderStatus'],
             'liveDdlAuthorized'=>false, 'blockingGate'=>$evidence['blockingGate']
         ]];
     }
@@ -537,7 +559,7 @@ final class CpanelGitDeploy
                 } catch (Throwable $error) {
                     $report['status'] = 'capability-inspection-refused';
                     // Do not persist PDO/provider error strings or config values.
-                    $safeGates = ['runtime_config_pin_mismatch','command_unavailable','command_failed','command_output_too_large','native_uapi_failed','native_uapi_inventory_missing',
+                    $safeGates = ['managed_restore_class_path_mismatch','managed_restore_class_commit_mismatch','managed_restore_class_loading_mismatch','runtime_config_pin_mismatch','command_unavailable','command_failed','command_output_too_large','native_uapi_failed','native_uapi_inventory_missing',
                         'api_linux_identity_required','api_operator_identity_mismatch','api_token_path_invalid','api_token_root_not_private',
                         'api_token_missing_or_path_invalid','api_token_unreadable','api_token_not_private','api_token_invalid',
                         'api_http_failed','api_response_too_large','api_response_invalid','api_uapi_failed','api_readonly_function_required',

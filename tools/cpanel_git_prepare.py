@@ -318,7 +318,7 @@ PLAN = DEPLOY_ROOT + '/operator-plan.json'
 DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
 BOOL_FIELDS = frozenset(('storageExists', 'storageCanonical', 'storageOutsidePublic', 'archiveOutsideStorage',
     'migrationAuthorized', 'backupAuthorized', 'promotionAuthorized', 'appuserHasScopedOnly',
-    'appuserGrantsInspectionAvailable', 'accountPhpWorkerInventoryAvailable', 'sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
+    'appuserGrantsInspectionAvailable', 'accountPhpWorkerInventoryAvailable', 'managedRestoreSourceBound', 'sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
     'databaseUserInventoryMatches', 'databaseInventoryMatches', 'pdoDatabaseMatches', 'pdoUserMatches',
     'databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
     'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
@@ -326,7 +326,7 @@ BOOL_FIELDS = frozenset(('storageExists', 'storageCanonical', 'storageOutsidePub
     'mysqlUserInventoryAvailable', 'cronInventoryAvailable', 'exclusiveGrantUserVisible',
     'sourceConnectionsDrainedAtInspection', 'runtimeConfigRegular', 'runtimeConfigNotSymlink',
     'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600', 'privateConfigPermissionsChanged', 'runtimeConfigPermissionsTouched', 'runtimeConfigParentOwnerMatches', 'runtimeConfigCanonical', 'runtimeConfigAncestorSafe', 'runtimeConfigParentPermissionsTouched', 'privateConfigParentPermissionsChanged'))
-GATES = frozenset(('active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_canonical_refused','runtime_permission_ancestor_path_refused','runtime_permission_ancestor_write_refused','runtime_permission_ancestor_owner_refused','runtime_permission_parent_owner_refused','runtime_permission_parent_mode_refused','runtime_permission_parent_identity_refused','runtime_permission_parent_chmod_failed','runtime_permission_parent_readback_failed','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
+GATES = frozenset(('managed_restore_class_path_mismatch','managed_restore_class_commit_mismatch','managed_restore_class_loading_mismatch','active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_canonical_refused','runtime_permission_ancestor_path_refused','runtime_permission_ancestor_write_refused','runtime_permission_ancestor_owner_refused','runtime_permission_parent_owner_refused','runtime_permission_parent_mode_refused','runtime_permission_parent_identity_refused','runtime_permission_parent_chmod_failed','runtime_permission_parent_readback_failed','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
     'runtime_config_pin_mismatch', 'active_database_config_identity_mismatch', 'active_database_password_missing',
     'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
     'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
@@ -619,6 +619,8 @@ def receipts(client, commit, plan_sha, previous):
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
             if type(data.get(key)) is bool: safe[key] = data[key]
+        if data.get('managedRestoreProviderStatus') in ('not-rehearsed', 'authenticated-inventory-read-only'):
+            safe['managedRestoreProviderStatus'] = data['managedRestoreProviderStatus']
         if data.get('databaseHostClass') in ('tcp-loopback', 'local-socket', 'configured-managed', 'refused'):
             safe['databaseHostClass'] = data['databaseHostClass']
         for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter', 'runtimeConfigParentModeBefore', 'runtimeConfigParentModeAfter'):
