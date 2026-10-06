@@ -5,6 +5,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cpanel_git_prepare as g
 
 class Diagnostics(unittest.TestCase):
+    def test_source_metadata_boolean_and_legacy_failure(self):
+        legacy = dict(failureStage='source-storage', knownReason='private_directory_required',
+                      failureFunction='privateDirectory', failureFile='CpanelRestoreRehearsal.php', failureLine=235)
+        self.assertTrue(g.rehearsal_diagnostics_safe(legacy))
+        for value in (True, False):
+            self.assertTrue(g.rehearsal_diagnostics_safe(dict(legacy, sourceDirectoryMetadataOwnerOnly=value)))
+        for value in (0, 1, None, 'false', [], {}):
+            self.assertFalse(g.rehearsal_diagnostics_safe(dict(legacy, sourceDirectoryMetadataOwnerOnly=value)))
+        for reason, function in (('source_directory_required','sourceDirectoryStat'), ('source_public_storage_refused','sourceLocation')):
+            self.assertTrue(g.rehearsal_diagnostics_safe(dict(legacy, knownReason=reason, failureFunction=function)))
+
     def test_constants_only(self):
         fields = dict(failureStage='repository', knownReason='private_directory_required',
             failureFile='CpanelRestoreRehearsal.php', failureFunction='privateDirectory', failureLine=152,

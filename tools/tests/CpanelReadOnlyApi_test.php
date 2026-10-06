@@ -50,6 +50,6 @@ $source=file_get_contents(dirname(__DIR__) . '/CpanelReadOnlyApi.php');
 foreach (['CURLOPT_FOLLOWLOCATION=>false','CURLOPT_SSL_VERIFYPEER=>true','CURLOPT_SSL_VERIFYHOST=>2','CURLOPT_PROXY=>\'\'','realpath(self::TOKEN) === self::TOKEN',"['home'] ?? null) === '/home/archite4'"] as $control) verify(str_contains($source,$control));
 $deploy=file_get_contents(dirname(__DIR__) . '/cpanel_git_deploy.php');
 verify(str_contains($deploy,"'planSha256'=>hash_file('sha256', \$planPath)"));
-verify(str_contains($deploy,"\$requested === '--preflight' && \$plan['mode'] === 'preflight'"));
+verify(str_contains($deploy,"in_array(\$requested, ['--preflight', '--restore-rehearsal'], true) && \$plan['mode'] === substr(\$requested, 2)"));
 verify(str_contains($deploy,"native-cli-then-private-token-https"));
 print "$n assertions passed; synthetic protocol/stat fixtures and real local subprocesses; no hosting or production proof\n";
