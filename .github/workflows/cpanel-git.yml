@@ -13,6 +13,7 @@ on:
           - prepare-key
           - clone
           - native-preflight
+          - restore-rehearsal
       secure_runtime_config_permissions:
         description: Explicit permission-only repair of the owned runtime config
         type: boolean
@@ -37,7 +38,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -70,7 +71,7 @@ jobs:
           args=("$MODE" --report "$RUNNER_TEMP/cpanel-git-inspection.json")
           if [[ -n "$EXPECTED_KEY_FINGERPRINT" ]]; then args+=(--expected-key-fingerprint "$EXPECTED_KEY_FINGERPRINT"); fi
           if [[ "$MODE" == prepare-key ]]; then args+=(--public-key "$RUNNER_TEMP/a777-deploy-key.pub"); fi
-          if [[ "$MODE" == native-preflight ]]; then
+          if [[ "$MODE" == native-preflight || "$MODE" == restore-rehearsal ]]; then
             [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
             args+=(--expected-commit "$EXPECTED_COMMIT")
             if [[ -n "$EXPECTED_RUNTIME_CONFIG_SHA256" ]]; then args+=(--expected-runtime-config-sha256 "$EXPECTED_RUNTIME_CONFIG_SHA256"); fi
