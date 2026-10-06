@@ -188,6 +188,30 @@ class TokenLifecycleTests(unittest.TestCase):
                 r = self.run_native(f)
             self.assertNotEqual(r['status'], 'preflight_complete')
 
+    def test_unsafe_storage_inspected_without_authorization(self):
+        f = NativeFake(); plan_sha = g.preflight_plan(f, SHA)
+        path = g.DEPLOY_ROOT + '/preflight-' + SHA + '-0123456789abcdef.json'
+        data = {'format': 'a777-cpanel-native-preflight-v1', 'mode': 'preflight', 'commit': SHA,
+                'planSha256': plan_sha, 'status': 'inspected-not-authorized',
+                'databaseDdlTouched': False, 'liveFilesTouched': False,
+                'storageExists': True, 'storageCanonical': True, 'storageOutsidePublic': False,
+                'archiveOutsideStorage': True, 'storageClass': 'under-public-privacy-unproven',
+                'blockingGate': 'backup_storage_not_private_or_archive_inside_storage',
+                'migrationAuthorized': False, 'backupAuthorized': False, 'promotionAuthorized': False,
+                'appuserHasScopedOnly': False, 'accountPhpWorkerCount': 2,
+                'accountPhpWorkerTypes': {'php-cli': 1, 'php-fpm': 1},
+                'rawGrants': 'PRIVATE_SENTINEL', 'rawCommands': 'PRIVATE_SENTINEL'}
+        f.files[path] = json.dumps(data)
+        clean = g.receipts(f, SHA, plan_sha, set())[0]
+        self.assertEqual(clean['status'], 'inspected-not-authorized')
+        self.assertEqual(clean['blockingGate'], data['blockingGate'])
+        self.assertFalse(clean['storageOutsidePublic'])
+        self.assertEqual(clean['storageClass'], data['storageClass'])
+        for key in ('migrationAuthorized', 'backupAuthorized', 'promotionAuthorized'):
+            self.assertFalse(clean[key])
+        self.assertEqual(clean['accountPhpWorkerTypes'], data['accountPhpWorkerTypes'])
+        self.assertNotIn('PRIVATE_SENTINEL', json.dumps(clean))
+
     def test_diagnostic_allowlist_rejects_secret_values(self):
         f = NativeFake(); plan_sha = g.preflight_plan(f, SHA)
         path = g.DEPLOY_ROOT + '/preflight-' + SHA + '-0123456789abcdef.json'

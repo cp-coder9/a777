@@ -308,6 +308,53 @@ final class CpanelGitDeploy
         } finally { fclose($h); }
     }
 
+    /** Observations only: canonical roots, not HTTP privacy or recoverability proof. */
+    public static function storageInspection(string $configured, string $publicRoot, string $archiveRoot): array
+    {
+        $storage = $configured === '' ? false : realpath($configured);
+        $public = realpath($publicRoot);
+        $archive = realpath($archiveRoot);
+        // Compare canonical path components consistently on Windows fixture hosts too.
+        if (is_string($storage)) $storage = str_replace('\\', '/', $storage);
+        if (is_string($public)) $public = str_replace('\\', '/', $public);
+        if (is_string($archive)) $archive = str_replace('\\', '/', $archive);
+        $exists = $configured !== '' && is_dir($configured);
+        $canonical = $exists && is_string($storage);
+        $outside = $canonical && is_string($public) && !str_starts_with($storage . '/', $public . '/');
+        $archiveOutside = $canonical && is_string($archive) && !str_starts_with($archive . '/', $storage . '/');
+        $class = !$exists ? 'missing' : (!$canonical || !is_string($public) || !is_string($archive) ? 'canonical-unproven' :
+            (!$archiveOutside ? 'archive-inside-storage' : ($outside ? 'outside-public' : 'under-public-privacy-unproven')));
+        return ['storageExists'=>$exists, 'storageCanonical'=>$canonical, 'storageOutsidePublic'=>$outside,
+            'archiveOutsideStorage'=>$archiveOutside, 'storageClass'=>$class,
+            'migrationAuthorized'=>false, 'backupAuthorized'=>false, 'promotionAuthorized'=>false,
+            'liveDdlAuthorized'=>false,
+            'blockingGate'=>($outside && $archiveOutside) ? 'unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented' : 'backup_storage_not_private_or_archive_inside_storage'];
+    }
+
+    /** Independently recheck the actual source and archive before any recovery side effect. */
+    public static function requireRecoveryStorage(string $storage, string $publicRoot, string $archiveRoot): void
+    {
+        $observed = self::storageInspection($storage, $publicRoot, $archiveRoot);
+        self::requireValue($observed['storageOutsidePublic'] && $observed['archiveOutsideStorage']
+            && !is_link($storage) && (fileperms(realpath($storage)) & 0077) === 0
+            && fileowner(realpath($storage)) === posix_geteuid()
+            && !is_link($archiveRoot) && (fileperms($archiveRoot) & 0077) === 0
+            && fileowner($archiveRoot) === posix_geteuid(), 'backup_storage_not_private_or_archive_inside_storage');
+    }
+
+    /** Classify SHOW GRANTS without persisting any grant text. Unknown syntax fails closed. */
+    public static function scopedOnlyGrants(array $grants, string $database): bool
+    {
+        if ($grants === []) return false;
+        $scope = '`' . $database . '`.*';
+        foreach ($grants as $grant) {
+            if (!is_string($grant) || str_contains($grant, 'WITH GRANT OPTION')) return false;
+            if (preg_match('/\\AGRANT USAGE ON \\*\\.\\* TO /', $grant) === 1) continue;
+            if (!str_starts_with($grant, 'GRANT ') || !str_contains($grant, ' ON ' . $scope . ' TO ')) return false;
+        }
+        return true;
+    }
+
     /** Loads only installed, operator-owned config in RAM; never incoming artifact code. */
     public static function preflight(array &$evidence = [], bool $apiAllowed = false, bool $securePermissions = false, string $commit = '', string $planSha = '', string $expectedSha = ''): array
     {
@@ -321,6 +368,22 @@ final class CpanelGitDeploy
         $evidence['mysqlInventoryAvailable'] = true;
         $users = self::inspectInventory('list_users', $apiAllowed, $evidence);
         $evidence['mysqlUserInventoryAvailable'] = true;
+        $evidence['accountPhpWorkerInventoryAvailable'] = false;
+        if (is_readable('/proc') && function_exists('posix_geteuid')) {
+            $types = []; $complete = true;
+            foreach (glob('/proc/[0-9]*') ?: [] as $process) {
+                if (@fileowner($process) !== posix_geteuid()) continue;
+                $comm = @file_get_contents($process . '/comm');
+                if ($comm === false) { $complete = false; continue; }
+                $name = trim($comm);
+                $type = str_starts_with($name, 'php-fpm') ? 'php-fpm' : (preg_match('/\Aphp(?:[0-9.]*)?\z/', $name) === 1 ? 'php-cli' : (str_starts_with($name, 'lsphp') ? 'lsphp' : null));
+                if ($type !== null) $types[$type] = ($types[$type] ?? 0) + 1;
+            }
+            ksort($types);
+            $evidence['accountPhpWorkerInventoryAvailable'] = $complete;
+            $evidence['accountPhpWorkerCount'] = array_sum($types);
+            $evidence['accountPhpWorkerTypes'] = $types;
+        }
         $cron = [];
         $cronAvailable = false;
         try {
@@ -360,15 +423,19 @@ final class CpanelGitDeploy
             // An observation is not an exclusion lease; do not use it to authorize DDL.
         }
         $sql = self::activeSql(self::ACTIVE . '/database/migrations');
-        $storage = realpath($config['FILE_STORAGE_PATH'] ?? '');
-        self::requireValue(is_string($storage) && !str_starts_with($storage . '/', '/home/archite4/public_html/') && !str_starts_with(self::PRIVATE_ROOT . '/', $storage . '/'), 'backup_storage_not_private_or_archive_inside_storage');
+        $evidence += self::storageInspection(is_string($config['FILE_STORAGE_PATH'] ?? null) ? $config['FILE_STORAGE_PATH'] : '', self::DOCROOT, self::PRIVATE_ROOT);
+        $evidence['appuserGrantsInspectionAvailable'] = false;
+        try {
+            $evidence['appuserHasScopedOnly'] = self::scopedOnlyGrants($pdo->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN), $typed->dbName);
+            $evidence['appuserGrantsInspectionAvailable'] = true;
+        } catch (Throwable) { /* Unknown grants are not scoped-only proof. */ }
         return ['pdo'=>$pdo, 'config'=>$config, 'sql'=>$sql, 'cron'=>$cron, 'report'=>[
             'sourceDatabase'=>'archite4_dev_rel1', 'runtimeConfigSha256'=>hash_file('sha256', $configPath),
             'activeSqlTreeSha256'=>hash('sha256', json_encode($sql, JSON_THROW_ON_ERROR)),
             'exclusiveGrantUserVisible'=>$exclusive, 'cronInventoryAvailable'=>$cronAvailable,
             'cronEntryCount'=>$cronAvailable ? count($cron) : null, 'nativeRestoreCapabilityPresent'=>is_file(self::REPO . '/app/src/Infrastructure/Backup/AccountOwnedRestoreTarget.php'),
             'zipAvailable'=>class_exists('ZipArchive'), 'curlAvailable'=>function_exists('curl_init'),
-            'liveDdlAuthorized'=>false, 'blockingGate'=>'unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented'
+            'liveDdlAuthorized'=>false, 'blockingGate'=>$evidence['blockingGate']
         ]];
     }
 
@@ -393,6 +460,7 @@ final class CpanelGitDeploy
     /** Real recovery rehearsal primitive. Caller must establish writer exclusion first. */
     public static function recovery(PDO $source, array $config, string $runRoot): array
     {
+        self::requireRecoveryStorage($config['FILE_STORAGE_PATH'] ?? '', self::DOCROOT, self::PRIVATE_ROOT);
         self::requireValue(realpath(dirname($runRoot)) === self::PRIVATE_ROOT && !file_exists($runRoot), 'recovery_root_invalid');
         self::requireValue(mkdir($runRoot, 0700), 'recovery_root_create_failed');
         $password = bin2hex(random_bytes(32)); $hmac = base64_encode(random_bytes(32));
