@@ -338,12 +338,29 @@ class DeploymentOrchestrator:
         self.remote.save_file(self.paths.probe, source)
         try:
             check = self.http.request(self.config.target_url + "/" + posixpath.basename(self.paths.probe))
-            payload = check.json()
+            try:
+                payload = check.json()
+            except (DeploymentFailure, ValueError):
+                payload = {}
+            if not isinstance(payload, dict):
+                payload = {}
             required_true = ("ok", "php", "database", "migrations", "mail")
             valid = check.status == 200 and all(payload.get(name) is True for name in required_true)
-            valid = valid and isinstance(payload.get("phpVersionId"), int) and int(payload["phpVersionId"]) >= 80300
+            valid = valid and type(payload.get("phpVersionId")) is int and payload["phpVersionId"] >= 80300
             if not valid:
-                raise DeploymentFailure("Private runtime preflight did not confirm PHP 8.3, database, migrations, and mail readiness.")
+                diagnostic = {"httpStatus": check.status} if type(check.status) is int else {}
+                for name in ("ok", "php", "bootstrap", "config", "database", "migrations", "mail"):
+                    if type(payload.get(name)) is bool:
+                        diagnostic[name] = payload[name]
+                for name in ("phpVersionId", "pendingCount"):
+                    if type(payload.get(name)) is int and payload[name] >= 0:
+                        diagnostic[name] = payload[name]
+                reasons = {"ready", "bootstrap_failed", "config_failed", "database_failed", "migrations_failed",
+                           "mail_failed", "php_unsupported", "migrations_pending", "mail_not_ready"}
+                reason = payload.get("reason")
+                diagnostic["reason"] = reason if isinstance(reason, str) and reason in reasons else "invalid_response"
+                raise DeploymentFailure("Private runtime preflight did not confirm PHP 8.3, database, migrations, and mail readiness. "
+                                        + json.dumps(diagnostic, sort_keys=True))
         finally:
             if self.remote.exists(self.paths.probe):
                 self.remote.trash(self.paths.probe)
