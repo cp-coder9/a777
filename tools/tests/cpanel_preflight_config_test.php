@@ -41,6 +41,34 @@ class IdentityPdo extends PDO {
     }
 }
 $e = []; $typed = CpanelGitDeploy::databaseConfig($config, $users, $dbs, $e);
+$managed = array_replace($config, ['DB_HOST'=>'provider.fixture.invalid']);
+$pin = hash('sha256', serialize($managed));
+$e = ['apiAccountHomeValidated'=>true];
+$typed = CpanelGitDeploy::databaseConfig($managed, $users, $dbs, $e, $pin, $pin);
+verifyConfig($typed->dbHost === $managed['DB_HOST'] && $typed->dbPort === 43307
+    && $e['databaseHostClass'] === 'configured-managed' && !$e['databaseHostLocal'] && $e['sourceConfigPinned']);
+CpanelGitDeploy::pdoIdentity(new IdentityPdo('archite4_dev_rel1', 'archite4@provider.fixture.invalid'), $typed, $e);
+verifyConfig($e['pdoDatabaseMatches'] && $e['pdoUserMatches']);
+foreach ([[$pin, str_repeat('0',64), true, $users, $dbs, $managed, 'runtime_config_pin_mismatch'],
+    [str_repeat('1',64), $pin, true, $users, $dbs, $managed, 'runtime_config_pin_mismatch'],
+    ['', $pin, true, $users, $dbs, $managed, 'active_database_config_identity_mismatch'],
+    [$pin, $pin, false, $users, $dbs, $managed, 'active_database_config_identity_mismatch'],
+    [$pin, $pin, true, [], $dbs, $managed, 'active_database_config_identity_mismatch'],
+    [$pin, $pin, true, $users, [], $managed, 'active_database_config_identity_mismatch'],
+    [$pin, $pin, true, $users, $dbs, array_replace($managed,['DB_NAME'=>'archite4_wrong']), 'active_database_config_identity_mismatch'],
+    [$pin, $pin, true, $users, $dbs, array_replace($managed,['DB_USER'=>'other']), 'active_database_config_identity_mismatch']] as [$expected,$actual,$account,$u,$d,$c,$gate]) {
+    $refusalEvidence = ['apiAccountHomeValidated'=>$account];
+    $pdoAttempted = false;
+    rejectConfig(function() use ($expected,$actual,$u,$d,$c,&$refusalEvidence,&$pdoAttempted) {
+        CpanelGitDeploy::databaseConfig($c,$u,$d,$refusalEvidence,$expected,$actual);
+        $pdoAttempted = true;
+    }, $gate);
+    verifyConfig(!$pdoAttempted);
+}
+$e = [];
+try { CpanelGitDeploy::databaseConfig($managed,$users,$dbs,$e); } catch (RuntimeException) {}
+verifyConfig($e['databaseUserInventoryMatches'] && $e['databaseInventoryMatches'] && !$e['sourceConfigPinned']);
+$e = []; $typed = CpanelGitDeploy::databaseConfig($config, $users, $dbs, $e);
 CpanelGitDeploy::pdoIdentity(new IdentityPdo('archite4_dev_rel1', 'archite4@localhost'), $typed, $e);
 verifyConfig($e['pdoDatabaseMatches'] && $e['pdoUserMatches']);
 rejectConfig(fn()=>CpanelGitDeploy::pdoIdentity(new IdentityPdo('archite4_wrong','archite4@localhost'), $typed, $e), 'actual_source_pdo_identity_mismatch');

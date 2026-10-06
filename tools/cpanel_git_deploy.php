@@ -145,7 +145,7 @@ final class CpanelGitDeploy
     }
 
     /** Reviewed application parser; no environment overrides or runtime config rewrites. */
-    public static function databaseConfig(array $config, array $users, array $databases, array &$evidence): \Architex\Infrastructure\Config\AppConfig
+    public static function databaseConfig(array $config, array $users, array $databases, array &$evidence, string $expectedSha = '', string $actualSha = ''): \Architex\Infrastructure\Config\AppConfig
     {
         $evidence += ['databaseConfigParsed'=>false, 'databaseHostLocal'=>false,
             'databaseHostClass'=>'refused', 'databaseNameMatches'=>false,
@@ -159,7 +159,7 @@ final class CpanelGitDeploy
         };
         $evidence['databaseHostLocal'] = $evidence['databaseHostClass'] !== 'refused';
         $evidence['databaseNameMatches'] = $typed->dbName === 'archite4_dev_rel1';
-        self::requireValue($evidence['databaseHostLocal'] && $evidence['databaseNameMatches'], 'active_database_config_identity_mismatch');
+
         // Official Mysql/list_users result.data is a list of {user,shortuser,databases}.
         // Account ownership comes from the authenticated account's home-validated inventory,
         // not a guessed username prefix. Require its exact database assignment too.
@@ -172,7 +172,16 @@ final class CpanelGitDeploy
             && in_array($typed->dbName, $assigned, true);
         $dbMatches = array_values(array_filter($databases, static fn($row) => is_array($row) && ($row['database'] ?? null) === $typed->dbName));
         $evidence['databaseInventoryMatches'] = array_is_list($databases) && count($dbMatches) === 1;
-        self::requireValue($evidence['databaseUserInventoryMatches'] && $evidence['databaseInventoryMatches'], 'active_database_config_identity_mismatch');
+        $evidence['sourceConfigPinned'] = false;
+        if ($expectedSha !== '') {
+            self::requireValue(preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1 && hash_equals($expectedSha, $actualSha), 'runtime_config_pin_mismatch');
+            $evidence['sourceConfigPinned'] = true;
+        }
+        self::requireValue($evidence['databaseNameMatches'] && $evidence['databaseUserInventoryMatches'] && $evidence['databaseInventoryMatches'], 'active_database_config_identity_mismatch');
+        if (!$evidence['databaseHostLocal']) {
+            self::requireValue($evidence['sourceConfigPinned'] && ($evidence['apiAccountHomeValidated'] ?? false) === true, 'active_database_config_identity_mismatch');
+            $evidence['databaseHostClass'] = 'configured-managed';
+        }
         return $typed;
     }
 
@@ -300,7 +309,7 @@ final class CpanelGitDeploy
     }
 
     /** Loads only installed, operator-owned config in RAM; never incoming artifact code. */
-    public static function preflight(array &$evidence = [], bool $apiAllowed = false, bool $securePermissions = false, string $commit = '', string $planSha = ''): array
+    public static function preflight(array &$evidence = [], bool $apiAllowed = false, bool $securePermissions = false, string $commit = '', string $planSha = '', string $expectedSha = ''): array
     {
         $evidence = ['zipAvailable'=>class_exists('ZipArchive'), 'curlAvailable'=>function_exists('curl_init'),
             'nativeRestoreCapabilityPresent'=>is_file(self::REPO . '/app/src/Infrastructure/Backup/AccountOwnedRestoreTarget.php'),
@@ -327,12 +336,14 @@ final class CpanelGitDeploy
         $configPath = self::ACTIVE . '/config/runtime.php';
         self::runtimePermissions($configPath, self::ACTIVE, self::PRIVATE_ROOT . '/runtime-permission-' . bin2hex(random_bytes(8)) . '.json', $securePermissions, $evidence, $commit, $planSha);
         self::requireValue(is_file($configPath) && !is_link($configPath) && fileowner($configPath) === posix_geteuid() && (fileperms($configPath) & 0077) === 0, 'active_config_missing_or_not_private');
+        $configSha = hash_file('sha256', $configPath);
         $config = require $configPath;
         self::requireValue(is_array($config), 'active_database_config_identity_mismatch');
         // Load the reviewed repository's real classes, never candidate vendor/bootstrap.
         require_once self::REPO . '/app/src/Infrastructure/Config/AppConfig.php';
         require_once self::REPO . '/app/src/Infrastructure/Database/ConnectionFactory.php';
-        $typed = self::databaseConfig($config, $users, $databases, $evidence);
+        $typed = self::databaseConfig($config, $users, $databases, $evidence, $expectedSha, $configSha);
+        self::requireValue(hash_file('sha256', $configPath) === $configSha, 'runtime_config_pin_mismatch');
         $pdo = \Architex\Infrastructure\Database\ConnectionFactory::create($typed);
         self::pdoIdentity($pdo, $typed, $evidence);
         $exclusive = true;
@@ -443,6 +454,8 @@ final class CpanelGitDeploy
             self::requireValue(in_array($requested, ['--preflight', '--deploy', '--stage-only'], true), 'invocation_mode_invalid');
             $apiAllowed = $requested === '--preflight' && $plan['mode'] === 'preflight'
                 && ($plan['readOnlyUapiTransport'] ?? null) === 'native-cli-then-private-token-https';
+            $expectedSha = $plan['expectedRuntimeConfigSha256'] ?? '';
+            self::requireValue(is_string($expectedSha) && ($expectedSha === '' || ($requested === '--preflight' && $plan['mode'] === 'preflight' && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1)), 'runtime_config_pin_mismatch');
             if ($requested === '--preflight') $plan['mode'] = 'preflight';
             else self::requireValue($plan['mode'] === substr($requested, 2), 'explicit_plan_mode_required');
             if ($plan['mode'] !== 'stage-only') {
@@ -450,13 +463,13 @@ final class CpanelGitDeploy
                     'planSha256'=>hash_file('sha256', $planPath), 'databaseDdlTouched'=>false, 'liveFilesTouched'=>false];
                 $evidence = [];
                 try {
-                    $observed = self::preflight($evidence, $apiAllowed, $requested === '--preflight' && ($plan['secureRuntimeConfigPermissions'] ?? false) === true, $commit, $report['planSha256']);
+                    $observed = self::preflight($evidence, $apiAllowed, $requested === '--preflight' && ($plan['secureRuntimeConfigPermissions'] ?? false) === true, $commit, $report['planSha256'], $expectedSha);
                     $report += $observed['report'];
                     $report['status'] = 'inspected-not-authorized';
                 } catch (Throwable $error) {
                     $report['status'] = 'capability-inspection-refused';
                     // Do not persist PDO/provider error strings or config values.
-                    $safeGates = ['command_unavailable','command_failed','command_output_too_large','native_uapi_failed','native_uapi_inventory_missing',
+                    $safeGates = ['runtime_config_pin_mismatch','command_unavailable','command_failed','command_output_too_large','native_uapi_failed','native_uapi_inventory_missing',
                         'api_linux_identity_required','api_operator_identity_mismatch','api_token_path_invalid','api_token_root_not_private',
                         'api_token_missing_or_path_invalid','api_token_unreadable','api_token_not_private','api_token_invalid',
                         'api_http_failed','api_response_too_large','api_response_invalid','api_uapi_failed','api_readonly_function_required',
