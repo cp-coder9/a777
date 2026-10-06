@@ -42,6 +42,28 @@ class NativeFake(Fake):
                  'repository_state':{'identifier':SHA},'timestamps':{self.terminal:'1525289448.83553'}}]
 
 class PreflightTests(unittest.TestCase):
+    def test_runtime_pin_validation_before_calls(self):
+        for value in ('a'*63, 'A'*64, 'a'*64+'\n', None, True):
+            f = NativeFake()
+            r = g.native_preflight(f, SHA, expected_runtime_config_sha256=value)
+            self.assertEqual(r['error'], 'native_preflight_input_refused')
+            self.assertFalse(f.calls)
+    def test_explicit_runtime_pin_plan_and_roll(self):
+        f = NativeFake()
+        self.run_native(f)
+        pin = 'a'*64
+        g.preflight_plan(f, SHA, expected_runtime_config_sha256=pin)
+        self.assertEqual(json.loads(f.files[g.PLAN])['expectedRuntimeConfigSha256'], pin)
+        self.assertTrue(any('/plan-roll-' in path for path in f.files))
+        # A changed plan cannot be rolled again without its own matched receipt.
+        with self.assertRaises(CpanelError):
+            g.preflight_plan(f, SHA, expected_runtime_config_sha256='b'*64)
+    def test_runtime_pin_runner_wiring(self):
+        f = NativeFake()
+        with patch.object(g, 'clone', return_value={'status':'cloned_and_pulled','commit':SHA}):
+            result = g.native_preflight(f, SHA, attempts=1, pause=0, expected_runtime_config_sha256='a'*64)
+        self.assertEqual(result['status'], 'preflight_complete')
+        self.assertEqual(json.loads(f.files[g.PLAN])['expectedRuntimeConfigSha256'], 'a'*64)
     def run_native(self,f,commit=SHA):
         with patch.object(g,'clone',return_value={'status':'cloned_and_pulled','commit':SHA}):
             return g.native_preflight(f,commit,attempts=2,pause=0)
@@ -95,6 +117,8 @@ class PreflightTests(unittest.TestCase):
     def test_workflow_binding_and_artifact_always(self):
         workflow=(Path(__file__).resolve().parents[2]/'.github/workflows/cpanel-git.yml').read_text()
         self.assertIn('EXPECTED_COMMIT: ${{ github.sha }}',workflow)
+        self.assertIn('EXPECTED_RUNTIME_CONFIG_SHA256: ${{ inputs.expected_runtime_config_sha256 }}', workflow)
+        self.assertIn('--expected-runtime-config-sha256 "$EXPECTED_RUNTIME_CONFIG_SHA256"', workflow)
         self.assertIn('refs/heads/master',workflow)
         self.assertIn('args+=(--expected-commit "$EXPECTED_COMMIT")',workflow)
         self.assertIn('if: ${{ always() }}',workflow)
