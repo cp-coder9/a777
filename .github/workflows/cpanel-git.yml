@@ -1,0 +1,46 @@
+name: cPanel Git discovery
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only repository discovery (no clone, pull or deploy)
+        type: choice
+        required: true
+        default: inspect
+        options:
+          - inspect
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test discovery contracts without hosting credentials
+        run: python -m unittest discover -s tools/tests -p test_cpanel_git.py
+      - name: Inspect exact cPanel account
+        env:
+          A777_CPANEL_HOST: cp73.domains.co.za
+          A777_CPANEL_PORT: '2083'
+          A777_CPANEL_USER: archite4
+          A777_CPANEL_ACCOUNT_HOME: /home/archite4
+          A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
+        run: python tools/cpanel_git.py inspect --report "$RUNNER_TEMP/cpanel-git-inspection.json"
+      - name: Retain safe capability and repository report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpanel-git-inspection
+          path: ${{ runner.temp }}/cpanel-git-inspection.json
+          if-no-files-found: warn
+          retention-days: 7
