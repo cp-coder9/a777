@@ -6,8 +6,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cpanel_git_prepare as g
 from cpanel_client import CpanelError
 from test_cpanel_git_preflight import NativeFake, SHA
+from test_cpanel_git_rehearsal import outcome
 
 class PublicSourceExceptionTests(unittest.TestCase):
+    def test_success_requires_explicit_privacy_and_denied_authorization(self):
+        data=outcome()
+        data.update(sourceStorageUnderPublicHtml=True,sourceStoragePrivacyUnproven=True,
+                    migrationAuthorized=False,promotionAuthorized=False,liveDdlAuthorized=False)
+        self.assertTrue(g.rehearsal_safe(data))
+        for field in ('sourceStorageUnderPublicHtml','sourceStoragePrivacyUnproven','migrationAuthorized','promotionAuthorized','liveDdlAuthorized'):
+            missing=dict(data); del missing[field]
+            self.assertFalse(g.rehearsal_safe(missing),field)
+        contradictory=dict(data,sourceStoragePrivacyUnproven=False)
+        self.assertFalse(g.rehearsal_safe(contradictory))
     def test_opt_in_requires_rehearsal_and_pin(self):
         for mode,pin,flag in [('preflight','a'*64,True),('restore-rehearsal','',True),('restore-rehearsal','a'*64,1)]:
             with self.assertRaises(CpanelError):

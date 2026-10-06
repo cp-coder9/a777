@@ -438,11 +438,13 @@ def rehearsal_safe(data, permissions_authorized=False):
         return False
     if any(data.get(k) is not False for k in ('sourceDatabaseDdlTouched', 'apacheConfigurationTouched', 'cronConfigurationTouched')):
         return False
-    if any(data.get(k, False) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
+    if any(data.get(k) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
         return False
     if type(data.get('targetDatabaseDdlTouched')) is not bool or type(data.get('isolatedRehearsalPassed')) is not bool:
         return False
     if not rehearsal_diagnostics_safe(data):
+        return False
+    if data.get('sourceStorageUnderPublicHtml') is True and data.get('sourceStoragePrivacyUnproven') is not True:
         return False
     envelope = dict(data, databaseDdlTouched=False)
     if not permission_only_safe(envelope) or (data.get('liveFilesTouched') is not False and not permissions_authorized):
@@ -454,6 +456,10 @@ def rehearsal_safe(data, permissions_authorized=False):
     if 'targetDatabase' in data and (not isinstance(data['targetDatabase'], str) or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['targetDatabase'])):
         return False
     if data['isolatedRehearsalPassed']:
+        if any(type(data.get(k)) is not bool for k in ('sourceStorageUnderPublicHtml','sourceStoragePrivacyUnproven')):
+            return False
+        if data['sourceStorageUnderPublicHtml'] and not data['sourceStoragePrivacyUnproven']:
+            return False
         if not data['targetDatabaseDdlTouched'] or 'targetDatabase' not in data:
             return False
         if not isinstance(data.get('archiveSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['archiveSha256']):
