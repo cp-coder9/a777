@@ -316,7 +316,9 @@ def clone(client, expected, attempts=24, pause=5):
 DEPLOY_ROOT = HOME + '/.a777-deploy'
 PLAN = DEPLOY_ROOT + '/operator-plan.json'
 DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
-BOOL_FIELDS = frozenset(('databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
+BOOL_FIELDS = frozenset(('databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
+    'databaseUserInventoryMatches', 'databaseInventoryMatches', 'pdoDatabaseMatches', 'pdoUserMatches',
+    'databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
     'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
     'runtimeConfigAvailable', 'liveDdlAuthorized', 'mysqlInventoryAvailable',
     'mysqlUserInventoryAvailable', 'cronInventoryAvailable', 'exclusiveGrantUserVisible',
@@ -587,6 +589,8 @@ def receipts(client, commit, plan_sha, previous):
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
             if type(data.get(key)) is bool: safe[key] = data[key]
+        if data.get('databaseHostClass') in ('tcp-loopback', 'local-socket', 'refused'):
+            safe['databaseHostClass'] = data['databaseHostClass']
         for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter', 'runtimeConfigParentModeBefore', 'runtimeConfigParentModeAfter'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[0-7]{4}', data[key]): safe[key] = data[key]
         for key in ('cronEntryCount', 'otherSourceConnectionCount', 'runtimeConfigBytesUnchanged'):
