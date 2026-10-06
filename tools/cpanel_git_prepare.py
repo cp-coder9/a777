@@ -424,6 +424,7 @@ def rehearsal_diagnostics_safe(data):
         elif key == 'failureLine': valid = type(value) is int and 0 < value < 100000
         elif key.endswith('Mode'): valid = isinstance(value, str) and (value == 'unavailable' or re.fullmatch(r'0[0-7]{3}',value) is not None)
         elif key.endswith('Owner'): valid = value in ('account','other','unavailable')
+        elif key == 'storageCanonical': valid = type(value) is bool or value in ('canonical','noncanonical')
         elif key.endswith('Canonical'): valid = value in ('canonical','noncanonical')
         elif key.endswith('Availability'): valid = value in ('available','unavailable')
         else: valid = value is None or value in ('backup-created','target-provisioned','rehearsal-verified')

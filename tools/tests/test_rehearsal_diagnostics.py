@@ -12,8 +12,11 @@ class Diagnostics(unittest.TestCase):
             storageMode='0700', storageOwner='account', storageCanonical='canonical',
             gitCommandAvailability='unavailable', fixedGitBinaryAvailability='available', lastCompletedStage=None)
         self.assertTrue(g.rehearsal_diagnostics_safe(fields))
+        # Native preflight has always emitted an exact boolean for this field.
+        self.assertTrue(g.rehearsal_diagnostics_safe(dict(fields, storageCanonical=True)))
+        self.assertTrue(g.rehearsal_diagnostics_safe(dict(fields, storageCanonical=False)))
         for key in fields:
-            for hostile in ('/private/password', 'SELECT secret', {}, [], True):
+            for hostile in ('/private/password', 'SELECT secret', {}, [], 1 if key == 'storageCanonical' else True):
                 with self.subTest(key=key, hostile=hostile):
                     self.assertFalse(g.rehearsal_diagnostics_safe(dict(fields, **{key:hostile})))
 
