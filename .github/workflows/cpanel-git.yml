@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: inspect is read-only; prepare-key generates a native host key; clone never deploys runtime
+        description: inspect is read-only; native-preflight runs the private CLI hook without live deployment
         type: choice
         required: true
         default: inspect
@@ -12,6 +12,7 @@ on:
           - inspect
           - prepare-key
           - clone
+          - native-preflight
       expected_key_fingerprint:
         description: SHA256 fingerprint required for clone and existing-key preparation reruns
         type: string
@@ -27,7 +28,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -41,6 +42,7 @@ jobs:
       - name: Execute explicitly selected mode (never runtime deploy)
         env:
           MODE: ${{ inputs.mode }}
+          EXPECTED_COMMIT: ${{ github.sha }}
           EXPECTED_KEY_FINGERPRINT: ${{ inputs.expected_key_fingerprint }}
           A777_CPANEL_HOST: cp73.domains.co.za
           A777_CPANEL_PORT: '2083'
@@ -52,6 +54,10 @@ jobs:
           args=("$MODE" --report "$RUNNER_TEMP/cpanel-git-inspection.json")
           if [[ -n "$EXPECTED_KEY_FINGERPRINT" ]]; then args+=(--expected-key-fingerprint "$EXPECTED_KEY_FINGERPRINT"); fi
           if [[ "$MODE" == prepare-key ]]; then args+=(--public-key "$RUNNER_TEMP/a777-deploy-key.pub"); fi
+          if [[ "$MODE" == native-preflight ]]; then
+            [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
+            args+=(--expected-commit "$EXPECTED_COMMIT")
+          fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report
         if: ${{ always() }}
