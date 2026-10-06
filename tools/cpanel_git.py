@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only cPanel Git discovery. No repository mutation endpoints are exposed."""
+"""Explicit cPanel Git discovery, preparation and private native preflight."""
 import argparse
 import json
 import os
@@ -89,10 +89,11 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--public-key", type=Path)
     parser.add_argument("--expected-key-fingerprint")
+    parser.add_argument("--expected-commit")
     args = parser.parse_args()
     try:
         config = CpanelConfig(host=os.environ.get("A777_CPANEL_HOST", ""),
@@ -110,6 +111,9 @@ def main():
                 if not args.public_key:
                     raise CpanelError('Public key destination required.')
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
+            elif args.mode == "native-preflight":
+                from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
+                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN)
             else:
                 report = clone(client, args.expected_key_fingerprint)
     except Exception as error:
@@ -144,7 +148,7 @@ def main():
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'queued_or_incomplete')) else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete')) else 1
 
 
 if __name__ == "__main__":

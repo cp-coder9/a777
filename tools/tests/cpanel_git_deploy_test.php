@@ -23,6 +23,17 @@ try {
     CpanelGitDeploy::journal($root . '/receipt.json', ['status'=>'staged-not-promoted']);
     check(json_decode(file_get_contents($root . '/receipt.json'), true)['status'] === 'staged-not-promoted');
     refuses(fn()=>CpanelGitDeploy::journal($root . '/receipt.json', []), 'receipt_already_exists');
+    CpanelGitDeploy::exclusiveGrantUser([['database'=>'archite4_dev_rel1','users'=>['archite4_app']]], 'archite4_app'); check(true);
+    refuses(fn()=>CpanelGitDeploy::exclusiveGrantUser([], 'archite4_app'), 'source_inventory_not_unique');
+    refuses(fn()=>CpanelGitDeploy::exclusiveGrantUser([['database'=>'archite4_dev_rel1']], 'archite4_app'), 'exclusive_database_grant_inventory_unproven');
+    refuses(fn()=>CpanelGitDeploy::exclusiveGrantUser([['database'=>'archite4_dev_rel1','users'=>['archite4_app','archite4_other']]], 'archite4_app'), 'exclusive_database_grant_inventory_unproven');
+    refuses(fn()=>CpanelGitDeploy::exclusiveGrantUser([['database'=>'archite4_dev_rel1','users'=>['archite4_app'=>true]]], 'archite4_app'), 'exclusive_database_grant_inventory_unproven');
+    mkdir($root . '/sql', 0700); $sql = realpath($root . '/sql');
+    refuses(fn()=>CpanelGitDeploy::activeSql($sql), 'active_sql_empty');
+    file_put_contents($sql . '/0001_base.sql', '-- real file fixture');
+    check(CpanelGitDeploy::activeSql($sql) === ['0001_base.sql'=>hash_file('sha256', $sql . '/0001_base.sql')]);
+    file_put_contents($sql . '/runtime.php', '<?php throw new Exception("never execute");');
+    refuses(fn()=>CpanelGitDeploy::activeSql($sql), 'active_sql_entry_invalid');
     if (PHP_OS_FAMILY !== 'Linux') refuses(fn()=>CpanelGitDeploy::run(), 'linux_php83_cli_required');
     print "$checks file-fixture assertions passed; host/SQL gates NOT exercised\n";
 } finally {

@@ -1,4 +1,4 @@
-"""Explicitly authorized Git preparation; never deploys or invokes runtime code."""
+"""Explicit Git preparation and CLI-only native read-only preflight orchestration."""
 import base64
 import fnmatch
 import hashlib
@@ -311,3 +311,137 @@ def clone(client, expected, attempts=24, pause=5):
         if attempt + 1 < attempts:
             time.sleep(pause)
     return {'mode': 'clone', 'status': 'queued_or_incomplete', 'root': ROOT, 'tasks': tasks(row or {}) or queued, 'queue_errors': queue_errors(client, row or {}), 'runtime_deployed': False}
+
+
+DEPLOY_ROOT = HOME + '/.a777-deploy'
+PLAN = DEPLOY_ROOT + '/operator-plan.json'
+DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
+BOOL_FIELDS = frozenset(('databaseDdlTouched', 'liveFilesTouched', 'zipAvailable', 'curlAvailable',
+    'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
+    'runtimeConfigAvailable', 'liveDdlAuthorized', 'mysqlInventoryAvailable',
+    'mysqlUserInventoryAvailable', 'cronInventoryAvailable', 'exclusiveGrantUserVisible',
+    'sourceConnectionsDrainedAtInspection'))
+GATES = frozenset(('active_or_document_root_invalid', 'active_config_missing_or_not_private',
+    'active_database_config_identity_mismatch', 'active_database_password_missing',
+    'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
+    'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
+    'active_sql_empty', 'backup_storage_not_private_or_archive_inside_storage', 'native_preflight_failed',
+    'unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented'))
+
+
+def owned_mode(client, path, mode, directory=False):
+    parent, name = path.rsplit('/', 1)
+    matches = [r for r in entries(client, parent) if r.get('name') == name]
+    if len(matches) != 1 or matches[0].get('type') not in (('dir', 'directory') if directory else ('file',)) or str(matches[0].get('nicemode', '')).lstrip('0') != mode.lstrip('0'):
+        raise CpanelError('Private deployment path permissions refused.')
+
+
+def preflight_plan(client, commit):
+    if not exists(client, DEPLOY_ROOT):
+        client.mkdir(DEPLOY_ROOT, '0700')
+    # Existing directories are not repaired or broadened. Native helper checks UID too.
+    owned_mode(client, DEPLOY_ROOT, '0700', True)
+    plan = {'mode': 'preflight', 'account': 'archite4', 'repository': ROOT,
+            'activeRoot': HOME + '/public_html/.a777-runtime-active',
+            'documentRoot': HOME + '/public_html/php.architex.co.za', 'expectedCommit': commit}
+    text = json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n'
+    if exists(client, PLAN):
+        owned_mode(client, PLAN, '0600')
+        old = json.loads(read(client, PLAN))
+        if not isinstance(old, dict) or old.get('mode') != 'preflight':
+            raise CpanelError('Existing operator plan collision; refused.')
+        if old != plan:
+            raise CpanelError('Existing operator plan commit collision; operator review required.')
+    else:
+        client.save_file(PLAN, text)
+        client._api2('fileop', {'op': 'chmod', 'sourcefiles': '.a777-deploy/operator-plan.json',
+                              'doubledecode': '0', 'metadata': '0600'})
+    owned_mode(client, PLAN, '0600')
+    actual = read(client, PLAN)
+    if json.loads(actual) != plan:
+        raise CpanelError('Private plan read-back mismatch.')
+    return hashlib.sha256(actual.encode('ascii')).hexdigest()
+
+
+def receipts(client, commit, plan_sha, previous):
+    reports = []
+    pattern = r'preflight-' + re.escape(commit) + r'-[a-f0-9]{16}\.json'
+    for row in entries(client, DEPLOY_ROOT):
+        name = row.get('name', '')
+        if not isinstance(name, str) or not re.fullmatch(pattern, name) or name in previous:
+            continue
+        owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+        data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+        if not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-preflight-v1' or data.get('commit') != commit or data.get('mode') != 'preflight' or data.get('planSha256') != plan_sha:
+            continue
+        safe = {'report_id': name, 'commit': commit, 'planSha256': plan_sha}
+        safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
+        for key in BOOL_FIELDS:
+            if type(data.get(key)) is bool: safe[key] = data[key]
+        for key in ('cronEntryCount', 'otherSourceConnectionCount'):
+            if type(data.get(key)) is int and 0 <= data[key] <= 1000000: safe[key] = data[key]
+        if 'blockingGate' in data:
+            safe['blockingGate'] = data['blockingGate'] if data['blockingGate'] in GATES else 'native_preflight_failed'
+        for key in ('runtimeConfigSha256', 'activeSqlTreeSha256'):
+            if isinstance(data.get(key), str) and re.fullmatch(r'[a-f0-9]{64}', data[key]): safe[key] = data[key]
+        reports.append(safe)
+    return sorted(reports, key=lambda r: r['report_id'])
+
+
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5):
+    report = {'mode': 'native-preflight', 'status': 'failed', 'runtime_deployed': False,
+              'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': []}
+    stage = 'input'
+    try:
+        if not isinstance(expected_commit, str) or not re.fullmatch(r'[a-f0-9]{40}', expected_commit) or expected_key != DEPLOY_KEY_PIN:
+            raise CpanelError('Native preflight input refused.')
+        stage = 'pull_master'
+        # Preflight must never create a new repository implicitly.
+        authorize(client)
+        if inventory(client) is None: raise CpanelError('Existing managed repository required.')
+        pulled = clone(client, expected_key, attempts=attempts, pause=pause)
+        report['remote_head'] = pulled.get('commit')
+        if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
+            raise CpanelError('Remote HEAD differs from workflow commit.')
+        stage = 'private_plan'
+        plan_sha = preflight_plan(client, expected_commit)
+        previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
+        stage = 'native_create'
+        created = client._uapi('VersionControlDeployment', 'create', {'repository_root': ROOT})
+        if not isinstance(created, dict) or created.get('repository_root') != ROOT or not re.fullmatch(r'[0-9]+', str(created.get('deploy_id', ''))) or not isinstance(created.get('task_id'), str) or not re.fullmatch(r'[A-Za-z0-9/-]{1,128}', created['task_id']):
+            raise CpanelError('Deployment create contract refused.')
+        report.update(deploy_id=str(created['deploy_id']), task_id=created['task_id'], deployment_status='queued', native_preflight_status='pending')
+        stage = 'native_poll'
+        for attempt in range(attempts):
+            rows = client._uapi('VersionControlDeployment', 'retrieve', {})
+            if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows): raise CpanelError('Deployment retrieve contract refused.')
+            matches = [r for r in rows if r.get('repository_root') == ROOT and str(r.get('deploy_id')) == report['deploy_id'] and r.get('task_id') == report['task_id']]
+            if len(matches) > 1: raise CpanelError('Deployment task collision.')
+            if matches:
+                row = matches[0]
+                state = row.get('repository_state') or {}
+                identifier = state.get('identifier')
+                report['deployment_last_commit'] = identifier if isinstance(identifier, str) and re.fullmatch(r'[a-f0-9]{40}', identifier) else None
+                stamps = row.get('timestamps') or {}
+                terminal = [k for k in ('succeeded', 'failed', 'canceled') if isinstance(stamps.get(k), (str, int, float)) and re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(stamps[k]))]
+                if len(terminal) > 1: raise CpanelError('Deployment terminal state collision.')
+                if terminal:
+                    report['deployment_status'] = terminal[0]
+                    break
+                report['deployment_status'] = 'active' if stamps.get('active') else 'queued'
+            if attempt + 1 < attempts: time.sleep(pause)
+        stage = 'private_report'
+        report['reports'] = receipts(client, expected_commit, plan_sha, previous)
+        if report['reports']:
+            report['native_preflight_status'] = report['reports'][-1]['status']
+        else: report['native_preflight_status'] = 'receipt_unavailable'
+        report['status'] = 'preflight_complete' if report['deployment_status'] == 'succeeded' and report.get('deployment_last_commit') == expected_commit and report['native_preflight_status'] == 'inspected-not-authorized' else 'failed_or_incomplete'
+    except Exception:
+        report['error'] = 'native_preflight_' + stage + '_refused'
+        # Preserve available gate evidence even when task polling fails.
+        if 'plan_sha' in locals() and 'previous' in locals():
+            try:
+                report['reports'] = receipts(client, expected_commit, plan_sha, previous)
+                if report['reports']: report['native_preflight_status'] = report['reports'][-1]['status']
+            except Exception: pass
+    return report

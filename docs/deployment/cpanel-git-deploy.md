@@ -1,6 +1,15 @@
-# cPanel Git hook: review-gated staging only
+# cPanel Git hook: native preflight and guarded recovery integration
 
-`.cpanel.yml` executes the real private CLI hook from `/home/archite4/repositories/a777` using cPanel ea-php83. It does **not** migrate, touch the live runtime/configuration, establish maintenance, or promote public files. A successful cPanel task means **staged-not-promoted**, never a completed production deployment. Parent/operator must review before invoking VersionControlDeployment/create. No remote operations have been performed by this implementation.
+**Not a completed production deployment implementation.** `.cpanel.yml` now explicitly runs `--preflight` (the CLI/shell default). It cannot auto-deploy through plan changes. `--deploy` and `--stage-only` each require matching explicit plan modes. Change the example below to mode `preflight` for capability inspection.
+
+Native preflight calls fixed authenticated UAPI Mysql list_databases/list_users and Cron list_cron before reading installed private config. Available observations survive missing-config failures in private immutable receipts. Only installed account-owned 0600 runtime.php is loaded in RAM; actual DB_HOST/DB_NAME/DB_USER/DB_PASSWORD configure PDO and DATABASE()/CURRENT_USER() must corroborate 127.0.0.1/archite4_dev_rel1. Active SQL bytes are hashed. Unknown native inventory shapes fail closed. Exclusive visibility requires the unique source database `users` list to contain only the actual existing app user; native shape remains unverified. Only then does own-user SHOW FULL PROCESSLIST report exact source connections, without global PROCESS or Ed25519 requirements. Drainage is observation, not enforced dispatch exclusion.
+
+`CpanelGitDeploy::recovery()` now integrates actual BackupService, AccountOwnedRestoreTarget::provision(sourcePDO, '127.0.0.1', actual DB_USER), and RestoreService::restoreIntoProvisionedEmptyDatabase using active SQL. Secure random archive/HMAC secrets remain private 0600 outside archived storage. Archive SHA/target/readback receipts are retained. Actual source/target schema and row multiset hashes and restored-file SHA/size are compared. Schema comparison ignores AUTO_INCREMENT high-water values; row hash lists are not bounded-memory. Native provider/SQL execution is unverified, and this primitive is deliberately **not called by the hook until writer exclusion is implemented**.
+
+`--deploy` records capability evidence then refuses before live writes/DDL with `unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented` or an earlier capability gate. It cannot silently report staging success. Still missing: atomic Apache byte maintenance/readback and external curl 503; exact owned Cron suppression/readback; old-bootstrap fence plus exclusion of unhooked workers/unknown same-user dispatchers; actual candidate MigrationRunner gates; byte-identical config and full component/build readiness; atomic promotion/lost-response reconciliation and restoration only after readiness. No provider worker or production DB was executed here.
+
+
+The shell runs the fixed ea-php83 private CLI. A successful default task means native inspection only, not staging/promotion. Parent/operator must review before remote invocation.
 
 ## Private prebuilt artifact input
 
@@ -20,13 +29,13 @@ Create the account-owned private root mode 0700 and `operator-plan.json` mode 06
 }
 ```
 
-Compute tree digest with the reviewed `CpanelGitDeploy::digest(CpanelGitDeploy::inventory($artifact))`; it hashes JSON with sorted relative-path keys, SHA256 and byte size, unescaped slashes, including the manifest. It is not a tar/zip checksum. Stage-only is the only accepted mode. Unknown actions fail closed. The previous `60c3d6fb` clone revision is context, not a valid full-commit authorization for changed code.
+Compute tree digest with the reviewed `CpanelGitDeploy::digest(CpanelGitDeploy::inventory($artifact))`; it hashes JSON with sorted relative-path keys, SHA256 and byte size, unescaped slashes, including the manifest. It is not a tar/zip checksum. Modes are preflight, explicit stage-only, and guarded deploy (currently refuses the missing enforcement/promotion gates). Unknown actions fail closed. The previous `60c3d6fb` clone revision is context, not a valid full-commit authorization for changed code.
 
 The hook requires master, a clean checkout, exact account/root, private plan ownership, and an explicit commit match. Native subprocess arguments are arrays; no credentials are passed or captured. Artifact code/vendor/bootstrap is never executed. Intent precedes candidate copy; readback verifies source stability and exact destination bytes. Failure leaves private intent/partial candidate for inspection rather than guessing recovery. Repeated invocation refuses existing intent/candidate; review these privately rather than deleting them automatically. Receipts bind commit, plan SHA, artifact tree digest and report pending gates. No migration helper is exposed over HTTP.
 
 ## Concrete migration blocker found in existing source
 
-`RestoreService::restore()` calls `DisposableDatabaseGuard`, which accepts only loopback, APP_ENV=test, explicit disposable opt-in, and `architex_task..._<8hex>_test` schemas. The actual cPanel account uses the `archite4_` namespace. RestoreService also drops and recreates the disposable schema via the supplied app PDO account before applying migrations; creating a provider database alone does not prove those grants are usable. Do not substitute a guessed name, bypass the guard, import an arbitrary SQL dump, or claim a successful recovery test. This worker is explicitly scoped away from editing those owned services. Until a reviewed guard/service extension accommodates independently proven account-owned disposable names, automatic live DDL cannot be safely enabled.
+The old RestoreService::restore() path remains namespace-restricted. The new AccountOwnedRestoreTarget native capability and restoreIntoProvisionedEmptyDatabase path avoid that incompatibility without relaxing DisposableDatabaseGuard. Actual UAPI issuance/restore are wired in the recovery primitive but remain native-unverified; the live deployment blocker is now enforced writer exclusion and verified promotion, not the old namespace limitation.
 
 ## Native migration path gates still required (NOT implemented/tested)
 
