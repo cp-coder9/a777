@@ -6,6 +6,9 @@ namespace Architex\Platform\Jobs;
 
 use Architex\Infrastructure\Mail\Mailer;
 use Architex\Infrastructure\Mail\Message;
+use Architex\Infrastructure\Mail\DeliveryReceipt;
+use Architex\Infrastructure\Mail\DeliveryOutcomeUnknown;
+use Architex\Platform\Inbox\InboxMailQueue;
 use PDO;
 use RuntimeException;
 use Throwable;
@@ -26,6 +29,7 @@ final readonly class JobDispatcher
     public function run(int $limit = 25): DispatchReport
     {
         $limit = max(1, min(100, $limit));
+        (new InboxMailQueue($this->pdo, new JobQueue($this->pdo, $this->cipher)))->enqueue($limit);
         $claimed = $succeeded = $retried = $dead = 0;
         for ($i = 0; $i < $limit; $i++) {
             $job = $this->claim();
@@ -33,14 +37,31 @@ final readonly class JobDispatcher
                 break;
             }
             $claimed++;
+            $receipt = null;
             try {
-                $this->dispatch($job);
-                $this->complete((string)$job['id']);
+                $receipt = $this->dispatch($job);
+                try {
+                    $this->complete((string)$job['id'], $receipt);
+                } catch (Throwable) {
+                    // Transport accepted the message. A DB failure must not schedule another send.
+                    $this->fail((string)$job['id'], true, (int)$job['attempts'], 'delivery_receipt_persistence_failed');
+                    $dead++;
+                    continue;
+                }
                 $succeeded++;
+            } catch (DeliveryOutcomeUnknown) {
+                $this->fail((string)$job['id'], true, (int)$job['attempts'], 'delivery_outcome_unknown');
+                $dead++;
             } catch (PermanentJobFailure $failure) {
                 $this->fail((string)$job['id'], true, (int)$job['attempts'], $failure->errorCode);
                 $dead++;
             } catch (Throwable) {
+                if ($receipt !== null) {
+                    // If even recording the failure fails, leave the running job for review.
+                    $this->fail((string)$job['id'], true, (int)$job['attempts'], 'delivery_receipt_persistence_failed');
+                    $dead++;
+                    continue;
+                }
                 if ((int)$job['attempts'] >= (int)$job['max_attempts']) {
                     $this->fail((string)$job['id'], true);
                     $dead++;
@@ -58,7 +79,9 @@ final readonly class JobDispatcher
     {
         $this->pdo->beginTransaction();
         try {
-            $select = $this->pdo->query("SELECT LOWER(HEX(id)) id,job_type,payload,attempts,max_attempts FROM scheduled_jobs WHERE ((status IN ('pending','failed') AND available_at<=UTC_TIMESTAMP(6)) OR (status='running' AND locked_at<UTC_TIMESTAMP(6)-INTERVAL 15 MINUTE)) ORDER BY available_at,id LIMIT 1 FOR UPDATE SKIP LOCKED");
+            // A crashed worker may already have handed mail to SMTP. Do not replay it blindly.
+            $this->pdo->exec("UPDATE scheduled_jobs SET status='dead',failed_at=UTC_TIMESTAMP(6),last_error_code='delivery_outcome_unknown',locked_by=NULL,locked_at=NULL WHERE status='running' AND locked_at<UTC_TIMESTAMP(6)-INTERVAL 15 MINUTE");
+            $select = $this->pdo->query("SELECT LOWER(HEX(id)) id,job_type,payload,attempts,max_attempts FROM scheduled_jobs WHERE status IN ('pending','failed') AND available_at<=UTC_TIMESTAMP(6) ORDER BY available_at,id LIMIT 1 FOR UPDATE SKIP LOCKED");
             $job = $select->fetch(PDO::FETCH_ASSOC);
             if (!is_array($job)) {
                 $this->pdo->commit();
@@ -78,12 +101,12 @@ final readonly class JobDispatcher
     }
 
     /** @param array<string,mixed> $job */
-    private function dispatch(array $job): void
+    private function dispatch(array $job): DeliveryReceipt
     {
         if (!$this->mailer->isConfigured()) {
             throw new RuntimeException('Mail delivery is unavailable.');
         }
-        if (!in_array($job['job_type'], ['send_verification_email', 'send_password_reset_email'], true)) {
+        if (!in_array($job['job_type'], ['send_verification_email', 'send_password_reset_email', 'send_inbox_email'], true)) {
             throw new PermanentJobFailure('job_type_unsupported');
         }
         try {
@@ -94,6 +117,17 @@ final readonly class JobDispatcher
             $payload = $this->cipher->decrypt($stored['encrypted']);
         } catch (Throwable) {
             throw new PermanentJobFailure('payload_invalid');
+        }
+        if ($job['job_type'] === 'send_inbox_email') {
+            foreach (['inboxId', 'userId'] as $key) {
+                if (!is_string($payload[$key] ?? null) || preg_match('/\A[a-f0-9]{32}\z/', $payload[$key]) !== 1) {
+                    throw new PermanentJobFailure('payload_invalid');
+                }
+            }
+            $to = (new InboxMailQueue($this->pdo, new JobQueue($this->pdo, $this->cipher)))->recipient($payload['inboxId'], $payload['userId']);
+            if ($to === null) throw new PermanentJobFailure('notification_recipient_ineligible');
+            // Keep confidential workflow details behind authenticated inbox access.
+            return $this->mailer->send(new Message($to, 'Architex project notification', "A project notification requires your attention. Sign in to your Architex inbox:\n\n" . rtrim($this->appUrl, '/') . '/app'));
         }
         $to = $payload['to'] ?? null;
         $token = $payload['token'] ?? null;
@@ -109,13 +143,15 @@ final readonly class JobDispatcher
             $url = $base . '/app?reset=' . rawurlencode($token);
             $message = new Message($to, 'Reset your Architex password', "Reset your Architex password before {$expiresAt}:\n\n{$url}");
         }
-        $this->mailer->send($message);
+        return $this->mailer->send($message);
     }
 
-    private function complete(string $id): void
+    private function complete(string $id, DeliveryReceipt $receipt): void
     {
-        $statement = $this->pdo->prepare("UPDATE scheduled_jobs SET status='completed',completed_at=UTC_TIMESTAMP(6),locked_by=NULL,locked_at=NULL,last_error_code=NULL WHERE id=UNHEX(:id) AND locked_by=:worker");
-        $statement->execute(['id' => $id, 'worker' => $this->workerId]);
+        if ($receipt->messageId === '' || $receipt->acceptedAt === '') throw new RuntimeException('Mail receipt is invalid.');
+        $statement = $this->pdo->prepare("UPDATE scheduled_jobs SET status='completed',completed_at=UTC_TIMESTAMP(6),payload=JSON_SET(payload,'$.deliveryReceipt',JSON_OBJECT('messageId',:message_id,'acceptedAt',:accepted_at)),locked_by=NULL,locked_at=NULL,last_error_code=NULL WHERE id=UNHEX(:id) AND locked_by=:worker AND status='running'");
+        $statement->execute(['id' => $id, 'worker' => $this->workerId, 'message_id'=>$receipt->messageId, 'accepted_at'=>$receipt->acceptedAt]);
+        if ($statement->rowCount() !== 1) throw new RuntimeException('Mail job ownership was lost.');
     }
 
     private function fail(string $id, bool $dead, int $attempt = 1, string $errorCode = 'mail_delivery_failed'): void
