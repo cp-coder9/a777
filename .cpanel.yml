@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/bash /home/archite4/repositories/a777/tools/cpanel_git_deploy.sh
