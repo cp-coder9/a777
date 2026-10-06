@@ -407,9 +407,9 @@ def permission_intent_guard(client, receipt):
 
 
 REHEARSAL_STAGES = frozenset(('plan','account','repository','trustedclasses','runtimeconfig','source-storage','provider','source-engine','archive','create','grant','restore','compare'))
-REHEARSAL_REASONS = frozenset(('unclassified','plan_refused','linux_account_required','account_refused','private_directory_required','canonical_path_required','symlink_refused','clean_commit_required','git_unavailable','git_refused','pinned_config_refused','actual_config_mismatch','stable_key_refused','private_file_required','transactional_source_required','recovery_root_isolation_refused','source_transaction_active','recovery_directory_unavailable','archive_digest_unavailable','class_source_unavailable','untrusted_class_location','class_digest_mismatch','restore_report_mismatch','immutable_source_archive_changed','journal_unavailable','journal_identity_refused','journal_durability_refused','target_storage_unavailable','archive_unavailable','manifest_unavailable','archived_identity_mismatch','snapshot_table_mismatch','snapshot_content_mismatch','snapshot_evidence_absent'))
-REHEARSAL_FUNCTIONS = frozenset(('run','account','canonical','privateDirectory','privateFile','privateTree','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'))
-REHEARSAL_DIAGNOSTICS = ('failureStage','knownReason','failureFile','failureFunction','failureLine','repositoryMode','repositoryOwner','repositoryCanonical','storageMode','storageOwner','storageCanonical','gitCommandAvailability','fixedGitBinaryAvailability','lastCompletedStage')
+REHEARSAL_REASONS = frozenset(('unclassified','source_directory_required','source_public_storage_refused','plan_refused','linux_account_required','account_refused','private_directory_required','canonical_path_required','symlink_refused','clean_commit_required','git_unavailable','git_refused','pinned_config_refused','actual_config_mismatch','stable_key_refused','private_file_required','transactional_source_required','recovery_root_isolation_refused','source_transaction_active','recovery_directory_unavailable','archive_digest_unavailable','class_source_unavailable','untrusted_class_location','class_digest_mismatch','restore_report_mismatch','immutable_source_archive_changed','journal_unavailable','journal_identity_refused','journal_durability_refused','target_storage_unavailable','archive_unavailable','manifest_unavailable','archived_identity_mismatch','snapshot_table_mismatch','snapshot_content_mismatch','snapshot_evidence_absent'))
+REHEARSAL_FUNCTIONS = frozenset(('run','account','canonical','privateDirectory','privateFile','privateTree','sourceTree','sourceDirectory','sourceDirectoryStat','sourceLocation','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'))
+REHEARSAL_DIAGNOSTICS = ('sourceDirectoryMetadataOwnerOnly','failureStage','knownReason','failureFile','failureFunction','failureLine','repositoryMode','repositoryOwner','repositoryCanonical','storageMode','storageOwner','storageCanonical','gitCommandAvailability','fixedGitBinaryAvailability','lastCompletedStage')
 
 
 def rehearsal_diagnostics_safe(data):
@@ -417,7 +417,8 @@ def rehearsal_diagnostics_safe(data):
         if key not in data:
             continue
         value = data[key]
-        if key == 'failureStage': valid = isinstance(value, str) and value in REHEARSAL_STAGES
+        if key == 'sourceDirectoryMetadataOwnerOnly': valid = type(value) is bool
+        elif key == 'failureStage': valid = isinstance(value, str) and value in REHEARSAL_STAGES
         elif key == 'knownReason': valid = isinstance(value, str) and value in REHEARSAL_REASONS
         elif key == 'failureFile': valid = value == 'CpanelRestoreRehearsal.php'
         elif key == 'failureFunction': valid = isinstance(value, str) and value in REHEARSAL_FUNCTIONS

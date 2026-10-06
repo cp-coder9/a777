@@ -62,7 +62,7 @@ final class CpanelRestoreRehearsal
             $key = $values['APP_KEY'] ?? null;
             if (!is_string($key) || strlen((string)base64_decode($key, true)) !== 32) throw new RuntimeException('Stable key refused.');
             $currentStage = 'source-storage';
-            self::privateTree($canonicalStorage);
+            $result['sourceDirectoryMetadataOwnerOnly'] = self::sourceTree($canonicalStorage);
             if (self::within(self::PRIVATE_ROOT, $canonicalStorage) || self::within(self::PRIVATE_ROOT, '/home/archite4/public_html')) throw new RuntimeException('Recovery root isolation refused.');
             if ($source->inTransaction()) throw new RuntimeException('Source transaction already active.');
             $currentStage = 'provider';
@@ -83,14 +83,17 @@ final class CpanelRestoreRehearsal
             $journal = $recovery . '/journal.jsonl';
             self::append($journal, ['phase'=>'intent','commit'=>$expectedCommit,'runtimeSha256'=>$runtimePin,
                 'sourceDatabase'=>$config->dbName,'archivePassword'=>$password,'automaticResume'=>false], true);
+            $sourceIdentity=self::sourceInventory($canonicalStorage);
+            self::privateDirectory($recovery);
             $source->exec('SET TRANSACTION READ ONLY');
             $backup = (new BackupService($source, $canonicalStorage, $password, $key))->create($recovery . '/source.axbackup');
             self::privateFile($backup->path);
-            $sha = hash_file('sha256', $backup->path);
+            $sha = self::openedFileIdentity($backup->path)['sha256'];
             if (!is_string($sha)) throw new RuntimeException('Archive digest unavailable.');
             $result += ['archiveSha256'=>$sha,'backupId'=>$backup->backupId,'rowCount'=>$backup->rowCount,'fileCount'=>$backup->fileCount];
             $result['status']='backup-created'; $result['lastCompletedStage']='backup-created';
             self::append($journal, $result);
+            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage));
             // Durable provider issuance receipts retain even ambiguous failures; NEVER drop a target.
             $currentStage = 'create';
             $result['targetDatabaseDdlTouched']=true; // conservative: a lost provisioning reply can have effected DDL
@@ -113,11 +116,13 @@ final class CpanelRestoreRehearsal
             // Reuse the real snapshot encoder: compare target against the IMMUTABLE archive,
             // never SELECT changing source rows after its snapshot has ended.
             $targetPdo->exec('SET TRANSACTION READ ONLY');
+            self::privateDirectory($recovery);
             $verified = (new BackupService($targetPdo, $fileRoot, $password, $key))->create($recovery . '/target-verification.axbackup');
             $sourceManifest = self::manifest($backup->path, $password);
             $targetManifest = self::manifest($verified->path, $password);
             self::assertSnapshotEquality($sourceManifest, $targetManifest, $config->dbName, $target->database());
-            if (!hash_equals($sha, (string)hash_file('sha256', $backup->path))) throw new RuntimeException('Immutable source archive changed.');
+            if (!hash_equals($sha, self::openedFileIdentity($backup->path)['sha256'])) throw new RuntimeException('Immutable source archive changed.');
+            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage));
             $result['status']='rehearsal-verified'; $result['lastCompletedStage']='rehearsal-verified';
             $result['isolatedRehearsalPassed']=true;
             $result['tableCount']=count($sourceManifest['database']['tables']);
@@ -138,6 +143,8 @@ final class CpanelRestoreRehearsal
     {
         $stages = ['plan','account','repository','trustedclasses','runtimeconfig','source-storage','provider','source-engine','archive','create','grant','restore','compare'];
         $reasons = [
+            'Unsafe path ancestry.'=>'unsafe_path_ancestry', 'Source tree changed.'=>'source_tree_changed',
+            'Source directory required.'=>'source_directory_required', 'Source public storage refused.'=>'source_public_storage_refused',
             'Plan refused.'=>'plan_refused', 'Linux account required.'=>'linux_account_required',
             'Account refused.'=>'account_refused', 'Private directory required.'=>'private_directory_required',
             'Canonical path required.'=>'canonical_path_required', 'Symlink refused.'=>'symlink_refused',
@@ -163,7 +170,7 @@ final class CpanelRestoreRehearsal
         $out = ['failureStage'=>in_array($stage,$stages,true)?$stage:'plan', 'knownReason'=>'unclassified'];
         // Foreign exceptions cannot impersonate our static reasons.
         if ($error->getFile() === __FILE__) $out['knownReason']=$reasons[$error->getMessage()] ?? 'unclassified';
-        $functions = ['run','account','canonical','privateDirectory','privateFile','privateTree','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'];
+        $functions = ['run','account','canonical','privateDirectory','privateFile','privateTree','sourceTree','sourceInventory','assertSourceIdentity','openedFileIdentity','openedDirectoryIdentity','ancestorDirectoryStat','freshStat','sourceDirectory','sourceDirectoryStat','sourceLocation','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'];
         foreach ($error->getTrace() as $frame) {
             if (($frame['class'] ?? null) === self::class && in_array($frame['function'] ?? null,$functions,true)) {
                 $out['failureFunction']=$frame['function'];
@@ -182,7 +189,7 @@ final class CpanelRestoreRehearsal
     {
         $out=[];
         foreach (['repository'=>$repository,'storage'=>$storage] as $label=>$path) {
-            $stat=@lstat($path);
+            $stat=self::freshStat($path);
             $out[$label.'Mode']=is_array($stat)?sprintf('%04o',$stat['mode'] & 0777):'unavailable';
             $out[$label.'Owner']=is_array($stat)&&function_exists('posix_geteuid')?($stat['uid']===posix_geteuid()?'account':'other'):'unavailable';
             $out[$label.'Canonical']=realpath($path)===$path?'canonical':'noncanonical';
@@ -224,26 +231,143 @@ final class CpanelRestoreRehearsal
         if (($owner['name'] ?? '') !== 'archite4' || ($owner['dir'] ?? '') !== '/home/archite4') throw new RuntimeException('Account refused.');
     }
     private static function within(string $path, string $root): bool { return $path === $root || str_starts_with($path, $root . '/'); }
+    /** Bounded account-shell model: root and this uid are trusted. These fresh checks
+     * detect observed changes, not hostile root/same-uid races or absolute TOCTOU elimination.
+     * Never mutate source permissions. */
+    private static function freshStat(string $path): array|false
+    {
+        clearstatcache(true, $path);
+        return @lstat($path);
+    }
+    private static function ancestorDirectoryStat(array|false $stat, int $owner): void
+    {
+        if (!is_array($stat) || ($stat['mode'] & 0170000) !== 0040000
+            || !in_array($stat['uid'], [0, $owner], true) || ($stat['mode'] & 0022) !== 0) {
+            throw new RuntimeException('Unsafe path ancestry.');
+        }
+    }
     private static function canonical(string $path): void
     {
+        clearstatcache(true);
         if (!str_starts_with($path,'/') || realpath($path) !== $path) throw new RuntimeException('Canonical path required.');
-        $walk=''; foreach (explode('/',ltrim($path,'/')) as $part) { $walk.='/'.$part; if (is_link($walk)) throw new RuntimeException('Symlink refused.'); }
+        $walk=$path;
+        while (true) {
+            $stat=self::freshStat($walk);
+            if (!is_array($stat)) throw new RuntimeException('Canonical path required.');
+            if (($stat['mode'] & 0170000) === 0120000) throw new RuntimeException('Symlink refused.');
+            if ($walk !== $path || ($stat['mode'] & 0170000) === 0040000) self::ancestorDirectoryStat($stat, posix_geteuid());
+            if ($walk === '/') break;
+            $walk=dirname($walk);
+        }
     }
     private static function privateDirectory(string $path): void
     {
         self::canonical($path);
-        if (!is_dir($path) || fileowner($path)!==posix_geteuid() || (fileperms($path)&0777)!==0700) throw new RuntimeException('Private directory required.');
+        $stat=self::freshStat($path);
+        if (!is_array($stat) || ($stat['mode']&0170000)!==0040000 || $stat['uid']!==posix_geteuid() || ($stat['mode']&07777)!==0700) throw new RuntimeException('Private directory required.');
+        if (self::statIdentity($stat)!==self::openedDirectoryIdentity($path)) throw new RuntimeException('Unsafe path ancestry.');
     }
     private static function privateFile(string $path): void
     {
-        self::canonical($path); $stat=lstat($path);
-        if (!is_array($stat) || ($stat['mode']&0170000)!==0100000 || ($stat['mode']&0777)!==0600 || $stat['uid']!==posix_geteuid() || $stat['nlink']!==1) throw new RuntimeException('Private file required.');
+        self::canonical($path); $stat=self::freshStat($path);
+        if (!is_array($stat) || ($stat['mode']&0170000)!==0100000 || ($stat['mode']&07777)!==0600 || $stat['uid']!==posix_geteuid() || $stat['nlink']!==1) throw new RuntimeException('Private file required.');
     }
     private static function noLinks(string $root): void
     {
         self::canonical($root);
         $it=new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
         foreach ($it as $entry) self::canonical($entry->getPathname());
+    }
+    /** Read-only source policy; directory names/metadata need not be confidential. */
+    private static function sourceDirectoryStat(array|false $stat, int $owner): bool
+    {
+        if (!is_array($stat) || ($stat['mode'] & 0170000) !== 0040000 || $stat['uid'] !== $owner
+            || ($stat['mode'] & 0022) !== 0 || !in_array($stat['mode'] & 07777, [0700,0750,0755], true)) {
+            throw new RuntimeException('Source directory required.');
+        }
+        return ($stat['mode'] & 0077) === 0;
+    }
+    private static function sourceDirectory(string $path): bool
+    {
+        self::canonical($path);
+        return self::sourceDirectoryStat(self::freshStat($path), posix_geteuid());
+    }
+    private static function sourceLocation(string $root): void
+    {
+        if (self::within($root, '/home/archite4/public_html')) throw new RuntimeException('Source public storage refused.');
+    }
+    private static function sourceTree(string $root): bool
+    {
+        self::canonical($root);
+        self::sourceLocation($root);
+        $ownerOnly = self::sourceDirectory($root);
+        $it=new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+        foreach ($it as $entry) {
+            // canonical() rejects links before type dispatch; privateFile rejects specials/hardlinks.
+            $path=$entry->getPathname(); self::canonical($path);
+            if ($entry->isDir()) { $private=self::sourceDirectory($path); $ownerOnly=$ownerOnly && $private; }
+            else self::privateFile($path);
+        }
+        return $ownerOnly;
+    }
+    private static function assertSourceIdentity(array $before, array $after): void
+    {
+        if ($before !== $after) throw new RuntimeException('Source tree changed.');
+    }
+    private static function statIdentity(array $stat): array
+    {
+        return array_intersect_key($stat, array_flip(['dev','ino','mode','uid','nlink','size']));
+    }
+    /** Hash actual opened regular-file handles, checking fresh same-path identity on both sides. */
+    private static function openedFileIdentity(string $path): array
+    {
+        self::privateFile($path);
+        $handle=@fopen($path, 'rb');
+        if (!is_resource($handle)) throw new RuntimeException('Private file required.');
+        try {
+            self::privateFile($path);
+            $before=fstat($handle); $named=self::freshStat($path);
+            if (!is_array($before) || !is_array($named) || self::statIdentity($before)!==self::statIdentity($named)) throw new RuntimeException('Source tree changed.');
+            $hash=hash_init('sha256');
+            if (hash_update_stream($hash,$handle)!==$before['size']) throw new RuntimeException('Source tree changed.');
+            $digest=hash_final($hash);
+            self::privateFile($path);
+            $after=fstat($handle); $named=self::freshStat($path);
+            if (!is_array($after) || !is_array($named) || self::statIdentity($before)!==self::statIdentity($after) || self::statIdentity($after)!==self::statIdentity($named)) throw new RuntimeException('Source tree changed.');
+            return self::statIdentity($after)+['sha256'=>$digest];
+        } finally { fclose($handle); }
+    }
+    private static function openedDirectoryIdentity(string $path): array
+    {
+        self::canonical($path);
+        $handle=@fopen($path,'rb');
+        if (!is_resource($handle)) throw new RuntimeException('Source tree changed.');
+        try {
+            $opened=fstat($handle); self::canonical($path); $named=self::freshStat($path);
+            if (!is_array($opened) || !is_array($named) || self::statIdentity($opened)!==self::statIdentity($named)) throw new RuntimeException('Source tree changed.');
+            return self::statIdentity($opened);
+        } finally { fclose($handle); }
+    }
+    private static function sourceInventory(string $root): array
+    {
+        self::sourceTree($root);
+        $out=[]; $walk=$root;
+        while (true) {
+            self::canonical($walk); $stat=self::freshStat($walk);
+            if (!is_array($stat)) throw new RuntimeException('Source tree changed.');
+            $out[$walk]=self::openedDirectoryIdentity($walk);
+            if ($walk==='/') break;
+            $walk=dirname($walk);
+        }
+        $it=new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+        foreach ($it as $entry) {
+            $path=$entry->getPathname(); self::canonical($path); $stat=self::freshStat($path);
+            if (!is_array($stat)) throw new RuntimeException('Source tree changed.');
+            if (($stat['mode']&0170000)===0040000) { self::sourceDirectory($path); $out[$path]=self::openedDirectoryIdentity($path); }
+            else $out[$path]=self::openedFileIdentity($path);
+        }
+        ksort($out,SORT_STRING);
+        return $out;
     }
     private static function privateTree(string $root): void
     {
@@ -258,7 +382,8 @@ final class CpanelRestoreRehearsal
         $handle=fopen($path,$create?'xb':'ab');
         if (!is_resource($handle)) throw new RuntimeException('Journal unavailable.');
         try {
-            $stat=lstat($path); $opened=fstat($handle);
+            self::privateDirectory(dirname($path)); self::privateFile($path);
+            $stat=self::freshStat($path); $opened=fstat($handle);
             if (!is_array($stat) || !is_array($opened) || $stat['dev']!==$opened['dev'] || $stat['ino']!==$opened['ino'] || $opened['uid']!==posix_geteuid() || ($opened['mode']&0777)!==0600 || ($opened['mode']&0170000)!==0100000 || $opened['nlink']!==1) throw new RuntimeException('Opened journal identity refused.');
             $bytes=json_encode($record, JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES)."\n";
             if (fwrite($handle,$bytes)!==strlen($bytes) || !fflush($handle) || !fsync($handle)) throw new RuntimeException('Journal durability refused.');

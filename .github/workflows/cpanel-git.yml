@@ -59,6 +59,13 @@ jobs:
           php -l tools/cpanel_git_deploy.php
           php tools/tests/cpanel_runtime_permissions_linux.php
           python -m unittest discover -s tools/tests -p 'test_cpanel_runtime_permissions.py'
+      - name: Source-storage POSIX fixture (synthetic, no hosting credentials)
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          php tools/tests/CpanelRestoreRehearsal_test.php
+          php tools/tests/CpanelRestoreRehearsal_local_backup.php
+          php tools/tests/CpanelRestoreRehearsal_source_permissions.php
       - name: Execute explicitly selected mode (never runtime deploy)
         env:
           MODE: ${{ inputs.mode }}

@@ -63,4 +63,23 @@ foreach (['SELECT password FROM users', '/private/secret credential', 'Private d
 $metadata=$r->getMethod('metadata')->invoke(null,__DIR__,__DIR__);
 check(!str_contains(json_encode($metadata,JSON_THROW_ON_ERROR),__DIR__));
 check(in_array($metadata['fixedGitBinaryAvailability'],['available','unavailable'],true));
+$directory=$r->getMethod('sourceDirectoryStat');
+foreach ([0700=>true,0750=>false,0755=>false] as $mode=>$private) check($directory->invoke(null,['mode'=>0040000|$mode,'uid'=>123],123)===$private);
+foreach ([0770,0775,0777,0720,0702,01700,02755,0644] as $mode) refused(static fn()=>$directory->invoke(null,['mode'=>0040000|$mode,'uid'=>123],123));
+refused(static fn()=>$directory->invoke(null,['mode'=>0040755,'uid'=>124],123));
+refused(static fn()=>$directory->invoke(null,['mode'=>0120755,'uid'=>123],123));
+refused(static fn()=>$directory->invoke(null,false,123));
+$location=$r->getMethod('sourceLocation');
+foreach (['/home/archite4/public_html','/home/archite4/public_html/storage'] as $path) refused(static fn()=>$location->invoke(null,$path));
+$location->invoke(null,'/home/archite4/public_html-other/storage'); check(true);
+$ancestor=$r->getMethod('ancestorDirectoryStat');
+foreach ([0,123] as $uid) { $ancestor->invoke(null,['mode'=>0040755,'uid'=>$uid],123); check(true); }
+foreach ([['mode'=>0040777,'uid'=>123],['mode'=>0040755,'uid'=>124],['mode'=>0120755,'uid'=>123]] as $stat) refused(static fn()=>$ancestor->invoke(null,$stat,123));
+$identity=$r->getMethod('assertSourceIdentity');
+$inventory=['/source'=>['dev'=>1,'ino'=>2,'mode'=>0040755,'uid'=>123,'nlink'=>2,'size'=>4096]];
+$identity->invoke(null,$inventory,$inventory); check(true);
+foreach (['ino','mode','uid','nlink','size','dev'] as $field) { $changed=$inventory; $changed['/source'][$field]++; refused(static fn()=>$identity->invoke(null,$inventory,$changed)); }
+$changed=$inventory; $changed['/source/new']=['sha256'=>'new']; refused(static fn()=>$identity->invoke(null,$inventory,$changed));
+$inventory['/source/file']=['sha256'=>str_repeat('a',64),'size'=>20];
+$changed=$inventory; $changed['/source/file']['sha256']=str_repeat('b',64); refused(static fn()=>$identity->invoke(null,$inventory,$changed));
 printf("Synthetic reflection/caller-contract assertions: %d passed; provider host authentication NOT exercised.\n",$n);
