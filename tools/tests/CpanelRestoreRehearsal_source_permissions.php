@@ -53,6 +53,11 @@ try {
     reject(static fn()=>$tree->invoke(null,$source)); unlink($source.'/fifo');
     $r->getMethod('sourceLocation')->invoke(null,$source);
     reject(static fn()=>$r->getMethod('sourceLocation')->invoke(null,'/home/archite4/public_html/source'));
+    $scope=$r->getMethod('sourceLocationInScope');
+    reject(static fn()=>$scope->invoke(null,$source,$root));
+    $scope->invoke(null,$source,$root,true); check($tree->invoke(null,$source,true)===false);
+    // Outputs have no exception, even when their mode would otherwise be private.
+    reject(static fn()=>$scope->invoke(null,$source,$root));
     // Optional native cross-owner test: sudo receives only this exact random fixture directory.
     $foreign=$root.'/foreign'; mkdir($foreign,0755); chmod($foreign,0755); mkdir($foreign.'/child',0700);
     $foreignUid=posix_geteuid()===65534?65533:65534;

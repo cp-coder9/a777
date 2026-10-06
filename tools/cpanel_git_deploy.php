@@ -324,7 +324,7 @@ final class CpanelGitDeploy
         $archiveOutside = $canonical && is_string($archive) && !str_starts_with($archive . '/', $storage . '/');
         $class = !$exists ? 'missing' : (!$canonical || !is_string($public) || !is_string($archive) ? 'canonical-unproven' :
             (!$archiveOutside ? 'archive-inside-storage' : ($outside ? 'outside-public' : 'under-public-privacy-unproven')));
-        return ['storageExists'=>$exists, 'storageCanonical'=>$canonical, 'storageOutsidePublic'=>$outside,
+        return ['storageExists'=>$exists, 'storageCanonical'=>$canonical, 'storageOutsidePublic'=>$outside, 'sourceUnderPublicHtml'=>$canonical && is_string($public) && !$outside,
             'archiveOutsideStorage'=>$archiveOutside, 'storageClass'=>$class,
             'migrationAuthorized'=>false, 'backupAuthorized'=>false, 'promotionAuthorized'=>false,
             'liveDdlAuthorized'=>false,
@@ -444,7 +444,7 @@ final class CpanelGitDeploy
             // An observation is not an exclusion lease; do not use it to authorize DDL.
         }
         $sql = self::activeSql(self::ACTIVE . '/database/migrations');
-        $evidence += self::storageInspection(is_string($config['FILE_STORAGE_PATH'] ?? null) ? $config['FILE_STORAGE_PATH'] : '', self::DOCROOT, self::PRIVATE_ROOT);
+        $evidence += self::storageInspection(is_string($config['FILE_STORAGE_PATH'] ?? null) ? $config['FILE_STORAGE_PATH'] : '', '/home/archite4/public_html', self::PRIVATE_ROOT);
         $evidence['appuserGrantsInspectionAvailable'] = false;
         try {
             $evidence['appuserHasScopedOnly'] = self::scopedOnlyGrants($pdo->query('SHOW GRANTS')->fetchAll(PDO::FETCH_COLUMN), $typed->dbName);
@@ -482,7 +482,7 @@ final class CpanelGitDeploy
     /** Real recovery rehearsal primitive. Caller must establish writer exclusion first. */
     public static function recovery(PDO $source, array $config, string $runRoot): array
     {
-        self::requireRecoveryStorage($config['FILE_STORAGE_PATH'] ?? '', self::DOCROOT, self::PRIVATE_ROOT);
+        self::requireRecoveryStorage($config['FILE_STORAGE_PATH'] ?? '', '/home/archite4/public_html', self::PRIVATE_ROOT);
         self::requireValue(realpath(dirname($runRoot)) === self::PRIVATE_ROOT && !file_exists($runRoot), 'recovery_root_invalid');
         self::requireValue(mkdir($runRoot, 0700), 'recovery_root_create_failed');
         $password = bin2hex(random_bytes(32)); $hmac = base64_encode(random_bytes(32));
@@ -550,6 +550,8 @@ final class CpanelGitDeploy
             $apiAllowed = in_array($requested, ['--preflight', '--restore-rehearsal'], true) && $plan['mode'] === substr($requested, 2)
                 && ($plan['readOnlyUapiTransport'] ?? null) === 'native-cli-then-private-token-https';
             $expectedSha = $plan['expectedRuntimeConfigSha256'] ?? '';
+            $allowExistingPublicSourceForRehearsal = $plan['allowExistingPublicSourceForRehearsal'] ?? false;
+            self::requireValue(is_bool($allowExistingPublicSourceForRehearsal) && (!$allowExistingPublicSourceForRehearsal || ($plan['mode'] === 'restore-rehearsal' && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1)), 'runtime_config_pin_mismatch');
             self::requireValue(is_string($expectedSha) && ($expectedSha === '' || (in_array($requested, ['--preflight', '--restore-rehearsal'], true) && $plan['mode'] === substr($requested, 2) && preg_match('/\A[a-f0-9]{64}\z/', $expectedSha) === 1)), 'runtime_config_pin_mismatch');
             self::requireValue($plan['mode'] === substr($requested, 2), 'explicit_plan_mode_required');
             if ($plan['mode'] === 'restore-rehearsal') {
@@ -573,7 +575,7 @@ final class CpanelGitDeploy
                             }
                         }, true, true);
                         require_once __DIR__ . '/CpanelRestoreRehearsal.php';
-                        $outcome = \Architex\Deployment\CpanelRestoreRehearsal::run(\Architex\Infrastructure\Config\AppConfig::fromEnvironment($observed['config']), $observed['pdo'], $observed['config']['FILE_STORAGE_PATH'], $expectedSha, $commit, $plan['mode'], self::REPO);
+                        $outcome = \Architex\Deployment\CpanelRestoreRehearsal::run(\Architex\Infrastructure\Config\AppConfig::fromEnvironment($observed['config']), $observed['pdo'], $observed['config']['FILE_STORAGE_PATH'], $expectedSha, $commit, $plan['mode'], self::REPO, $allowExistingPublicSourceForRehearsal);
                         $report = array_replace($report, $outcome);
                         $report['format'] = 'a777-cpanel-restore-rehearsal-v1';
                         $report['databaseDdlTouched'] = $outcome['targetDatabaseDdlTouched'];

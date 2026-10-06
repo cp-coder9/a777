@@ -317,7 +317,7 @@ def clone(client, expected, attempts=24, pause=5):
 DEPLOY_ROOT = HOME + '/.a777-deploy'
 PLAN = DEPLOY_ROOT + '/operator-plan.json'
 DEPLOY_KEY_PIN = 'SHA256:T+6DmXaw3OeXcygLPc9tkeSt70j8dvHnCDYOV7bCras'
-BOOL_FIELDS = frozenset(('storageExists', 'storageCanonical', 'storageOutsidePublic', 'archiveOutsideStorage',
+BOOL_FIELDS = frozenset(('sourceUnderPublicHtml', 'sourceStorageUnderPublicHtml', 'sourceStoragePrivacyUnproven', 'storageExists', 'storageCanonical', 'storageOutsidePublic', 'archiveOutsideStorage',
     'migrationAuthorized', 'backupAuthorized', 'promotionAuthorized', 'appuserHasScopedOnly',
     'appuserGrantsInspectionAvailable', 'accountPhpWorkerInventoryAvailable', 'managedRestoreSourceBound', 'sourceConfigPinned', 'databaseConfigParsed', 'databaseHostLocal', 'databaseNameMatches',
     'databaseUserInventoryMatches', 'databaseInventoryMatches', 'pdoDatabaseMatches', 'pdoUserMatches',
@@ -409,7 +409,7 @@ def permission_intent_guard(client, receipt):
 REHEARSAL_STAGES = frozenset(('plan','account','repository','trustedclasses','runtimeconfig','source-storage','provider','source-engine','archive','create','grant','restore','compare'))
 REHEARSAL_REASONS = frozenset(('unclassified','source_directory_required','source_public_storage_refused','plan_refused','linux_account_required','account_refused','private_directory_required','canonical_path_required','symlink_refused','clean_commit_required','git_unavailable','git_refused','pinned_config_refused','actual_config_mismatch','stable_key_refused','private_file_required','transactional_source_required','recovery_root_isolation_refused','source_transaction_active','recovery_directory_unavailable','archive_digest_unavailable','class_source_unavailable','untrusted_class_location','class_digest_mismatch','restore_report_mismatch','immutable_source_archive_changed','journal_unavailable','journal_identity_refused','journal_durability_refused','target_storage_unavailable','archive_unavailable','manifest_unavailable','archived_identity_mismatch','snapshot_table_mismatch','snapshot_content_mismatch','snapshot_evidence_absent'))
 REHEARSAL_FUNCTIONS = frozenset(('run','account','canonical','privateDirectory','privateFile','privateTree','sourceTree','sourceDirectory','sourceDirectoryStat','sourceLocation','noLinks','git','trackedFile','trackedTree','trustedClass','append','manifest','assertSnapshotEquality'))
-REHEARSAL_DIAGNOSTICS = ('sourceDirectoryMetadataOwnerOnly','failureStage','knownReason','failureFile','failureFunction','failureLine','repositoryMode','repositoryOwner','repositoryCanonical','storageMode','storageOwner','storageCanonical','gitCommandAvailability','fixedGitBinaryAvailability','lastCompletedStage')
+REHEARSAL_DIAGNOSTICS = ('sourceStorageUnderPublicHtml','sourceStoragePrivacyUnproven','sourceDirectoryMetadataOwnerOnly','failureStage','knownReason','failureFile','failureFunction','failureLine','repositoryMode','repositoryOwner','repositoryCanonical','storageMode','storageOwner','storageCanonical','gitCommandAvailability','fixedGitBinaryAvailability','lastCompletedStage')
 
 
 def rehearsal_diagnostics_safe(data):
@@ -417,7 +417,7 @@ def rehearsal_diagnostics_safe(data):
         if key not in data:
             continue
         value = data[key]
-        if key == 'sourceDirectoryMetadataOwnerOnly': valid = type(value) is bool
+        if key in ('sourceDirectoryMetadataOwnerOnly','sourceStorageUnderPublicHtml','sourceStoragePrivacyUnproven'): valid = type(value) is bool
         elif key == 'failureStage': valid = isinstance(value, str) and value in REHEARSAL_STAGES
         elif key == 'knownReason': valid = isinstance(value, str) and value in REHEARSAL_REASONS
         elif key == 'failureFile': valid = value == 'CpanelRestoreRehearsal.php'
@@ -438,11 +438,13 @@ def rehearsal_safe(data, permissions_authorized=False):
         return False
     if any(data.get(k) is not False for k in ('sourceDatabaseDdlTouched', 'apacheConfigurationTouched', 'cronConfigurationTouched')):
         return False
-    if any(data.get(k, False) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
+    if any(data.get(k) is not False for k in ('migrationAuthorized', 'promotionAuthorized', 'liveDdlAuthorized')):
         return False
     if type(data.get('targetDatabaseDdlTouched')) is not bool or type(data.get('isolatedRehearsalPassed')) is not bool:
         return False
     if not rehearsal_diagnostics_safe(data):
+        return False
+    if data.get('sourceStorageUnderPublicHtml') is True and data.get('sourceStoragePrivacyUnproven') is not True:
         return False
     envelope = dict(data, databaseDdlTouched=False)
     if not permission_only_safe(envelope) or (data.get('liveFilesTouched') is not False and not permissions_authorized):
@@ -454,6 +456,10 @@ def rehearsal_safe(data, permissions_authorized=False):
     if 'targetDatabase' in data and (not isinstance(data['targetDatabase'], str) or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['targetDatabase'])):
         return False
     if data['isolatedRehearsalPassed']:
+        if any(type(data.get(k)) is not bool for k in ('sourceStorageUnderPublicHtml','sourceStoragePrivacyUnproven')):
+            return False
+        if data['sourceStorageUnderPublicHtml'] and not data['sourceStoragePrivacyUnproven']:
+            return False
         if not data['targetDatabaseDdlTouched'] or 'targetDatabase' not in data:
             return False
         if not isinstance(data.get('archiveSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['archiveSha256']):
@@ -479,7 +485,7 @@ def rehearsal_receipts(client, commit, plan_sha, previous, permissions_authorize
             raise CpanelError('Rehearsal source safety envelope refused.')
         permission_intent_guard(client, dict(data, databaseDdlTouched=False))
         safe = {'report_id':name, 'commit':commit, 'planSha256':plan_sha}
-        for key in ('status','sourceDatabaseDdlTouched','targetDatabaseDdlTouched','isolatedRehearsalPassed','liveFilesTouched','apacheConfigurationTouched','cronConfigurationTouched','targetDatabase','archiveSha256','backupId','rowCount','fileCount','tableCount'):
+        for key in ('promotionAuthorized','migrationAuthorized','liveDdlAuthorized','status','sourceDatabaseDdlTouched','targetDatabaseDdlTouched','isolatedRehearsalPassed','liveFilesTouched','apacheConfigurationTouched','cronConfigurationTouched','targetDatabase','archiveSha256','backupId','rowCount','fileCount','tableCount'):
             if key in data: safe[key] = data[key]
         for key in REHEARSAL_DIAGNOSTICS:
             if key in data: safe[key] = data[key]
@@ -677,7 +683,9 @@ def retry_initial_rehearsal_plan(client, old, original, plan):
     client.save_file(PLAN, json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n')
 
 
-def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False):
+def preflight_plan(client, commit, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False, allow_existing_public_source_for_rehearsal=False):
+    if type(allow_existing_public_source_for_rehearsal) is not bool or (allow_existing_public_source_for_rehearsal and mode != 'restore-rehearsal'):
+        raise CpanelError('Explicit rehearsal config pin required.')
     if mode not in ('preflight', 'restore-rehearsal') or (mode == 'restore-rehearsal' and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
         raise CpanelError('Explicit rehearsal config pin required.')
     if not isinstance(expected_runtime_config_sha256, str) or (expected_runtime_config_sha256 and not re.fullmatch(r'[a-f0-9]{64}', expected_runtime_config_sha256)):
@@ -692,6 +700,8 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False, expe
             'readOnlyUapiTransport': 'native-cli-then-private-token-https'}
     if type(secure_runtime_config_permissions) is not bool:
         raise CpanelError('Explicit permission authorization required.')
+    if allow_existing_public_source_for_rehearsal:
+        plan['allowExistingPublicSourceForRehearsal'] = True
     if secure_runtime_config_permissions:
         plan['secureRuntimeConfigPermissions'] = True
     if expected_runtime_config_sha256:
@@ -702,14 +712,15 @@ def preflight_plan(client, commit, secure_runtime_config_permissions=False, expe
         owned_mode(client, PLAN, '0600')
         original = read(client, PLAN)
         old = json.loads(original)
-        base = {k: v for k, v in plan.items() if k not in ('mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256')}
+        base = {k: v for k, v in plan.items() if k not in ('mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256', 'allowExistingPublicSourceForRehearsal')}
         if (not isinstance(old, dict) or any(old.get(k) != v for k, v in base.items())
                 or not set(base) | {'expectedCommit'} <= set(old)
                 or old.get('mode') not in ('preflight', 'restore-rehearsal')
-                or not set(old) <= set(base) | {'mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256'}
+                or not set(old) <= set(base) | {'mode', 'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions', 'expectedRuntimeConfigSha256', 'allowExistingPublicSourceForRehearsal'}
                 or ('expectedRuntimeConfigSha256' in old and (not isinstance(old['expectedRuntimeConfigSha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', old['expectedRuntimeConfigSha256'])))
                 or not isinstance(old.get('expectedCommit'), str)
                 or not re.fullmatch(r'[a-f0-9]{40}', old['expectedCommit'])
+                or ('allowExistingPublicSourceForRehearsal' in old and (type(old['allowExistingPublicSourceForRehearsal']) is not bool or (old['allowExistingPublicSourceForRehearsal'] and (old.get('mode') != 'restore-rehearsal' or not re.fullmatch(r'[a-f0-9]{64}', old.get('expectedRuntimeConfigSha256', ''))))))
                 or ('secureRuntimeConfigPermissions' in old and type(old['secureRuntimeConfigPermissions']) is not bool)
                 or ('readOnlyUapiTransport' in old and old['readOnlyUapiTransport'] != plan['readOnlyUapiTransport'])):
             raise CpanelError('Existing operator plan collision; refused.')
@@ -834,7 +845,7 @@ def receipts(client, commit, plan_sha, previous, mode='preflight', permissions_a
     return sorted(reports, key=lambda r: r['report_id'])
 
 
-def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False):
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False, expected_runtime_config_sha256='', mode='preflight', retry_initial_rehearsal=False, allow_existing_public_source_for_rehearsal=False):
     report = {'mode': ('restore-rehearsal' if mode == 'restore-rehearsal' else 'native-preflight'), 'status': 'failed', 'runtime_deployed': False,
               'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
               'tokenAbsenceVerified': False}
@@ -859,7 +870,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
             raise CpanelError('Remote HEAD differs from workflow commit.')
         stage = 'private_plan'
-        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256, mode=mode, retry_initial_rehearsal=retry_initial_rehearsal)
+        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions, expected_runtime_config_sha256, mode=mode, retry_initial_rehearsal=retry_initial_rehearsal, allow_existing_public_source_for_rehearsal=allow_existing_public_source_for_rehearsal)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
         stage = 'private_token'
         provision_token(client, token_state)

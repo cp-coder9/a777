@@ -16,7 +16,9 @@ def outcome():
         isolatedRehearsalPassed=True, databaseDdlTouched=True, liveFilesTouched=False,
         apacheConfigurationTouched=False, cronConfigurationTouched=False,
         targetDatabase='archite4_ar_0123456789abcdef_test', archiveSha256='a'*64,
-        backupId='backup_123', rowCount=2, fileCount=1, tableCount=3)
+        backupId='backup_123', rowCount=2, fileCount=1, tableCount=3,
+        migrationAuthorized=False,promotionAuthorized=False,liveDdlAuthorized=False,
+        sourceStorageUnderPublicHtml=False,sourceStoragePrivacyUnproven=False)
 
 class RehearsalFake(NativeFake):
     def _uapi(self, module, function, params):
@@ -43,7 +45,8 @@ class RehearsalTests(unittest.TestCase):
         data=dict(format='a777-cpanel-restore-rehearsal-v1',mode='restore-rehearsal',commit=SHA,
                   planSha256=digest,status='failed',sourceDatabaseDdlTouched=False,
                   targetDatabaseDdlTouched=False,databaseDdlTouched=False,isolatedRehearsalPassed=False,
-                  liveFilesTouched=False,apacheConfigurationTouched=False,cronConfigurationTouched=False)
+                  liveFilesTouched=False,apacheConfigurationTouched=False,cronConfigurationTouched=False,
+                  migrationAuthorized=False,promotionAuthorized=False,liveDdlAuthorized=False)
         path=g.DEPLOY_ROOT+'/restore-rehearsal-'+SHA+'-0123456789abcdef.json'
         f.files[path]=json.dumps(data); f.modes[path]=600
         return f,path

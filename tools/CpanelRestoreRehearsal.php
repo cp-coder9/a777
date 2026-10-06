@@ -20,11 +20,13 @@ final class CpanelRestoreRehearsal
      * Returns only allowlisted evidence. A failed attempt retains private journals and archives.
      */
     public static function run(AppConfig $config, PDO $source, string $canonicalStorage, string $runtimePin,
-        string $expectedCommit, string $planMode, string $trustedRepository): array
+        string $expectedCommit, string $planMode, string $trustedRepository, bool $allowExistingPublicSourceForRehearsal=false): array
     {
         $result = ['status'=>'failed', 'isolatedRehearsalPassed'=>false,
             'sourceDatabaseDdlTouched'=>false, 'liveFilesTouched'=>false,
-            'targetDatabaseDdlTouched'=>false, 'lastCompletedStage'=>null];
+            'targetDatabaseDdlTouched'=>false, 'lastCompletedStage'=>null,
+            'promotionAuthorized'=>false, 'migrationAuthorized'=>false, 'liveDdlAuthorized'=>false,
+            'sourceStoragePrivacyUnproven'=>false, 'sourceStorageUnderPublicHtml'=>false];
         $currentStage = 'plan';
         $journal = null; $oldMask = umask(0077);
         try {
@@ -62,7 +64,10 @@ final class CpanelRestoreRehearsal
             $key = $values['APP_KEY'] ?? null;
             if (!is_string($key) || strlen((string)base64_decode($key, true)) !== 32) throw new RuntimeException('Stable key refused.');
             $currentStage = 'source-storage';
-            $result['sourceDirectoryMetadataOwnerOnly'] = self::sourceTree($canonicalStorage);
+            $publicSource = self::within($canonicalStorage, '/home/archite4/public_html');
+            $result['sourceStorageUnderPublicHtml'] = $publicSource;
+            $result['sourceStoragePrivacyUnproven'] = $publicSource;
+            $result['sourceDirectoryMetadataOwnerOnly'] = self::sourceTree($canonicalStorage, $allowExistingPublicSourceForRehearsal);
             if (self::within(self::PRIVATE_ROOT, $canonicalStorage) || self::within(self::PRIVATE_ROOT, '/home/archite4/public_html')) throw new RuntimeException('Recovery root isolation refused.');
             if ($source->inTransaction()) throw new RuntimeException('Source transaction already active.');
             $currentStage = 'provider';
@@ -78,12 +83,16 @@ final class CpanelRestoreRehearsal
             self::noLinks($migrations);
             $recovery = self::PRIVATE_ROOT . '/recovery-' . $expectedCommit . '-' . bin2hex(random_bytes(16));
             if (!mkdir($recovery, 0700)) throw new RuntimeException('Recovery directory unavailable.');
+            self::sourceLocation($recovery);
+            if (self::within($recovery, $canonicalStorage)) throw new RuntimeException('Recovery root isolation refused.');
             self::privateDirectory($recovery);
             $password = bin2hex(random_bytes(32));
             $journal = $recovery . '/journal.jsonl';
             self::append($journal, ['phase'=>'intent','commit'=>$expectedCommit,'runtimeSha256'=>$runtimePin,
                 'sourceDatabase'=>$config->dbName,'archivePassword'=>$password,'automaticResume'=>false], true);
-            $sourceIdentity=self::sourceInventory($canonicalStorage);
+            $sourceIdentity=self::sourceInventory($canonicalStorage, $allowExistingPublicSourceForRehearsal);
+            self::sourceLocation($recovery);
+            if (self::within($recovery, $canonicalStorage)) throw new RuntimeException('Recovery root isolation refused.');
             self::privateDirectory($recovery);
             $source->exec('SET TRANSACTION READ ONLY');
             $backup = (new BackupService($source, $canonicalStorage, $password, $key))->create($recovery . '/source.axbackup');
@@ -93,7 +102,7 @@ final class CpanelRestoreRehearsal
             $result += ['archiveSha256'=>$sha,'backupId'=>$backup->backupId,'rowCount'=>$backup->rowCount,'fileCount'=>$backup->fileCount];
             $result['status']='backup-created'; $result['lastCompletedStage']='backup-created';
             self::append($journal, $result);
-            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage));
+            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage, $allowExistingPublicSourceForRehearsal));
             // Durable provider issuance receipts retain even ambiguous failures; NEVER drop a target.
             $currentStage = 'create';
             $result['targetDatabaseDdlTouched']=true; // conservative: a lost provisioning reply can have effected DDL
@@ -116,13 +125,15 @@ final class CpanelRestoreRehearsal
             // Reuse the real snapshot encoder: compare target against the IMMUTABLE archive,
             // never SELECT changing source rows after its snapshot has ended.
             $targetPdo->exec('SET TRANSACTION READ ONLY');
+            self::sourceLocation($recovery);
+            if (self::within($recovery, $canonicalStorage)) throw new RuntimeException('Recovery root isolation refused.');
             self::privateDirectory($recovery);
             $verified = (new BackupService($targetPdo, $fileRoot, $password, $key))->create($recovery . '/target-verification.axbackup');
             $sourceManifest = self::manifest($backup->path, $password);
             $targetManifest = self::manifest($verified->path, $password);
             self::assertSnapshotEquality($sourceManifest, $targetManifest, $config->dbName, $target->database());
             if (!hash_equals($sha, self::openedFileIdentity($backup->path)['sha256'])) throw new RuntimeException('Immutable source archive changed.');
-            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage));
+            self::assertSourceIdentity($sourceIdentity,self::sourceInventory($canonicalStorage, $allowExistingPublicSourceForRehearsal));
             $result['status']='rehearsal-verified'; $result['lastCompletedStage']='rehearsal-verified';
             $result['isolatedRehearsalPassed']=true;
             $result['tableCount']=count($sourceManifest['database']['tables']);
@@ -292,14 +303,18 @@ final class CpanelRestoreRehearsal
         self::canonical($path);
         return self::sourceDirectoryStat(self::freshStat($path), posix_geteuid());
     }
-    private static function sourceLocation(string $root): void
+    private static function sourceLocation(string $root, bool $allowExistingPublicSourceForRehearsal=false): void
     {
-        if (self::within($root, '/home/archite4/public_html')) throw new RuntimeException('Source public storage refused.');
+        self::sourceLocationInScope($root, '/home/archite4/public_html', $allowExistingPublicSourceForRehearsal);
     }
-    private static function sourceTree(string $root): bool
+    private static function sourceLocationInScope(string $root, string $publicRoot, bool $allow=false): void
+    {
+        if (!$allow && self::within($root, $publicRoot)) throw new RuntimeException('Source public storage refused.');
+    }
+    private static function sourceTree(string $root, bool $allowExistingPublicSourceForRehearsal=false): bool
     {
         self::canonical($root);
-        self::sourceLocation($root);
+        self::sourceLocation($root, $allowExistingPublicSourceForRehearsal);
         $ownerOnly = self::sourceDirectory($root);
         $it=new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
         foreach ($it as $entry) {
@@ -348,9 +363,9 @@ final class CpanelRestoreRehearsal
             return self::statIdentity($opened);
         } finally { fclose($handle); }
     }
-    private static function sourceInventory(string $root): array
+    private static function sourceInventory(string $root, bool $allowExistingPublicSourceForRehearsal=false): array
     {
-        self::sourceTree($root);
+        self::sourceTree($root, $allowExistingPublicSourceForRehearsal);
         $out=[]; $walk=$root;
         while (true) {
             self::canonical($walk); $stat=self::freshStat($walk);

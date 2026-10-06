@@ -27,6 +27,11 @@ on:
         description: SHA256 fingerprint required for clone and existing-key preparation reruns
         type: string
         required: false
+      allow_existing_public_source_for_rehearsal:
+        description: Read only existing pinned public source for private encrypted recovery; never deployment authority
+        type: boolean
+        default: false
+        required: false
       retry_initial_rehearsal:
         description: Explicit retry only after verified failure before recovery or target creation
         type: boolean
@@ -69,6 +74,7 @@ jobs:
       - name: Execute explicitly selected mode (never runtime deploy)
         env:
           MODE: ${{ inputs.mode }}
+          ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL: ${{ inputs.allow_existing_public_source_for_rehearsal }}
           RETRY_INITIAL_REHEARSAL: ${{ inputs.retry_initial_rehearsal }}
           SECURE_RUNTIME_CONFIG_PERMISSIONS: ${{ inputs.secure_runtime_config_permissions }}
           EXPECTED_COMMIT: ${{ github.sha }}
@@ -93,6 +99,10 @@ jobs:
               [[ "$MODE" == restore-rehearsal ]] || exit 1
               args+=(--retry-initial-rehearsal)
             fi
+          fi
+          if [[ "$ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL" == true ]]; then
+            [[ "$MODE" == restore-rehearsal && "$EXPECTED_RUNTIME_CONFIG_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1
+            args+=(--allow-existing-public-source-for-rehearsal)
           fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report
