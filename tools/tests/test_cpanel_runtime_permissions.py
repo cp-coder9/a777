@@ -44,6 +44,13 @@ class PermissionReceiptTests(unittest.TestCase):
         return f,d,intent
     def test_exact_private_intent_binding(self):
         f,d,_=self.bound(); g.permission_intent_guard(f,d)
+    def test_inventory_accepts_bound_parent_and_file_intent(self):
+        import json
+        f,d,_=self.bound()
+        d.update(format='a777-cpanel-native-preflight-v1', mode='preflight', status='capability-inspection-refused')
+        report=g.DEPLOY_ROOT+'/preflight-'+SHA+'-0123456789abcdef.json'
+        f.files[report]=json.dumps(d); f.modes[report]=600
+        g.deployment_inventory_guard(f)
     def test_forged_boolean_without_intent_refused(self):
         from cpanel_client import CpanelError
         with self.assertRaises(CpanelError): g.permission_intent_guard(NativeFake(),self.proof())
