@@ -6,10 +6,15 @@ import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cpanel_git_prepare as g
-from cpanel_client import CpanelError
+from cpanel_client import CpanelError, CpanelConfig
 from test_cpanel_git_prepare import Fake, SHA
 
 class NativeFake(Fake):
+    config = CpanelConfig('cp73.domains.co.za', 2083, 'archite4', '', g.HOME, g.HOME,
+                          api_token='PRIVATE_SENTINEL_TOKEN_123456')
+    def trash(self, path):
+        assert path == g.TOKEN
+        del self.files[path]
     def __init__(self, terminal='succeeded', receipt=True):
         super().__init__()
         self.rows = [{'repository_root':g.ROOT, 'name':'a777-production', 'type':'git',
