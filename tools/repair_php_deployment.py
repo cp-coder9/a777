@@ -522,6 +522,11 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
     add_target_options(inspect, require_release=True)
     inspect.add_argument("--deployment-id")
 
+    migration_inspect = commands.add_parser("migration-inspect", help="Authenticated read-only migration and capability inspection.")
+    add_target_options(migration_inspect, require_release=True)
+    migration_inspect.add_argument("--deployment-id")
+    migration_inspect.add_argument("--expected-database", default=None, help="Optional exact database assertion; otherwise discover through authenticated runtime and cPanel inventory.")
+
     deploy = commands.add_parser("deploy", help="Stage, preflight, atomically activate, and verify a release.")
     add_target_options(deploy, require_release=True)
     deploy.add_argument("--deployment-id")
@@ -634,6 +639,10 @@ def run_cli(
     client = remote or _configured_remote(args, values, account_home)
     verifier = http or UrllibHttpVerifier(ca_file=args.ca_file)
 
+    if args.command == "migration-inspect":
+        from tools.migration_inspect import inspect_migrations
+        report = inspect_migrations(config, client, args.expected_database or values.get("A777_EXPECTED_DATABASE") or None)
+        return DeploymentResult(status="migration_inspected", deployment_id=str(config.deployment_id), observed=report)
     if args.command == "inspect":
         return _inspect(config, client, verifier)
     if args.command == "deploy":

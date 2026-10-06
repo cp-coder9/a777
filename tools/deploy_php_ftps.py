@@ -264,6 +264,16 @@ try {{
     $pendingCount = is_array($status) ? ($status['pendingCount'] ?? null) : ($status->pendingCount ?? null);
     if (!is_int($pendingCount) || $pendingCount < 0) throw new RuntimeException();
     $result['pendingCount'] = $pendingCount;
+    // Only disclose actual canonical IDs present in this exact SQL tree.
+    $versions = is_array($status) ? ($status['pendingVersions'] ?? null) : ($status->pendingVersions ?? null);
+    $safeVersions = is_array($versions) && array_is_list($versions) && count($versions) === $pendingCount;
+    if ($safeVersions) foreach ($versions as $version) {{
+        if (!is_string($version) || !preg_match('/^[0-9]{{4}}_[a-z0-9_]+$/D', $version) ||
+            !is_file(dirname(__DIR__) . '/{runtime_name}/database/migrations/' . $version . '.sql') ||
+            is_link(dirname(__DIR__) . '/{runtime_name}/database/migrations/' . $version . '.sql')) {{ $safeVersions = false; break; }}
+    }}
+    // Public legacy preflight does not disclose ledger IDs; authenticated inspection does.
+    if (PHP_SAPI === 'cli' && $safeVersions && count(array_unique($versions)) === count($versions)) $result['pendingVersions'] = $versions;
     $result['migrations'] = $pendingCount === 0;
     $result['reason'] = 'mail_failed';
     $result['mail'] = MailRuntime::fromEnvironment($pdo, $env)->isReady();
