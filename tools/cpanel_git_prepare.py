@@ -73,15 +73,15 @@ def entries(client, directory):
     else:
         raise CpanelError('Invalid file inventory.')
     rows = [dict(row, name=row.get('name', row.get('file'))) for row in rows if isinstance(row, dict)]
-    for row in rows:
-        if row.get('type') in ('link', 'symlink'):
-            raise CpanelError('Symlink in preparation directory; refused.')
     return rows
 
 
 def exists(client, path):
     parent, name = path.rsplit('/', 1)
-    return any(row.get('name') == name for row in entries(client, parent))
+    matches = [row for row in entries(client, parent) if row.get('name') == name]
+    if len(matches) > 1 or any(row.get('type') in ('link', 'symlink') for row in matches):
+        raise CpanelError('Target path is ambiguous or symlinked; refused.')
+    return bool(matches)
 
 
 def read(client, path):
