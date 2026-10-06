@@ -320,8 +320,9 @@ BOOL_FIELDS = frozenset(('databaseDdlTouched', 'liveFilesTouched', 'zipAvailable
     'nativeRestoreCapabilityPresent', 'activeRootAvailable', 'documentRootAvailable',
     'runtimeConfigAvailable', 'liveDdlAuthorized', 'mysqlInventoryAvailable',
     'mysqlUserInventoryAvailable', 'cronInventoryAvailable', 'exclusiveGrantUserVisible',
-    'sourceConnectionsDrainedAtInspection'))
-GATES = frozenset(('active_or_document_root_invalid', 'active_config_missing_or_not_private',
+    'sourceConnectionsDrainedAtInspection', 'runtimeConfigRegular', 'runtimeConfigNotSymlink',
+    'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600', 'privateConfigPermissionsChanged', 'runtimeConfigPermissionsTouched'))
+GATES = frozenset(('active_or_document_root_invalid', 'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private',
     'active_database_config_identity_mismatch', 'active_database_password_missing',
     'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
     'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
@@ -350,6 +351,42 @@ def private_chmod(client, path):
     owned_mode(client, path, '0600')
 
 
+def permission_only_safe(data):
+    if data.get('databaseDdlTouched') is not False:
+        return False
+    if data.get('liveFilesTouched') is False:
+        return not data.get('runtimeConfigPermissionsTouched', False)
+    return (data.get('liveFilesTouched') is True
+        and data.get('runtimeConfigPermissionsTouched') is True
+        and data.get('privateConfigPermissionsChanged') is True
+        and all(data.get(k) is True for k in ('runtimeConfigRegular', 'runtimeConfigNotSymlink', 'runtimeConfigOwnerMatches', 'runtimeConfigPrivate600'))
+        and data.get('runtimeConfigModeAfter') == '0600'
+        and isinstance(data.get('configContentUnchangedSHA'), str)
+        and re.fullmatch(r'[a-f0-9]{64}', data['configContentUnchangedSHA']) is not None
+        and type(data.get('runtimeConfigBytesUnchanged')) is int and data['runtimeConfigBytesUnchanged'] >= 0)
+
+
+def permission_intent_guard(client, receipt):
+    if receipt.get('liveFilesTouched') is not True:
+        return
+    name = receipt.get('runtimePermissionIntent')
+    if not isinstance(name, str) or not re.fullmatch(r'runtime-permission-[a-f0-9]{16}\.json', name):
+        raise CpanelError('Private permission intent reference refused.')
+    owned_mode(client, DEPLOY_ROOT, '0700', True)
+    path = DEPLOY_ROOT + '/' + name
+    owned_mode(client, path, '0600')
+    intent = json.loads(read(client, path))
+    expected = {'format':'a777-runtime-permission-intent-v1', 'operation':'private0600',
+                'commit':receipt.get('commit'), 'planSha256':receipt.get('planSha256'),
+                'path':HOME + '/public_html/.a777-runtime-active/config/runtime.php',
+                'device':receipt.get('runtimePermissionDevice'), 'inode':receipt.get('runtimePermissionInode'),
+                'owner':receipt.get('runtimePermissionOwner'), 'bytes':receipt.get('runtimeConfigBytesUnchanged'),
+                'beforeMode':receipt.get('runtimeConfigModeBefore'), 'sha256':receipt.get('configContentUnchangedSHA')}
+    if (intent != expected or any(type(expected[k]) is not int or expected[k] < 0 for k in ('device','inode','owner','bytes'))
+            or not permission_only_safe(receipt)):
+        raise CpanelError('Private permission intent binding refused.')
+
+
 def deployment_inventory_guard(client):
     for row in entries(client, DEPLOY_ROOT):
         name = row.get('name')
@@ -365,11 +402,12 @@ def deployment_inventory_guard(client):
             if (not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-preflight-v1'
                     or data.get('mode') != 'preflight'
                     or data.get('status') not in ('inspected-not-authorized', 'capability-inspection-refused')
-                    or data.get('databaseDdlTouched') is not False or data.get('liveFilesTouched') is not False
+                    or not permission_only_safe(data)
                     or not isinstance(data.get('commit'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['commit'])
                     or not name.startswith('preflight-' + data['commit'] + '-')
                     or not isinstance(data.get('planSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['planSha256'])):
                 raise CpanelError('Private deployment receipt collision; refused.')
+            permission_intent_guard(client, data)
             continue
         if isinstance(name, str) and re.fullmatch(r'plan-roll-[a-f0-9]{64}\.json', name):
             path = DEPLOY_ROOT + '/' + name
@@ -381,6 +419,20 @@ def deployment_inventory_guard(client):
             digest = hashlib.sha256(raw).hexdigest()
             if data['originalSha256'] != digest or name != 'plan-roll-' + digest + '.json':
                 raise CpanelError('Private plan intent collision; refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'runtime-permission-[a-f0-9]{16}\.json', name):
+            path = DEPLOY_ROOT + '/' + name
+            owned_mode(client, path, '0600')
+            data = json.loads(read(client, path))
+            if (not isinstance(data, dict) or set(data) != {'format','operation','commit','planSha256','path','device','inode','owner','bytes','beforeMode','sha256'}
+                    or data.get('format') != 'a777-runtime-permission-intent-v1' or data.get('operation') != 'private0600'
+                    or not isinstance(data.get('commit'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['commit'])
+                    or not isinstance(data.get('planSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['planSha256'])
+                    or data.get('path') != HOME + '/public_html/.a777-runtime-active/config/runtime.php'
+                    or any(type(data.get(k)) is not int or data[k] < 0 for k in ('device','inode','owner','bytes'))
+                    or not isinstance(data.get('sha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['sha256'])
+                    or not isinstance(data.get('beforeMode'), str) or not re.fullmatch(r'[0-7]{4}', data['beforeMode'])):
+                raise CpanelError('Private permission intent collision; refused.')
             continue
         raise CpanelError('Private deployment inventory collision; refused.')
 
@@ -427,7 +479,7 @@ def cleanup_token(client, state):
     return True
 
 
-def preflight_plan(client, commit):
+def preflight_plan(client, commit, secure_runtime_config_permissions=False):
     if not exists(client, DEPLOY_ROOT):
         client.mkdir(DEPLOY_ROOT, '0700')
     # Existing directories are not repaired or broadened. Native helper checks UID too.
@@ -436,17 +488,22 @@ def preflight_plan(client, commit):
             'activeRoot': HOME + '/public_html/.a777-runtime-active',
             'documentRoot': HOME + '/public_html/php.architex.co.za', 'expectedCommit': commit,
             'readOnlyUapiTransport': 'native-cli-then-private-token-https'}
+    if type(secure_runtime_config_permissions) is not bool:
+        raise CpanelError('Explicit permission authorization required.')
+    if secure_runtime_config_permissions:
+        plan['secureRuntimeConfigPermissions'] = True
     deployment_inventory_guard(client)
     text = json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n'
     if exists(client, PLAN):
         owned_mode(client, PLAN, '0600')
         original = read(client, PLAN)
         old = json.loads(original)
-        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport')}
+        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions')}
         if (not isinstance(old, dict) or any(old.get(k) != v for k, v in base.items())
-                or set(old) not in (set(base) | {'expectedCommit'}, set(plan))
+                or set(old) not in (set(base) | {'expectedCommit'}, set(base) | {'expectedCommit', 'readOnlyUapiTransport'}, set(base) | {'expectedCommit', 'readOnlyUapiTransport', 'secureRuntimeConfigPermissions'})
                 or not isinstance(old.get('expectedCommit'), str)
                 or not re.fullmatch(r'[a-f0-9]{40}', old['expectedCommit'])
+                or ('secureRuntimeConfigPermissions' in old and type(old['secureRuntimeConfigPermissions']) is not bool)
                 or ('readOnlyUapiTransport' in old and old['readOnlyUapiTransport'] != plan['readOnlyUapiTransport'])):
             raise CpanelError('Existing operator plan collision; refused.')
         if old != plan:
@@ -462,13 +519,14 @@ def preflight_plan(client, commit):
                 if (not isinstance(receipt, dict) or receipt.get('format') != 'a777-cpanel-native-preflight-v1'
                         or receipt.get('mode') != 'preflight'
                         or receipt.get('status') not in ('capability-inspection-refused', 'inspected-not-authorized')
-                        or receipt.get('databaseDdlTouched') is not False or receipt.get('liveFilesTouched') is not False
+                        or not permission_only_safe(receipt)
                         or not isinstance(receipt.get('commit'), str)
                         or not re.fullmatch(r'[a-f0-9]{40}', receipt['commit'])
                         or not name.startswith('preflight-' + receipt['commit'] + '-')
                         or not isinstance(receipt.get('planSha256'), str)
                         or not re.fullmatch(r'[a-f0-9]{64}', receipt['planSha256'])):
                     raise CpanelError('Private preflight receipt collision; refused.')
+                permission_intent_guard(client, receipt)
                 matched |= receipt['commit'] == old['expectedCommit'] and receipt['planSha256'] == old_sha
             if not matched:
                 raise CpanelError('Matching old preflight receipt required.')
@@ -510,17 +568,20 @@ def receipts(client, commit, plan_sha, previous):
         data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
         if not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-preflight-v1' or data.get('commit') != commit or data.get('mode') != 'preflight' or data.get('planSha256') != plan_sha:
             continue
-        if data.get('databaseDdlTouched') is not False or data.get('liveFilesTouched') is not False:
+        if not permission_only_safe(data):
             raise CpanelError('Preflight receipt write-safety contract refused.')
+        permission_intent_guard(client, data)
         safe = {'report_id': name, 'commit': commit, 'planSha256': plan_sha}
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
             if type(data.get(key)) is bool: safe[key] = data[key]
-        for key in ('cronEntryCount', 'otherSourceConnectionCount'):
+        for key in ('runtimeConfigModeBefore', 'runtimeConfigModeAfter'):
+            if isinstance(data.get(key), str) and re.fullmatch(r'[0-7]{4}', data[key]): safe[key] = data[key]
+        for key in ('cronEntryCount', 'otherSourceConnectionCount', 'runtimeConfigBytesUnchanged'):
             if type(data.get(key)) is int and 0 <= data[key] <= 1000000: safe[key] = data[key]
         if 'blockingGate' in data:
             safe['blockingGate'] = data['blockingGate'] if data['blockingGate'] in GATES else 'native_preflight_failed'
-        for key in ('runtimeConfigSha256', 'activeSqlTreeSha256'):
+        for key in ('runtimeConfigSha256', 'activeSqlTreeSha256', 'configContentUnchangedSHA'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[a-f0-9]{64}', data[key]): safe[key] = data[key]
         for key in ('mysqlDatabaseTransport', 'mysqlUserTransport'):
             value = data.get(key)
@@ -546,7 +607,7 @@ def receipts(client, commit, plan_sha, previous):
     return sorted(reports, key=lambda r: r['report_id'])
 
 
-def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5):
+def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5, secure_runtime_config_permissions=False):
     report = {'mode': 'native-preflight', 'status': 'failed', 'runtime_deployed': False,
               'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
               'tokenAbsenceVerified': False}
@@ -566,7 +627,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         if pulled.get('status') != 'cloned_and_pulled' or pulled.get('commit') != expected_commit:
             raise CpanelError('Remote HEAD differs from workflow commit.')
         stage = 'private_plan'
-        plan_sha = preflight_plan(client, expected_commit)
+        plan_sha = preflight_plan(client, expected_commit, secure_runtime_config_permissions)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
         stage = 'private_token'
         provision_token(client, token_state)
