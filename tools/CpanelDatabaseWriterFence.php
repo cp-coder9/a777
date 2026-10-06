@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/CpanelPdoPermissionDenial.php';
 
 /** Phase-one only. Transport authentication and receipt verification are caller obligations.
  * No operator provisioning, source data mutation, or maintenance release occurs here.
@@ -87,7 +88,10 @@ final class CpanelDatabaseWriterFence
     private function freshDenied(): bool
     {
         try { return $this->denied(($this->fresh)()); }
-        catch (PDOException $e) { return in_array((int)($e->errorInfo[1] ?? 0), [1044, 1045], true); }
+        catch (Throwable $e) {
+            if (CpanelPdoPermissionDenial::isDenied($e,[1044,1045])) return true;
+            throw $e;
+        }
     }
 
     private function sessions(): array

@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 namespace Architex\Deployment;
+require_once __DIR__.'/CpanelPdoPermissionDenial.php';
 use PDO;
 use RuntimeException;
 use Architex\Infrastructure\Config\AppConfig;
@@ -69,7 +70,10 @@ final class CpanelNativeOperator
         try { self::api('revoke_access_to_database',['user'=>$state['name'],'database'=>'archite4_dev_rel1']); } catch(\Throwable) {}
         self::need(self::privileges($state)===[]);
         try { self::connect($state,$values)->query('SELECT * FROM schema_migrations LIMIT 1'); }
-        catch(\PDOException $e) { self::need(in_array((int)($e->errorInfo[1]??0),[1044,1045,1142],true)); $journal(['phase'=>'operator-revoked','name'=>$state['name'],'retainedUnprivileged'=>true]); return; }
+        catch(\Throwable $e) {
+            if (!\CpanelPdoPermissionDenial::isDenied($e,[1044,1045,1142])) throw $e;
+            $journal(['phase'=>'operator-revoked','name'=>$state['name'],'retainedUnprivileged'=>true]); return;
+        }
         throw new RuntimeException('native_operator_negative_probe_failed');
     }
 }

@@ -84,6 +84,7 @@ jobs:
           install -d -m 0700 "$A777_NATIVE_FIXTURE_ROOT"
           php tools/tests/CpanelNativeDeployment_test.php
           php tools/tests/CpanelNativeReceipt_test.php
+          php tools/tests/CpanelPdoPermissionDenial_test.php
           php tools/tests/CpanelMaintenanceApi_test.php
           php tools/tests/CpanelNativeDeployment_files_native.php
       - name: Verify real locked production artifact without hosting credentials
