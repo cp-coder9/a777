@@ -389,6 +389,12 @@ final readonly class AuthenticationKernelFactory
             new PermissionMiddleware(new PermissionService(), 'projects.read'),
             new PermissionMiddleware(new PermissionService(), 'projects.write'),
         ))->register($router);
+        (new RemoteDesktopRoutes(
+            new \Architex\Http\Controller\RemoteDesktopController(new \Architex\Platform\RemoteDesktop\RemoteDesktopService($this->pdo)),
+            new PermissionMiddleware(new PermissionService(),'projects.read'),
+            new PermissionMiddleware(new PermissionService(),'projects.write'),
+            new RateLimitMiddleware($limiter,'remote_desktop_callback',300,3_600,$remoteKey),
+        ))->register($router);
         (new SiteExecutionRoutes(
             new SiteExecutionController(new SiteExecutionService($this->pdo)),
             new PermissionMiddleware(new PermissionService(),'projects.read'),

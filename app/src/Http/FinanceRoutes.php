@@ -26,6 +26,8 @@ final readonly class FinanceRoutes
         $router->post('/api/v1/commercial-baselines/{baselineId}/retention-release-requests', fn(Request $request): Response => $this->write->process($request, $this->controller->createRetentionRelease(...)));
         $router->post('/api/v1/retention-release-requests/{retentionReleaseId}/approvals', fn(Request $request): Response => $this->write->process($request, $this->controller->approveRetentionRelease(...)));
         $router->post('/api/v1/financial-providers', fn(Request $request): Response => $this->write->process($request, $this->controller->registerProvider(...)));
+        $router->get('/api/v1/financial-providers/{providerId}/capabilities', fn(Request $request): Response => $this->read->process($request, $this->controller->providerCapabilities(...)));
+        $router->post('/api/v1/provider-release-requests/{releaseRequestId}/submit', fn(Request $request): Response => $this->write->process($request, $this->controller->submitRelease(...)));
         $router->post('/api/v1/payment-certificates/{certificateRevisionId}/release-requests', fn(Request $request): Response => $this->write->process($request, $this->controller->createReleaseRequest(...)));
         $router->post('/api/v1/provider-release-requests/{releaseRequestId}/approvals', fn(Request $request): Response => $this->write->process($request, $this->controller->approveReleaseRequest(...)));
         $router->post('/api/v1/webhooks/finance/{providerId}', fn(Request $request): Response => $this->webhookLimit->process($request, $this->controller->providerWebhook(...)));

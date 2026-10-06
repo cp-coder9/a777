@@ -10,9 +10,9 @@ use Architex\Platform\Identity\Identifier;
 use Architex\Platform\Identity\PasswordResetNotifier;
 use Architex\Platform\Identity\RegistrationNotifier;
 use Architex\Platform\Identity\SessionService;
-use Architex\Tests\Support\MariaDbTestCase;
+use Architex\Tests\Support\IntegrationBoundaryTestCase;
 
-final class FinanceHttpTest extends MariaDbTestCase
+final class FinanceHttpTest extends IntegrationBoundaryTestCase
 {
     public function testFinanceWorkspaceAndProviderRoutesRequireAuthenticatedTenantAndCsrf(): void
     {
@@ -39,6 +39,9 @@ final class FinanceHttpTest extends MariaDbTestCase
         self::assertFalse($created->json()['data']['liveConfigured']);
         self::assertArrayNotHasKey('secret', $created->json()['data']);
         $providerId = $created->json()['data']['id'];
+        $capabilityPath='/api/v1/financial-providers/'.$providerId.'/capabilities';
+        self::assertSame(401,$kernel->handle(Request::json('GET',$capabilityPath))->status());
+        self::assertSame(503,$kernel->handle(Request::json('GET',$capabilityPath,$headers))->status());
         $webhook = $kernel->handle(Request::json('POST', '/api/v1/webhooks/finance/'.$providerId, [
             'Content-Type' => 'application/json', 'X-Architex-Provider-Timestamp' => (string)time(),
             'X-Architex-Provider-Signature' => str_repeat('a', 64),
