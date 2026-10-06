@@ -10,6 +10,16 @@ on:
         default: inspect
         options:
           - inspect
+          - prepare-key
+          - clone
+      expected_key_fingerprint:
+        description: SHA256 fingerprint required for clone and existing-key preparation reruns
+        type: string
+        required: false
+
+concurrency:
+  group: a777-cpanel-git
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,15 +37,22 @@ jobs:
         with:
           python-version: '3.12'
       - name: Test discovery contracts without hosting credentials
-        run: python -m unittest discover -s tools/tests -p test_cpanel_git.py
-      - name: Inspect exact cPanel account
+        run: python -m unittest discover -s tools/tests -p 'test_cpanel_git*.py'
+      - name: Execute explicitly selected mode (never runtime deploy)
         env:
+          MODE: ${{ inputs.mode }}
+          EXPECTED_KEY_FINGERPRINT: ${{ inputs.expected_key_fingerprint }}
           A777_CPANEL_HOST: cp73.domains.co.za
           A777_CPANEL_PORT: '2083'
           A777_CPANEL_USER: archite4
           A777_CPANEL_ACCOUNT_HOME: /home/archite4
           A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
-        run: python tools/cpanel_git.py inspect --report "$RUNNER_TEMP/cpanel-git-inspection.json"
+        run: |
+          umask 077
+          args=("$MODE" --report "$RUNNER_TEMP/cpanel-git-inspection.json")
+          if [[ -n "$EXPECTED_KEY_FINGERPRINT" ]]; then args+=(--expected-key-fingerprint "$EXPECTED_KEY_FINGERPRINT"); fi
+          if [[ "$MODE" == prepare-key ]]; then args+=(--public-key "$RUNNER_TEMP/a777-deploy-key.pub"); fi
+          python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
@@ -44,3 +61,11 @@ jobs:
           path: ${{ runner.temp }}/cpanel-git-inspection.json
           if-no-files-found: warn
           retention-days: 7
+      - name: Public deploy key only
+        if: ${{ inputs.mode == 'prepare-key' && success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: a777-github-read-only-deploy-key
+          path: ${{ runner.temp }}/a777-deploy-key.pub
+          if-no-files-found: error
+          retention-days: 1

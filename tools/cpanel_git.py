@@ -89,8 +89,10 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
+    parser.add_argument("--public-key", type=Path)
+    parser.add_argument("--expected-key-fingerprint")
     args = parser.parse_args()
     try:
         config = CpanelConfig(host=os.environ.get("A777_CPANEL_HOST", ""),
@@ -99,14 +101,25 @@ def main():
                               account_home=os.environ.get("A777_CPANEL_ACCOUNT_HOME", ""),
                               allowed_root=HOME,
                               api_token=os.environ.get("A777_CPANEL_API_TOKEN"))
-        report = inspect(CpanelClient(config))
+        client = CpanelClient(config)
+        if args.mode == 'inspect':
+            report = inspect(client)
+        else:
+            from cpanel_git_prepare import prepare_key, clone
+            if args.mode == 'prepare-key':
+                if not args.public_key:
+                    raise CpanelError('Public key destination required.')
+                report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
+            else:
+                report = clone(client, args.expected_key_fingerprint)
     except Exception:
-        report = {"mode": "inspect", "git_capability": "unknown", "api_status": {"configuration": "failed"}, "mutations_enabled": False}
+        # Never print provider exceptions or subprocess output (may contain secrets).
+        report = {"mode": args.mode, "status": "failed", "error": "configuration_or_operation_refused", "runtime_deployed": False}
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if report.get("api_status", {}).get("VersionControl/retrieve") == "success" else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'queued_or_incomplete')) else 1
 
 
 if __name__ == "__main__":
