@@ -29,6 +29,7 @@ from tools.deploy_php_ftps import (
     deployment_token,
     probe_source,
     validate_release,
+    readiness_is_ready,
 )
 
 
@@ -254,10 +255,17 @@ class DeploymentOrchestrator:
                     self._rollback()
                 except Exception as caught:
                     rollback_error = caught
-            self._cleanup_temporary_files()
+            cleanup_error = None
+            try:
+                self._cleanup_temporary_files()
+            except DeploymentFailure as caught:
+                cleanup_error = caught
             detail = str(error)
             if rollback_error is not None:
                 detail += f" Rollback also failed: {rollback_error}"
+                detail += " Pending recovery renames: " + json.dumps(self.completed_renames)
+            if cleanup_error is not None:
+                detail += f" Cleanup also failed: {cleanup_error}"
             raise DeploymentFailure(detail) from error
         self._cleanup_temporary_files()
         return DeploymentResult(
@@ -318,7 +326,12 @@ class DeploymentOrchestrator:
 
     def _write_private_runtime(self) -> None:
         target = posixpath.join(self.paths.candidate_runtime, "config", "runtime.php")
-        self.remote.save_file(target, self.runtime_content.decode("utf-8"))
+        data = self.remote._uapi("Fileman", "get_file_content", {
+            "dir": posixpath.join(self.paths.active_runtime, "config"), "file": "runtime.php"})
+        content = data.get("content") if isinstance(data, dict) else None
+        if not isinstance(content, str) or not content.startswith("<?php"):
+            raise DeploymentFailure("Existing private runtime configuration unavailable; refusing replacement.")
+        self.remote.save_file(target, content)
 
     def _run_preflight(self) -> None:
         source = probe_source(posixpath.basename(self.paths.candidate_runtime)).decode("utf-8")
@@ -334,10 +347,12 @@ class DeploymentOrchestrator:
         finally:
             if self.remote.exists(self.paths.probe):
                 self.remote.trash(self.paths.probe)
+            if self.remote.exists(self.paths.probe):
+                raise DeploymentFailure('Preflight helper cleanup unverified; refusing cutover.')
 
     def _rename(self, source: str, destination: str) -> None:
-        self.remote.rename(source, destination)
         self.completed_renames.append((source, destination))
+        self.remote.rename(source, destination)
 
     def _cutover(self) -> None:
         if self.remote.exists(self.paths.active_runtime):
@@ -397,29 +412,47 @@ class DeploymentOrchestrator:
             self.endpoint_statuses[path] = check.status
             if check.status != 200 or "json" not in check.content_type.lower():
                 raise DeploymentFailure(f"Live validation failed for {path} with HTTP {check.status}.")
-            check.json()
+            payload = check.json()
+            if path == '/api/v1/readiness' and not readiness_is_ready(payload.get('data')):
+                raise DeploymentFailure('Live readiness components are not ready.')
 
     def _rollback(self) -> None:
         while self.completed_renames:
-            source, destination = self.completed_renames.pop()
-            self.remote.rename(destination, source)
+            source, destination = self.completed_renames[-1]
+            if self.remote.exists(destination) and not self.remote.exists(source):
+                try:
+                    self.remote.rename(destination, source)
+                except Exception:
+                    if not self.remote.exists(source) or self.remote.exists(destination):
+                        raise DeploymentFailure("Rollback incomplete; retain journal and recovery paths.") from None
+            elif not self.remote.exists(source) or self.remote.exists(destination):
+                raise DeploymentFailure("Rollback paths ambiguous; retain journal and recovery paths.")
+            if not self.remote.exists(source) or self.remote.exists(destination):
+                raise DeploymentFailure("Rollback verification failed; retain recovery paths.")
+            self.completed_renames.pop()
 
     def _cleanup_temporary_files(self) -> None:
+        errors = []
         for path in (self.paths.probe, self.paths.archive):
             try:
                 if self.remote.exists(path):
                     self.remote.trash(path)
+                if self.remote.exists(path):
+                    errors.append(path)
             except Exception:
-                pass
+                errors.append(path)
         if self._temporary is not None:
             self._temporary.cleanup()
             self._temporary = None
+        if errors:
+            raise DeploymentFailure("Temporary cleanup unverified; recovery required: " + ", ".join(errors))
 
     def failure_result(self, error: Exception, secrets: tuple[str, ...] = ()) -> DeploymentResult:
         return DeploymentResult(
             status="failed",
             deployment_id=str(self.config.deployment_id),
             release_commit=self.release_commit,
+            observed={'pendingRecoveryRenames': list(self.completed_renames)},
             detail=redact_text(str(error), secrets),
         )
 
@@ -433,10 +466,14 @@ class DeploymentOrchestrator:
         if plan.paths != expected:
             raise DeploymentFailure("Recovery plan paths do not match the configured target root.")
         plan.require_unambiguous()
-        self.remote.rename(plan.paths.document_root, plan.paths.candidate_public)
-        self.remote.rename(plan.paths.rollback_public, plan.paths.document_root)
-        self.remote.rename(plan.paths.active_runtime, plan.paths.candidate_runtime)
-        self.remote.rename(plan.paths.prior_runtime, plan.paths.active_runtime)
+        try:
+            self._rename(plan.paths.document_root, plan.paths.candidate_public)
+            self._rename(plan.paths.rollback_public, plan.paths.document_root)
+            self._rename(plan.paths.active_runtime, plan.paths.candidate_runtime)
+            self._rename(plan.paths.prior_runtime, plan.paths.active_runtime)
+        except Exception:
+            self._rollback()
+            raise DeploymentFailure('Recovery interrupted; initial paths restored and verified.') from None
         if not self.remote.exists(plan.paths.document_root) or not self.remote.exists(plan.paths.active_runtime):
             raise DeploymentFailure("Recovered deployment paths could not be verified.")
         return DeploymentResult(
@@ -581,10 +618,7 @@ def run_cli(
     if args.command == "inspect":
         return _inspect(config, client, verifier)
     if args.command == "deploy":
-        try:
-            runtime = build_runtime_config(config.target_url, posixpath.join(posixpath.dirname(config.document_root), ".a777-storage"), values)
-        except RuntimeError as error:
-            raise DeploymentFailure(str(error)) from error
+        runtime = b""
         return DeploymentOrchestrator(config, client, verifier, runtime_content=runtime).deploy()
     if args.command == "recover":
         orchestrator = DeploymentOrchestrator(config, client, verifier, runtime_content=b"")

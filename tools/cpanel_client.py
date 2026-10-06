@@ -59,6 +59,11 @@ class CpanelConfig:
         return (self.password, self.session_id or "", self.session_cookie or "")
 
 
+class RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, new_url):
+        raise CpanelError("Deployment HTTP redirect refused.")
+
+
 class UrllibTransport:
     def __init__(self, ca_file: str | None = None) -> None:
         self.context = ssl.create_default_context(cafile=ca_file)
@@ -73,7 +78,8 @@ class UrllibTransport:
     ) -> HttpResponse:
         request = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:
-            with urllib.request.urlopen(request, timeout=timeout, context=self.context) as response:
+            opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=self.context), RejectRedirects())
+            with opener.open(request, timeout=timeout) as response:
                 return HttpResponse(
                     status=response.status,
                     headers=dict(response.headers.items()),
@@ -156,8 +162,7 @@ class CpanelClient:
             )
             payload = json.loads(response.body.decode("utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-            message = redact_text(str(error), self.config.secrets)
-            raise CpanelError(f"cPanel did not return valid JSON: {message}") from error
+            raise CpanelError("cPanel transport or JSON contract failed.") from None
         if not isinstance(payload, dict):
             raise CpanelError("cPanel did not return a JSON object.")
         if response.status < 200 or response.status >= 300:
@@ -177,7 +182,7 @@ class CpanelClient:
         result = wrapped if isinstance(wrapped, dict) else payload
         if not isinstance(result, dict) or result.get("status") != 1:
             detail = result.get("errors") if isinstance(result, dict) else "malformed result"
-            raise CpanelError(redact_text(f"cPanel UAPI failure: {detail}", self.config.secrets))
+            raise CpanelError("cPanel UAPI operation failed.")
         return result.get("data")
 
     def _api2(self, function: str, params: Mapping[str, str]) -> object:
@@ -191,7 +196,7 @@ class CpanelClient:
         payload = self._request_json("GET", "/json-api/cpanel", params)
         result = payload.get("cpanelresult")
         if not isinstance(result, dict) or not isinstance(result.get("event"), dict) or result["event"].get("result") != 1:
-            raise CpanelError(redact_text(f"cPanel Fileman failure: {result}", self.config.secrets))
+            raise CpanelError("cPanel Fileman contract failed.")
         data = result.get("data", [])
         if isinstance(data, list):
             failed = [item for item in data if isinstance(item, dict) and "result" in item and item.get("result") not in (1, "1", True)]
@@ -203,7 +208,7 @@ class CpanelClient:
                 )
             )
             if failed:
-                raise CpanelError(redact_text(f"cPanel Fileman operation failed: {failed}", self.config.secrets))
+                raise CpanelError("cPanel Fileman operation failed.")
         return data
 
     def _account_relative(self, path: str) -> str:

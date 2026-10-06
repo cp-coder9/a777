@@ -14,6 +14,7 @@
 /app/storage/evidence/
 /app/storage/files/
 /app/storage/backups/
+/app/storage/maintenance/
 /coverage/
 /dist/
 /node_modules/
