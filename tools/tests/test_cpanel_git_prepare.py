@@ -45,6 +45,17 @@ class Fake:
     def save_file(self, remote, content): self.files[remote] = content
 
 class PreparationTests(unittest.TestCase):
+    def test_unrelated_home_symlink_does_not_block_exact_owned_path(self):
+        f = Fake()
+        with patch.object(f, '_uapi', return_value=[
+            {'file': 'access-logs', 'type': 'link'},
+            {'file': '.ssh', 'type': 'dir'},
+        ]):
+            self.assertTrue(g.exists(f, g.SSH))
+        with patch.object(f, '_uapi', return_value=[{'file': '.ssh', 'type': 'link'}]):
+            with self.assertRaises(CpanelError):
+                g.exists(f, g.SSH)
+
     def test_account_authorization_accepts_additional_provider_metadata(self):
         f = Fake()
         with patch.object(f, '_uapi', return_value={'home': g.HOME, 'user': 'archite4'}):
