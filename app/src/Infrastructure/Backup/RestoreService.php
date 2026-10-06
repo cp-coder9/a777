@@ -48,6 +48,40 @@ final readonly class RestoreService
             $admin->exec('CREATE DATABASE `' . $config->dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
             $databaseCreated = true;
             $pdo = ConnectionFactory::create($config);
+            [$rowCount, $fileCount] = $this->importVerifiedArchive($pdo, $zip, $manifest, $fileRoot);
+            $zip->close();
+            return new RestoreReport((string)$manifest['backupId'], $config->dbName, $rowCount, $fileCount);
+        } catch (Throwable $exception) {
+            $zip->close();
+            // DDL is not rollbackable. Retain the owned failed schema and file staging
+            // for operator inspection; importVerifiedArchive rolls back row mutations.
+            throw $exception;
+        }
+    }
+
+    /** A separate capability path: never creates or drops a database; failures are retained for the operator. */
+    public function restoreIntoProvisionedEmptyDatabase(string $archive, PDO $targetPdo, AccountOwnedRestoreTarget $target, string $fileRoot): RestoreReport
+    {
+        $target->assertEmpty($targetPdo);
+        if (is_link($fileRoot) || (file_exists($fileRoot) && (!is_dir($fileRoot) || (new FilesystemIterator($fileRoot))->valid()))) throw new RuntimeException('The restore file root must be empty and not a symlink.');
+        $zip = new ZipArchive();
+        if ($zip->open($archive) !== true || !$zip->setPassword($this->archivePassword)) throw new RuntimeException('The backup archive could not be opened.');
+        try {
+            $json = $zip->getFromName('manifest.json');
+            if (!is_string($json)) throw new RuntimeException('The backup manifest is unavailable.');
+            $manifest = json_decode($json, true, 64, JSON_THROW_ON_ERROR);
+            $this->verifyManifest($zip, $manifest);
+            $target->assertArchiveSource($manifest['database']['name'] ?? null);
+            $this->assertArchivedMigrationTree($zip, $manifest);
+            $target->assertEmpty($targetPdo);
+            [$rows, $files] = $this->importVerifiedArchive($targetPdo, $zip, $manifest, $fileRoot);
+            return new RestoreReport((string)$manifest['backupId'], $target->database(), $rows, $files);
+        } finally { $zip->close(); }
+    }
+
+    /** @param array<string,mixed> $manifest @return array{int,int} */
+    private function importVerifiedArchive(PDO $pdo, ZipArchive $zip, array $manifest, string $fileRoot): array
+    {
             $migrationReport = (new MigrationRunner($pdo, $this->migrationDirectory))->migrate();
             if ($migrationReport->appliedVersions !== $manifest['database']['migrations']) throw new RuntimeException('The backup migration set does not match the release migrations.');
             $currentTables = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' ORDER BY table_name")->fetchAll(PDO::FETCH_COLUMN);
@@ -86,25 +120,58 @@ final readonly class RestoreService
                     } finally { fclose($stream); }
                     if ($tableRows !== (int)($definition['rows'] ?? -1)) throw new RuntimeException('A restored table row count does not match the backup manifest.');
                 }
+                $this->assertForeignKeys($pdo);
+                // Files are owned staging until commit; retain them and DDL on failure.
+                $fileCount = $this->restoreFiles($zip, $manifest['files'], $fileRoot);
                 $pdo->commit();
             } catch (Throwable $exception) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $exception;
             } finally { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); }
-            $fileCount = $this->restoreFiles($zip, $manifest['files'], $fileRoot);
-            $zip->close();
-            return new RestoreReport((string)$manifest['backupId'], $config->dbName, $rowCount, $fileCount);
-        } catch (Throwable $exception) {
-            $zip->close();
-            if ($databaseCreated) {
-                try {
-                    $admin ??= new PDO(sprintf('mysql:host=%s;port=%d;charset=utf8mb4', $config->dbHost, $config->dbPort), $config->dbUser, $config->dbPassword, [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
-                    $admin->exec('DROP DATABASE IF EXISTS `' . $config->dbName . '`');
-                } catch (Throwable) {}
+        return [$rowCount, $fileCount];
+    }
+
+    private function assertForeignKeys(PDO $pdo): void
+    {
+        $rows = $pdo->query("SELECT k.CONSTRAINT_SCHEMA,k.TABLE_NAME,k.CONSTRAINT_NAME,k.COLUMN_NAME,k.REFERENCED_TABLE_SCHEMA,k.REFERENCED_TABLE_NAME,k.REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME WHERE k.TABLE_SCHEMA=DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY k.TABLE_NAME,k.CONSTRAINT_NAME,k.ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
+        $groups = [];
+        foreach ($rows as $row) $groups[json_encode([$row['CONSTRAINT_SCHEMA'],$row['TABLE_NAME'],$row['CONSTRAINT_NAME']], JSON_THROW_ON_ERROR)][] = $row;
+        $quote = static fn(string $id): string => '`' . str_replace('`', '``', $id) . '`';
+        foreach ($groups as $columns) {
+            $first = $columns[0]; $nonnull = []; $matches = [];
+            foreach ($columns as $column) {
+                $child = 'c.' . $quote($column['COLUMN_NAME']);
+                $nonnull[] = $child . ' IS NOT NULL';
+                $matches[] = 'p.' . $quote($column['REFERENCED_COLUMN_NAME']) . '=' . $child;
             }
-            $this->removeTree($fileRoot);
-            throw $exception;
+            $sql = 'SELECT 1 FROM ' . $quote($first['CONSTRAINT_SCHEMA']) . '.' . $quote($first['TABLE_NAME']) . ' c WHERE ' . implode(' AND ', $nonnull) . ' AND NOT EXISTS (SELECT 1 FROM ' . $quote($first['REFERENCED_TABLE_SCHEMA']) . '.' . $quote($first['REFERENCED_TABLE_NAME']) . ' p WHERE ' . implode(' AND ', $matches) . ') LIMIT 1';
+            if ($pdo->query($sql)->fetchColumn() !== false) throw new RuntimeException('Restored rows violate foreign key ' . $first['CONSTRAINT_NAME'] . '.');
         }
+    }
+
+    private function assertArchivedMigrationTree(ZipArchive $zip, array $manifest): void
+    {
+        $entry = $manifest['database']['tables']['schema_migrations']['entry'] ?? null;
+        if (!is_string($entry) || !isset($manifest['entries'][$entry])) throw new RuntimeException('Archived migration evidence unavailable.');
+        $stream = $zip->getStream($entry);
+        if (!is_resource($stream)) throw new RuntimeException('Archived migration evidence unavailable.');
+        $archived = [];
+        try {
+            while (($line = fgets($stream)) !== false) {
+                $row = json_decode($line, true, 64, JSON_THROW_ON_ERROR);
+                $version = base64_decode($row['version']['value'] ?? '', true);
+                $checksum = base64_decode($row['checksum']['value'] ?? '', true);
+                if (!is_string($version) || !is_string($checksum) || isset($archived[$version])) throw new RuntimeException('Invalid archived migration evidence.');
+                $archived[$version] = $checksum;
+            }
+        } finally { fclose($stream); }
+        $active = [];
+        foreach (glob($this->migrationDirectory . '/*.sql') ?: [] as $file) {
+            if (is_link($file)) throw new RuntimeException('Symlink migration refused.');
+            $active[basename($file, '.sql')] = hash_file('sha256', $file);
+        }
+        ksort($active); ksort($archived);
+        if ($active === [] || $active !== $archived || array_keys($archived) !== $manifest['database']['migrations']) throw new RuntimeException('Active migration tree does not exactly match archived checksums.');
     }
 
     /** @return list<string> */
@@ -124,8 +191,29 @@ final readonly class RestoreService
         unset($manifest['integrityHmac'], $manifest['backupId']);
         $canonical = json_encode($manifest, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         if (!hash_equals(hash_hmac('sha256', $canonical, $this->hmacKey), $hmac) || !hash_equals(hash('sha256', $canonical), $backupId)) throw new RuntimeException('The backup manifest signature is invalid.');
+        $bindings = [];
+        foreach ($manifest['database']['tables'] as $table => $definition) {
+            if (!is_string($table) || preg_match('/\A[a-z][a-z0-9_]*\z/', $table) !== 1 || !is_array($definition) || ($definition['entry'] ?? null) !== 'database/' . $table . '.jsonl' || !is_int($definition['rows'] ?? null) || $definition['rows'] < 0) throw new RuntimeException('A backup table binding is invalid.');
+            $entry = $definition['entry'];
+            if (!isset($manifest['entries'][$entry]) || isset($bindings[$entry])) throw new RuntimeException('A backup entry binding is missing or duplicate.');
+            $bindings[$entry] = true;
+        }
+        foreach ($manifest['files'] as $file) {
+            if (!is_array($file) || !is_string($file['organisationId'] ?? null) || !is_string($file['storageName'] ?? null) || preg_match('/\A[a-f0-9]{32}\z/', $file['organisationId']) !== 1 || preg_match('/\A[a-f0-9]{48}\z/', $file['storageName']) !== 1) throw new RuntimeException('A backup file binding is invalid.');
+            $entry = 'files/' . $file['organisationId'] . '/' . $file['storageName'];
+            $expected = $manifest['entries'][$entry] ?? null;
+            if (($file['entry'] ?? null) !== $entry || !is_array($expected) || isset($bindings[$entry]) || ($file['sha256'] ?? null) !== ($expected['sha256'] ?? null) || ($file['bytes'] ?? null) !== ($expected['bytes'] ?? null)) throw new RuntimeException('A backup file binding is missing, duplicate or inconsistent.');
+            $bindings[$entry] = true;
+        }
+        if (count($bindings) !== count($manifest['entries'])) throw new RuntimeException('An archive entry has no binding.');
+        $seen = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if (!is_string($name) || isset($seen[$name]) || ($name !== 'manifest.json' && !isset($bindings[$name]))) throw new RuntimeException('An archive entry is unlisted or duplicate.');
+            $seen[$name] = true;
+        }
         foreach ($manifest['entries'] as $entry => $expected) {
-            if (!is_string($entry) || preg_match('#\A(?:database/[a-z][a-z0-9_]*\.jsonl|files/[a-f0-9]{32}/[a-f0-9]{48})\z#', $entry) !== 1 || !is_array($expected)) throw new RuntimeException('A backup entry is invalid.');
+            if (!is_string($entry) || preg_match('#\A(?:database/[a-z][a-z0-9_]*\.jsonl|files/[a-f0-9]{32}/[a-f0-9]{48})\z#', $entry) !== 1 || !is_array($expected) || !is_string($expected['sha256'] ?? null) || preg_match('/\A[a-f0-9]{64}\z/', $expected['sha256']) !== 1 || !is_int($expected['bytes'] ?? null) || $expected['bytes'] < 0) throw new RuntimeException('A backup entry is invalid.');
             $stream = $zip->getStream($entry);
             if (!is_resource($stream)) throw new RuntimeException('A backup entry is unavailable.');
             $hash = hash_init('sha256'); $bytes = 0;
