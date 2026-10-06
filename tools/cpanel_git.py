@@ -89,7 +89,7 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal", "native-deploy"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--public-key", type=Path)
     parser.add_argument("--expected-key-fingerprint")
@@ -117,6 +117,14 @@ def main():
                 if not args.public_key:
                     raise CpanelError('Public key destination required.')
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
+            elif args.mode == "native-deploy":
+                from cpanel_native_stage import native_deploy
+                output = os.environ.get('RUNNER_TEMP')
+                if not output or args.retry_initial_rehearsal or args.secure_runtime_config_permissions or args.allow_existing_public_source_for_rehearsal:
+                    raise CpanelError('Explicit native deploy inputs required.')
+                report = native_deploy(client, Path(__file__).resolve().parent.parent,
+                                       Path(output) / 'a777-native-production', args.expected_commit,
+                                       args.expected_runtime_config_sha256)
             elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
                 report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal, allow_existing_public_source_for_rehearsal=args.allow_existing_public_source_for_rehearsal)
@@ -154,7 +162,7 @@ def main():
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete')) else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete', 'native_deploy_complete')) else 1
 
 
 if __name__ == "__main__":
