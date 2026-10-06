@@ -160,8 +160,68 @@ final class CpanelGitDeploy
         return $files;
     }
 
+    /** Metadata-only by default. Hashing is local; no config bytes are returned or logged. */
+    public static function runtimePermissions(string $path, string $root, string $intent, bool $authorized, array &$evidence, string $commit = '', string $planSha = ''): void
+    {
+        clearstatcache(true, $path);
+        $s = @lstat($path);
+        $uid = posix_geteuid();
+        $regular = is_array($s) && ($s['mode'] & 0170000) === 0100000;
+        $evidence += ['runtimeConfigRegular'=>$regular, 'runtimeConfigNotSymlink'=>!is_link($path),
+            'runtimeConfigOwnerMatches'=>is_array($s) && $s['uid'] === $uid,
+            'runtimeConfigPrivate600'=>is_array($s) && ($s['mode'] & 07777) === 0600,
+            'privateConfigPermissionsChanged'=>false, 'runtimeConfigPermissionsTouched'=>false];
+        if (is_array($s)) $evidence['runtimeConfigModeBefore'] = sprintf('%04o', $s['mode'] & 07777);
+        if (!$authorized || $evidence['runtimeConfigPrivate600']) return;
+        self::requireValue($regular && !is_link($path) && $s['uid'] === $uid && $s['nlink'] === 1, 'runtime_permission_identity_refused');
+        self::requireValue($path === $root . '/config/runtime.php' && realpath($path) === $path, 'runtime_permission_ancestry_refused');
+        for ($dir = dirname($path); $dir !== '/'; $dir = dirname($dir)) {
+            $d = lstat($dir);
+            self::requireValue(realpath($dir) === $dir && !is_link($dir) && ($d['mode'] & 0170000) === 0040000
+                && ($d['mode'] & 0022) === 0 && in_array($d['uid'], [0, $uid], true), 'runtime_permission_ancestry_refused');
+        }
+        self::requireValue(preg_match('/\\A[a-f0-9]{40}\\z/', $commit) === 1
+            && preg_match('/\\A[a-f0-9]{64}\\z/', $planSha) === 1
+            && preg_match('/\\Aruntime-permission-[a-f0-9]{16}\\.json\\z/', basename($intent)) === 1, 'runtime_permission_identity_refused');
+        $parent = lstat(dirname($path));
+        self::requireValue(is_array($parent) && $parent['uid'] === $uid && ($parent['mode'] & 07777) === 0700, 'runtime_permission_ancestry_refused');
+        $h = fopen($path, 'rb');
+        self::requireValue(is_resource($h), 'runtime_permission_identity_refused');
+        try {
+            self::requireValue(fstat($h) === $s, 'runtime_permission_identity_refused');
+            $hash = hash_init('sha256'); hash_update_stream($hash, $h); $before = hash_final($hash);
+            self::journal($intent, ['format'=>'a777-runtime-permission-intent-v1', 'operation'=>'private0600',
+                'commit'=>$commit, 'planSha256'=>$planSha, 'path'=>$path, 'device'=>$s['dev'], 'inode'=>$s['ino'], 'owner'=>$uid, 'bytes'=>$s['size'],
+                'beforeMode'=>sprintf('%04o', $s['mode'] & 07777), 'sha256'=>$before]);
+            clearstatcache(true, $path);
+            self::requireValue(array_intersect_key(lstat($path), array_flip(['dev','ino','uid','mode','size','nlink'])) === array_intersect_key($s, array_flip(['dev','ino','uid','mode','size','nlink'])) && realpath($path) === $path, 'runtime_permission_identity_refused');
+            $evidence['runtimeConfigPermissionsTouched'] = true;
+            self::requireValue(chmod($path, 0600), 'runtime_permission_chmod_failed');
+            clearstatcache(true, $path); clearstatcache(true, dirname($path)); $after = lstat($path); $opened = fstat($h);
+            $parentAfter = lstat(dirname($path));
+            self::requireValue($parentAfter['dev'] === $parent['dev'] && $parentAfter['ino'] === $parent['ino']
+                && $parentAfter['uid'] === $uid && ($parentAfter['mode'] & 07777) === 0700
+                && realpath(dirname($path)) === dirname($path), 'runtime_permission_readback_failed');
+            rewind($h); $hash = hash_init('sha256'); hash_update_stream($hash, $h); $afterHash = hash_final($hash);
+            self::requireValue($after['dev'] === $s['dev'] && $after['ino'] === $s['ino'] && $after['uid'] === $uid
+                && $after['size'] === $s['size'] && $opened['ino'] === $s['ino'] && $opened['dev'] === $s['dev']
+                && ($after['mode'] & 0170000) === 0100000 && $after['nlink'] === 1 && $opened['nlink'] === 1
+                && ($opened['mode'] & 07777) === 0600 && ($after['mode'] & 07777) === 0600 && $before === $afterHash && hash_file('sha256', $path) === $before
+                && realpath($path) === $path && !is_link($path), 'runtime_permission_readback_failed');
+            $evidence['runtimePermissionIntent'] = basename($intent);
+            $evidence['runtimePermissionDevice'] = $s['dev'];
+            $evidence['runtimePermissionInode'] = $s['ino'];
+            $evidence['runtimePermissionOwner'] = $uid;
+            $evidence['privateConfigPermissionsChanged'] = true;
+            $evidence['runtimeConfigPrivate600'] = true;
+            $evidence['runtimeConfigModeAfter'] = '0600';
+            $evidence['configContentUnchangedSHA'] = $before;
+            $evidence['runtimeConfigBytesUnchanged'] = $s['size'];
+        } finally { fclose($h); }
+    }
+
     /** Loads only installed, operator-owned config in RAM; never incoming artifact code. */
-    public static function preflight(array &$evidence = [], bool $apiAllowed = false): array
+    public static function preflight(array &$evidence = [], bool $apiAllowed = false, bool $securePermissions = false, string $commit = '', string $planSha = ''): array
     {
         $evidence = ['zipAvailable'=>class_exists('ZipArchive'), 'curlAvailable'=>function_exists('curl_init'),
             'nativeRestoreCapabilityPresent'=>is_file(self::REPO . '/app/src/Infrastructure/Backup/AccountOwnedRestoreTarget.php'),
@@ -186,6 +246,7 @@ final class CpanelGitDeploy
         if ($cronAvailable) $evidence['cronEntryCount'] = count($cron);
         self::requireValue(realpath(self::ACTIVE) === self::ACTIVE && realpath(self::DOCROOT) === self::DOCROOT, 'active_or_document_root_invalid');
         $configPath = self::ACTIVE . '/config/runtime.php';
+        self::runtimePermissions($configPath, self::ACTIVE, self::PRIVATE_ROOT . '/runtime-permission-' . bin2hex(random_bytes(8)) . '.json', $securePermissions, $evidence, $commit, $planSha);
         self::requireValue(is_file($configPath) && !is_link($configPath) && fileowner($configPath) === posix_geteuid() && (fileperms($configPath) & 0077) === 0, 'active_config_missing_or_not_private');
         $config = require $configPath;
         self::requireValue(is_array($config) && ($config['DB_HOST'] ?? null) === '127.0.0.1' && ($config['DB_NAME'] ?? null) === 'archite4_dev_rel1' && preg_match('/\\Aarchite4_[A-Za-z0-9_]+\\z/', $config['DB_USER'] ?? '') === 1, 'active_database_config_identity_mismatch');
@@ -307,7 +368,7 @@ final class CpanelGitDeploy
                     'planSha256'=>hash_file('sha256', $planPath), 'databaseDdlTouched'=>false, 'liveFilesTouched'=>false];
                 $evidence = [];
                 try {
-                    $observed = self::preflight($evidence, $apiAllowed);
+                    $observed = self::preflight($evidence, $apiAllowed, $requested === '--preflight' && ($plan['secureRuntimeConfigPermissions'] ?? false) === true, $commit, $report['planSha256']);
                     $report += $observed['report'];
                     $report['status'] = 'inspected-not-authorized';
                 } catch (Throwable $error) {
@@ -318,15 +379,16 @@ final class CpanelGitDeploy
                         'api_token_missing_or_path_invalid','api_token_unreadable','api_token_not_private','api_token_invalid',
                         'api_http_failed','api_response_too_large','api_response_invalid','api_uapi_failed','api_readonly_function_required',
                         'api_curl_unavailable','api_transport_failed','api_account_home_mismatch','active_or_document_root_invalid',
-                        'active_config_missing_or_not_private','active_database_config_identity_mismatch','active_database_password_missing',
+                        'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private','active_database_config_identity_mismatch','active_database_password_missing',
                         'actual_source_pdo_identity_mismatch','active_sql_root_invalid','active_sql_entry_invalid','active_sql_empty',
                         'backup_storage_not_private_or_archive_inside_storage'];
                     $report['blockingGate'] = in_array($error->getMessage(), $safeGates, true) ? $error->getMessage() : 'native_preflight_failed';
                 }
+                $report['liveFilesTouched'] = ($evidence['runtimeConfigPermissionsTouched'] ?? false) === true;
                 $report += $evidence;
                 self::journal($root . '/preflight-' . $commit . '-' . bin2hex(random_bytes(8)) . '.json', $report);
                 if ($plan['mode'] === 'preflight' && $report['status'] === 'inspected-not-authorized') {
-                    print "native preflight inspected; no DDL or live writes; private receipt retained\n";
+                    print "native preflight inspected; no DDL; permission metadata changes reported; private receipt retained\n";
                     return;
                 }
                 // Exclusive grant visibility alone cannot exclude another same-user dispatcher.

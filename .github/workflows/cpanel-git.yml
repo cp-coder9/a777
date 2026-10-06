@@ -13,6 +13,11 @@ on:
           - prepare-key
           - clone
           - native-preflight
+      secure_runtime_config_permissions:
+        description: Explicit permission-only repair of the owned runtime config
+        type: boolean
+        default: false
+        required: false
       expected_key_fingerprint:
         description: SHA256 fingerprint required for clone and existing-key preparation reruns
         type: string
@@ -39,9 +44,15 @@ jobs:
           python-version: '3.12'
       - name: Test discovery contracts without hosting credentials
         run: python -m unittest discover -s tools/tests -p 'test_cpanel_git*.py'
+      - name: Linux permission-only fixture (synthetic, no hosting credentials)
+        run: |
+          php -l tools/cpanel_git_deploy.php
+          php tools/tests/cpanel_runtime_permissions_linux.php
+          python -m unittest discover -s tools/tests -p 'test_cpanel_runtime_permissions.py'
       - name: Execute explicitly selected mode (never runtime deploy)
         env:
           MODE: ${{ inputs.mode }}
+          SECURE_RUNTIME_CONFIG_PERMISSIONS: ${{ inputs.secure_runtime_config_permissions }}
           EXPECTED_COMMIT: ${{ github.sha }}
           EXPECTED_KEY_FINGERPRINT: ${{ inputs.expected_key_fingerprint }}
           A777_CPANEL_HOST: cp73.domains.co.za
@@ -57,6 +68,7 @@ jobs:
           if [[ "$MODE" == native-preflight ]]; then
             [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
             args+=(--expected-commit "$EXPECTED_COMMIT")
+            if [[ "$SECURE_RUNTIME_CONFIG_PERMISSIONS" == true ]]; then args+=(--secure-runtime-config-permissions); fi
           fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report
