@@ -59,7 +59,8 @@ def authorize(client):
     c = client.config
     if (c.host, c.port, c.username, c.account_home, c.allowed_root) != ('cp73.domains.co.za', 2083, 'archite4', HOME, HOME) or not c.api_token:
         raise CpanelError('Exact account token configuration required.')
-    if client._uapi('Variables', 'get_user_information', {'name': 'home'}) != {'home': HOME}:
+    data = client._uapi('Variables', 'get_user_information', {'name': 'home'})
+    if not isinstance(data, dict) or data.get('home') != HOME:
         raise CpanelError('Account home mismatch.')
 
 

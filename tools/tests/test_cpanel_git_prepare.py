@@ -45,6 +45,14 @@ class Fake:
     def save_file(self, remote, content): self.files[remote] = content
 
 class PreparationTests(unittest.TestCase):
+    def test_account_authorization_accepts_additional_provider_metadata(self):
+        f = Fake()
+        with patch.object(f, '_uapi', return_value={'home': g.HOME, 'user': 'archite4'}):
+            g.authorize(f)
+        with patch.object(f, '_uapi', return_value={'home': '/home/other', 'user': 'archite4'}):
+            with self.assertRaises(CpanelError):
+                g.authorize(f)
+
     def prepare(self, fake, destination, expected=None):
         with patch.object(g, 'github_host_key', return_value=HOST):
             return g.prepare_key(fake, destination, expected)
