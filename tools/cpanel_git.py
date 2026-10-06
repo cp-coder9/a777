@@ -97,7 +97,10 @@ def main():
     parser.add_argument("--expected-runtime-config-sha256", default='')
     parser.add_argument("--secure-runtime-config-permissions", action="store_true")
     parser.add_argument("--retry-initial-rehearsal", action="store_true")
+    parser.add_argument("--allow-existing-public-source-for-rehearsal", action="store_true")
     args = parser.parse_args()
+    if args.allow_existing_public_source_for_rehearsal and (args.mode != "restore-rehearsal" or not re.fullmatch(r"[a-f0-9]{64}", args.expected_runtime_config_sha256)):
+        parser.error("Public source exception requires pinned restore-rehearsal.")
     try:
         config = CpanelConfig(host=os.environ.get("A777_CPANEL_HOST", ""),
                               port=int(os.environ.get("A777_CPANEL_PORT", "2083")),
@@ -116,7 +119,7 @@ def main():
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
             elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
-                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal)
+                report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal, allow_existing_public_source_for_rehearsal=args.allow_existing_public_source_for_rehearsal)
             else:
                 report = clone(client, args.expected_key_fingerprint)
     except Exception as error:
