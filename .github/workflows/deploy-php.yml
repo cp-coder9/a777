@@ -1,0 +1,117 @@
+name: Deploy PHP
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only inspection or explicit production deployment
+        required: true
+        type: choice
+        default: inspect
+        options:
+          - inspect
+          - deploy
+
+permissions:
+  contents: read
+
+concurrency:
+  group: php-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, mbstring, openssl, pdo_mysql, fileinfo, zip, zlib
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Deployment helper tests
+        run: python -m unittest discover -s tools/tests
+      - name: Install locked source bootstrap dependencies
+        run: composer install --no-dev --no-interaction --no-scripts --prefer-dist --optimize-autoloader --classmap-authoritative
+      - name: Build and verify production release through application bootstrap
+        env:
+          RELEASE_VERSION: actions-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          php app/bin/build-release.php --version="$RELEASE_VERSION" --environment=production
+          php app/bin/verify-release.php "dist/architex-release-$RELEASE_VERSION" | tee "$RUNNER_TEMP/release-verification.txt"
+          test ! -e "dist/architex-release-$RELEASE_VERSION/config/runtime.php"
+          cp composer.lock "$RUNNER_TEMP/source-composer.lock"
+      - name: Upload verified immutable release and locked manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-release
+          path: dist/architex-release-actions-${{ github.run_id }}-${{ github.run_attempt }}/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload credential-free build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-release-evidence
+          path: |
+            ${{ runner.temp }}/release-verification.txt
+            ${{ runner.temp }}/source-composer.lock
+            dist/architex-release-actions-${{ github.run_id }}-${{ github.run_attempt }}/release-manifest.json
+            dist/architex-release-actions-${{ github.run_id }}-${{ github.run_attempt }}/release.json
+          if-no-files-found: error
+          retention-days: 7
+
+  production:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://php.architex.co.za
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: php-release
+          path: ${{ runner.temp }}/php-release
+      - name: Restrict deployment egress to exact hosting endpoints
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: block
+          allowed-endpoints: |
+            cp73.domains.co.za:2083
+            php.architex.co.za:443
+      - name: Inspect exact production account before any deployment
+        env:
+          A777_CPANEL_HOST: cp73.domains.co.za
+          A777_CPANEL_PORT: '2083'
+          A777_CPANEL_USER: archite4
+          A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
+          A777_CPANEL_ACCOUNT_HOME: /home/archite4
+        run: |
+          set -euo pipefail
+          python tools/repair_php_deployment.py inspect --release "$RUNNER_TEMP/php-release" --target-url https://php.architex.co.za --document-root /home/archite4/public_html/php.architex.co.za --account-home /home/archite4
+      - name: Explicit deployment preserving active private runtime
+        if: ${{ inputs.mode == 'deploy' }}
+        env:
+          A777_CPANEL_HOST: cp73.domains.co.za
+          A777_CPANEL_PORT: '2083'
+          A777_CPANEL_USER: archite4
+          A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
+          A777_CPANEL_ACCOUNT_HOME: /home/archite4
+        run: |
+          set -euo pipefail
+          python tools/repair_php_deployment.py deploy --release "$RUNNER_TEMP/php-release" --target-url https://php.architex.co.za --document-root /home/archite4/public_html/php.architex.co.za --account-home /home/archite4
