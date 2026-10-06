@@ -172,19 +172,31 @@ final class CpanelGitDeploy
             'runtimeConfigPrivate600'=>is_array($s) && ($s['mode'] & 07777) === 0600,
             'privateConfigPermissionsChanged'=>false, 'runtimeConfigPermissionsTouched'=>false];
         if (is_array($s)) $evidence['runtimeConfigModeBefore'] = sprintf('%04o', $s['mode'] & 07777);
-        if (!$authorized || $evidence['runtimeConfigPrivate600']) return;
+        $parentPath = dirname($path); $parent = @lstat($parentPath);
+        $evidence['runtimeConfigParentModeBefore'] = is_array($parent) ? sprintf('%04o', $parent['mode'] & 07777) : '0000';
+        $evidence['runtimeConfigParentOwnerMatches'] = is_array($parent) && $parent['uid'] === $uid;
+        $evidence['runtimeConfigCanonical'] = $path === $root . '/config/runtime.php' && realpath($path) === $path;
+        $evidence['runtimeConfigAncestorSafe'] = false;
+        $evidence['runtimeConfigParentPermissionsTouched'] = false;
+        $evidence['privateConfigParentPermissionsChanged'] = false;
+        if (!$authorized) return;
         self::requireValue($regular && !is_link($path) && $s['uid'] === $uid && $s['nlink'] === 1, 'runtime_permission_identity_refused');
-        self::requireValue($path === $root . '/config/runtime.php' && realpath($path) === $path, 'runtime_permission_ancestry_refused');
-        for ($dir = dirname($path); $dir !== '/'; $dir = dirname($dir)) {
-            $d = lstat($dir);
-            self::requireValue(realpath($dir) === $dir && !is_link($dir) && ($d['mode'] & 0170000) === 0040000
-                && ($d['mode'] & 0022) === 0 && in_array($d['uid'], [0, $uid], true), 'runtime_permission_ancestry_refused');
+        self::requireValue($evidence['runtimeConfigCanonical'], 'runtime_permission_canonical_refused');
+        for ($dir = dirname($path); ; $dir = dirname($dir)) {
+            $d = @lstat($dir);
+            self::requireValue(is_array($d) && !is_link($dir) && realpath($dir) === $dir && ($d['mode'] & 0170000) === 0040000, 'runtime_permission_ancestor_path_refused');
+            self::requireValue(($d['mode'] & 0022) === 0, 'runtime_permission_ancestor_write_refused');
+            self::requireValue(in_array($d['uid'], [0, $uid], true), 'runtime_permission_ancestor_owner_refused');
+            if ($dir === '/') break;
         }
+        $evidence['runtimeConfigAncestorSafe'] = true;
+        self::requireValue($evidence['runtimeConfigParentOwnerMatches'], 'runtime_permission_parent_owner_refused');
+        self::requireValue(($parent['mode'] & 07000) === 0, 'runtime_permission_parent_mode_refused');
+        if ($evidence['runtimeConfigPrivate600'] && ($parent['mode'] & 07777) === 0700) return;
         self::requireValue(preg_match('/\\A[a-f0-9]{40}\\z/', $commit) === 1
             && preg_match('/\\A[a-f0-9]{64}\\z/', $planSha) === 1
             && preg_match('/\\Aruntime-permission-[a-f0-9]{16}\\.json\\z/', basename($intent)) === 1, 'runtime_permission_identity_refused');
-        $parent = lstat(dirname($path));
-        self::requireValue(is_array($parent) && $parent['uid'] === $uid && ($parent['mode'] & 07777) === 0700, 'runtime_permission_ancestry_refused');
+        $repairParent = ($parent['mode'] & 07777) !== 0700;
         $h = fopen($path, 'rb');
         self::requireValue(is_resource($h), 'runtime_permission_identity_refused');
         try {
@@ -192,7 +204,29 @@ final class CpanelGitDeploy
             $hash = hash_init('sha256'); hash_update_stream($hash, $h); $before = hash_final($hash);
             self::journal($intent, ['format'=>'a777-runtime-permission-intent-v1', 'operation'=>'private0600',
                 'commit'=>$commit, 'planSha256'=>$planSha, 'path'=>$path, 'device'=>$s['dev'], 'inode'=>$s['ino'], 'owner'=>$uid, 'bytes'=>$s['size'],
-                'beforeMode'=>sprintf('%04o', $s['mode'] & 07777), 'sha256'=>$before]);
+                'beforeMode'=>sprintf('%04o', $s['mode'] & 07777), 'sha256'=>$before,
+                'parentPath'=>$parentPath, 'parentDevice'=>$parent['dev'], 'parentInode'=>$parent['ino'], 'parentOwner'=>$uid,
+                'parentBeforeMode'=>sprintf('%04o', $parent['mode'] & 07777), 'parentAfterMode'=>'0700', 'parentRepair'=>$repairParent]);
+            $evidence['runtimePermissionIntent'] = basename($intent);
+            $evidence['runtimePermissionDevice'] = $s['dev']; $evidence['runtimePermissionInode'] = $s['ino']; $evidence['runtimePermissionOwner'] = $uid;
+            $evidence['runtimePermissionParentDevice'] = $parent['dev']; $evidence['runtimePermissionParentInode'] = $parent['ino']; $evidence['runtimePermissionParentOwner'] = $uid;
+            clearstatcache(true, $parentPath);
+            self::requireValue(@lstat($parentPath) === $parent && realpath($parentPath) === $parentPath && !is_link($parentPath), 'runtime_permission_parent_identity_refused');
+            clearstatcache(true, $path);
+            $current = @lstat($path);
+            self::requireValue(is_array($current) && array_intersect_key($current, array_flip(['dev','ino','uid','mode','size','nlink'])) === array_intersect_key($s, array_flip(['dev','ino','uid','mode','size','nlink'])) && realpath($path) === $path && !is_link($path), 'runtime_permission_identity_refused');
+            if ($repairParent) {
+                $evidence['runtimeConfigParentPermissionsTouched'] = true;
+                self::requireValue(chmod($parentPath, 0700), 'runtime_permission_parent_chmod_failed');
+            }
+            clearstatcache(true, $parentPath); $p = @lstat($parentPath);
+            self::requireValue(is_array($p) && $p['dev'] === $parent['dev'] && $p['ino'] === $parent['ino'] && $p['uid'] === $uid
+                && ($p['mode'] & 07777) === 0700 && realpath($parentPath) === $parentPath && !is_link($parentPath), 'runtime_permission_parent_readback_failed');
+            $evidence['privateConfigParentPermissionsChanged'] = $repairParent;
+            $evidence['runtimeConfigParentModeAfter'] = '0700';
+            $evidence['runtimePermissionParentDevice'] = $parent['dev'];
+            $evidence['runtimePermissionParentInode'] = $parent['ino'];
+            $evidence['runtimePermissionParentOwner'] = $uid;
             clearstatcache(true, $path);
             self::requireValue(array_intersect_key(lstat($path), array_flip(['dev','ino','uid','mode','size','nlink'])) === array_intersect_key($s, array_flip(['dev','ino','uid','mode','size','nlink'])) && realpath($path) === $path, 'runtime_permission_identity_refused');
             $evidence['runtimeConfigPermissionsTouched'] = true;
@@ -379,12 +413,12 @@ final class CpanelGitDeploy
                         'api_token_missing_or_path_invalid','api_token_unreadable','api_token_not_private','api_token_invalid',
                         'api_http_failed','api_response_too_large','api_response_invalid','api_uapi_failed','api_readonly_function_required',
                         'api_curl_unavailable','api_transport_failed','api_account_home_mismatch','active_or_document_root_invalid',
-                        'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private','active_database_config_identity_mismatch','active_database_password_missing',
+                        'runtime_permission_identity_refused','runtime_permission_ancestry_refused','runtime_permission_canonical_refused','runtime_permission_ancestor_path_refused','runtime_permission_ancestor_write_refused','runtime_permission_ancestor_owner_refused','runtime_permission_parent_owner_refused','runtime_permission_parent_mode_refused','runtime_permission_parent_identity_refused','runtime_permission_parent_chmod_failed','runtime_permission_parent_readback_failed','runtime_permission_chmod_failed','runtime_permission_readback_failed','active_config_missing_or_not_private','active_database_config_identity_mismatch','active_database_password_missing',
                         'actual_source_pdo_identity_mismatch','active_sql_root_invalid','active_sql_entry_invalid','active_sql_empty',
                         'backup_storage_not_private_or_archive_inside_storage'];
                     $report['blockingGate'] = in_array($error->getMessage(), $safeGates, true) ? $error->getMessage() : 'native_preflight_failed';
                 }
-                $report['liveFilesTouched'] = ($evidence['runtimeConfigPermissionsTouched'] ?? false) === true;
+                $report['liveFilesTouched'] = ($evidence['runtimeConfigPermissionsTouched'] ?? false) === true || ($evidence['runtimeConfigParentPermissionsTouched'] ?? false) === true;
                 $report += $evidence;
                 self::journal($root . '/preflight-' . $commit . '-' . bin2hex(random_bytes(8)) . '.json', $report);
                 if ($plan['mode'] === 'preflight' && $report['status'] === 'inspected-not-authorized') {
