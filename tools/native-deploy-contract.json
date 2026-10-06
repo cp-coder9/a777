@@ -1,0 +1,29 @@
+{
+  "format": "a777-native-deploy-contract-v1",
+  "class": "Architex\\Deployment\\CpanelNativeDeployment",
+  "file": "tools/CpanelNativeDeployment.php",
+  "api": "run(AppConfig $actualAppConfig, PDO $sourcePDO, string $privatePlan, string $verifiedProductionArtifactRoot, array $configValues, string $expectedCommit, string $expectedPin): array",
+  "entrypoint": "php tools/cpanel_git_deploy.php --native-deploy",
+  "automaticEntrypoint": "php tools/cpanel_git_deploy.php --from-plan",
+  "planPath": "/home/archite4/.a777-deploy/operator-plan.json",
+  "requiredPlanFields": {
+    "mode": "native-deploy",
+    "account": "archite4",
+    "repository": "/home/archite4/repositories/a777",
+    "activeRoot": "/home/archite4/public_html/.a777-runtime-active",
+    "documentRoot": "/home/archite4/public_html/php.architex.co.za",
+    "sourceDatabase": "archite4_dev_rel1",
+    "expectedCommit": "full lowercase Git SHA-1 of clean approved checkout",
+    "runtimeConfigSha256": "5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8",
+    "artifactPath": "canonical owner-0700 path below /home/archite4/.a777-deploy/",
+    "treeDigest": "sha256 of JSON_UNESCAPED_SLASHES sorted filename map of {sha256,bytes}; includes release-manifest.json; identical to CpanelGitDeploy::digest(CpanelGitDeploy::inventory(root))",
+    "pendingMigrations": "ordered list of all eight actual candidate pending migration version strings"
+  },
+  "planPolicy": "owner 0600 single-link regular canonical file; parent private root; exclusive consumed-plan digest marker; never retry the same plan",
+  "artifactPolicy": "flat ReleaseBuilder production artifact, real ReleaseVerifier valid, release.json and public/build-info.json exact clean sourceCommit; no runtime.php until copied and verified",
+  "stages": ["staged", "fenced", "backedup", "restored", "candidatevalidated", "sourceDDL", "promoted", "deployed"],
+  "failurePolicy": "after conservative source DDL intent always recovery_required and retain maintenance, old trees, encrypted archive/password, journals and token; caller must not clean them; original Throwable available through lastFailure()",
+  "receipt": "return array; status, lastCompletedStage, sourceDatabaseDdlTouched, maintenanceRetained; after staging also deploymentId, recoveryDirectory, commit, planSha256; later archiveSha256, backupId, rowCount, fileCount and targetDatabase",
+  "token": "fixed /home/archite4/.a777-deploy/cpanel-token owner 0600; actual verified HTTPS cPanel origin only; runner owns retention/removal",
+  "proofBoundary": "local token/protocol tests are not native production evidence; run Linux native file fixtures before activation"
+}

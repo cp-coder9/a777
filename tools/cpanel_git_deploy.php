@@ -514,6 +514,20 @@ final class CpanelGitDeploy
         return $report;
     }
 
+    /** Receipt fields are observations from the coordinator, never assertions copied from a plan. */
+    public static function nativeReceipt(array $outcome,string $commit,string $planSha): array
+    {
+        $complete=($outcome['status']??null)==='deployed' && ($outcome['lastCompletedStage']??null)==='deployed'
+            && ($outcome['artifactVerified']??null)===true && ($outcome['readinessPassed']??null)===true;
+        $unsafe=($outcome['maintenanceActive']??null)!==false || ($outcome['maintenanceRetained']??null)!==false
+            || ($outcome['sourcePrivilegesRevoked']??null)!==false || ($outcome['sourcePrivilegeStateUnknown']??true)!==false
+            || ($outcome['operatorStateUnknown']??true)!==false || ($outcome['operatorPrivilegesRevoked']??false)!==true;
+        $ddl=($outcome['sourceDatabaseDdlTouched']??null)!==false || ($outcome['sourceMutationDdlStarted']??false)===true;
+        $phase=$complete && !$unsafe ? 'complete' : (($unsafe || $ddl || ($outcome['status']??null)==='recovery_required')?'recovery_required':'failed');
+        return array_replace($outcome,['format'=>'a777-cpanel-native-deploy-v1','mode'=>'native-deploy',
+            'commit'=>$commit,'planSha256'=>$planSha,'phase'=>$phase,'deployed'=>$phase==='complete']);
+    }
+
     public static function run(): void
     {
         self::requireValue(PHP_SAPI === 'cli' && PHP_OS_FAMILY === 'Linux' && PHP_VERSION_ID >= 80300, 'linux_php83_cli_required');
@@ -530,6 +544,39 @@ final class CpanelGitDeploy
         self::requireValue(is_resource($lock) && flock($lock, LOCK_EX | LOCK_NB), 'deployment_busy');
         try {
             $plan = json_decode((string)file_get_contents($planPath), true, 32, JSON_THROW_ON_ERROR);
+            if (($plan['mode'] ?? null) === 'native-deploy') {
+                self::requireValue(count($_SERVER['argv']) === 2 && in_array($_SERVER['argv'][1], ['--native-deploy','--from-plan'], true), 'invocation_mode_invalid');
+                spl_autoload_register(static function(string $class): void {
+                    if (str_starts_with($class, 'Architex\\')) {
+                        $path = self::REPO . '/app/src/' . str_replace('\\', '/', substr($class, 9)) . '.php';
+                        if (is_file($path)) require_once $path;
+                    }
+                }, true, true);
+                require_once __DIR__ . '/CpanelNativeDeployment.php';
+                $planSha=(string)hash_file('sha256',$planPath);
+                $outcome=['status'=>'failed','lastCompletedStage'=>null,'sourceDatabaseDdlTouched'=>false,
+                    'sourceMutationDdlStarted'=>false,'maintenanceActive'=>false,'maintenanceRetained'=>false,
+                    'sourcePrivilegesRevoked'=>false,'sourcePrivilegeStateUnknown'=>false,'artifactVerified'=>false,'readinessPassed'=>false];
+                try {
+                $configPath = self::ACTIVE . '/config/runtime.php';
+                self::requireValue(is_file($configPath) && !is_link($configPath) && realpath($configPath) === $configPath
+                    && fileowner($configPath) === posix_geteuid() && (fileperms($configPath) & 07777) === 0600
+                    && hash_file('sha256', $configPath) === ($plan['runtimeConfigSha256'] ?? null), 'runtime_config_pin_mismatch');
+                $values = require $configPath;
+                self::requireValue(is_array($values), 'active_database_config_identity_mismatch');
+                $typed = \Architex\Infrastructure\Config\AppConfig::fromEnvironment($values);
+                $source = \Architex\Infrastructure\Database\ConnectionFactory::create($typed);
+                $outcome = \Architex\Deployment\CpanelNativeDeployment::run($typed, $source, $planPath,
+                    $plan['artifactPath'] ?? '', $values, $plan['expectedCommit'] ?? '', $plan['runtimeConfigSha256'] ?? '');
+                } catch (Throwable) { $outcome['failureStage']='native-bootstrap'; }
+                $outcome=self::nativeReceipt($outcome,$plan['expectedCommit']??'',$planSha);
+                $receiptPath=$root . '/native-deploy-' . ($plan['expectedCommit']??'') . '-' . bin2hex(random_bytes(8)) . '.json';
+                self::journal($receiptPath, $outcome);
+                self::requireValue(json_decode((string)file_get_contents($receiptPath),true,32,JSON_THROW_ON_ERROR)===$outcome,'native_receipt_readback');
+                print json_encode($outcome, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES) . "\n";
+                if (($outcome['status'] ?? '') !== 'deployed') throw new RuntimeException('native_deployment_failed_recovery_receipt_retained');
+                return;
+            }
             self::requireValue(in_array($plan['mode'] ?? null, ['stage-only', 'preflight', 'restore-rehearsal', 'deploy'], true) && ($plan['account'] ?? null) === 'archite4' && ($plan['repository'] ?? null) === self::REPO && ($plan['activeRoot'] ?? null) === self::ACTIVE && ($plan['documentRoot'] ?? null) === self::DOCROOT, 'plan_target_mismatch');
             $requested = $_SERVER['argv'][1] ?? '--preflight';
             self::requireValue(preg_match('/\A[a-f0-9]{40}\z/', $plan['expectedCommit'] ?? '') === 1, 'plan_commit_invalid');

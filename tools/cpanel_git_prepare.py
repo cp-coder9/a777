@@ -532,6 +532,65 @@ def deployment_inventory_guard(client):
             if not rehearsal_safe(data, True) or not name.startswith('restore-rehearsal-' + data.get('commit','') + '-'):
                 raise CpanelError('Retained rehearsal source safety refused.')
             continue
+        if isinstance(name, str) and re.fullmatch(r'deployment-[a-f0-9]{32}', name):
+            authorize(client)
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0700', True)
+            if ('owner' in row and row['owner'] != 'archite4') or ('user' in row and row['user'] != 'archite4'):
+                raise CpanelError('Native recovery owner context refused.')
+            # Contains password-bearing journal.jsonl: metadata only, never read.
+            continue
+        if name == 'native-activation.lock':
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'native-consumed-[a-f0-9]{64}\.jsonl', name):
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            lines = read(client, DEPLOY_ROOT + '/' + name).splitlines()
+            if len(lines) != 1:
+                raise CpanelError('Native consumed plan refused.')
+            data = json.loads(lines[0])
+            if (not isinstance(data, dict) or set(data) != {'deploymentId', 'commit'}
+                    or not re.fullmatch(r'[a-f0-9]{32}', data.get('deploymentId', ''))
+                    or not re.fullmatch(r'[a-f0-9]{40}', data.get('commit', ''))):
+                raise CpanelError('Native consumed plan refused.')
+            matches = []
+            for receipt_row in entries(client, DEPLOY_ROOT):
+                receipt_name = receipt_row.get('name', '')
+                if isinstance(receipt_name, str) and re.fullmatch(r'native-deploy-' + data['commit'] + r'-[a-f0-9]{16}\.json', receipt_name):
+                    owned_mode(client, DEPLOY_ROOT + '/' + receipt_name, '0600')
+                    receipt = json.loads(read(client, DEPLOY_ROOT + '/' + receipt_name))
+                    if (receipt.get('format') == 'a777-cpanel-native-deploy-v1'
+                            and receipt.get('deploymentId') == data['deploymentId']
+                            and name == 'native-consumed-' + receipt.get('planSha256', '') + '.jsonl'
+                            and receipt.get('phase') == 'complete' and receipt.get('deployed') is True):
+                        matches.append(receipt)
+            if len(matches) != 1:
+                raise CpanelError('Native consumed plan completed binding refused.')
+            continue
+        if name == 'incoming':
+            owned_mode(client, DEPLOY_ROOT + '/incoming', '0700', True)
+            for artifact in entries(client, DEPLOY_ROOT + '/incoming'):
+                candidate = artifact.get('name', '')
+                if not isinstance(candidate, str) or not re.fullmatch(r'[a-f0-9]{40}', candidate):
+                    raise CpanelError('Private incoming inventory refused.')
+                # Full incoming content is verified by the authenticated native hook,
+                # without executing bootstrap/vendor. Do not inspect arbitrary journals.
+                if artifact.get('type') not in ('dir', 'directory'):
+                    raise CpanelError('Private incoming path refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'native-deploy-[a-f0-9]{40}-[a-f0-9]{16}\.json', name):
+            owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
+            data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+            if (not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-deploy-v1'
+                    or data.get('mode') != 'native-deploy'
+                    or not isinstance(data.get('commit'), str)
+                    or not re.fullmatch(r'[a-f0-9]{40}', data['commit'])
+                    or not name.startswith('native-deploy-' + data['commit'] + '-')
+                    or not isinstance(data.get('planSha256'), str)
+                    or not re.fullmatch(r'[a-f0-9]{64}', data['planSha256'])
+                    or data.get('phase') not in ('complete', 'failed', 'recovery_required')
+                    or (data.get('deployed') is True and data.get('phase') != 'complete')):
+                raise CpanelError('Retained native receipt refused.')
+            continue
         if name == 'operator-plan.json':
             continue
         if name == 'deploy.lock':

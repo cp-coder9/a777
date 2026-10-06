@@ -14,6 +14,7 @@ on:
           - clone
           - native-preflight
           - restore-rehearsal
+          - native-deploy
       secure_runtime_config_permissions:
         description: Explicit permission-only repair of the owned runtime config
         type: boolean
@@ -48,12 +49,17 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     environment: production
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, zip, mbstring
+          tools: composer:v2
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -71,7 +77,21 @@ jobs:
           php tools/tests/CpanelRestoreRehearsal_test.php
           php tools/tests/CpanelRestoreRehearsal_local_backup.php
           php tools/tests/CpanelRestoreRehearsal_source_permissions.php
-      - name: Execute explicitly selected mode (never runtime deploy)
+      - name: Native activation file-fault fixtures (no hosting credentials)
+        env:
+          A777_NATIVE_FIXTURE_ROOT: ${{ runner.temp }}/a777-native-fixtures
+        run: |
+          install -d -m 0700 "$A777_NATIVE_FIXTURE_ROOT"
+          php tools/tests/CpanelNativeDeployment_test.php
+          php tools/tests/CpanelNativeReceipt_test.php
+          php tools/tests/CpanelMaintenanceApi_test.php
+          php tools/tests/CpanelNativeDeployment_files_native.php
+      - name: Verify real locked production artifact without hosting credentials
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          python -c 'import os,sys; from pathlib import Path; sys.path.insert(0,"tools"); from cpanel_native_stage import build,archive_release; root=Path(os.environ["RUNNER_TEMP"])/"a777-production-ci"; release,report=build(Path.cwd(),root,os.environ["EXPECTED_COMMIT"]); archive_release(release,root/"verified.zip",os.environ["EXPECTED_COMMIT"]); print(report)'
+      - name: Execute explicitly selected mode (native-deploy requires production authorization)
         env:
           MODE: ${{ inputs.mode }}
           ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL: ${{ inputs.allow_existing_public_source_for_rehearsal }}
@@ -90,7 +110,7 @@ jobs:
           args=("$MODE" --report "$RUNNER_TEMP/cpanel-git-inspection.json")
           if [[ -n "$EXPECTED_KEY_FINGERPRINT" ]]; then args+=(--expected-key-fingerprint "$EXPECTED_KEY_FINGERPRINT"); fi
           if [[ "$MODE" == prepare-key ]]; then args+=(--public-key "$RUNNER_TEMP/a777-deploy-key.pub"); fi
-          if [[ "$MODE" == native-preflight || "$MODE" == restore-rehearsal ]]; then
+          if [[ "$MODE" == native-preflight || "$MODE" == restore-rehearsal || "$MODE" == native-deploy ]]; then
             [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
             args+=(--expected-commit "$EXPECTED_COMMIT")
             if [[ -n "$EXPECTED_RUNTIME_CONFIG_SHA256" ]]; then args+=(--expected-runtime-config-sha256 "$EXPECTED_RUNTIME_CONFIG_SHA256"); fi
