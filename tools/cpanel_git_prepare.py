@@ -1,4 +1,4 @@
-"""Explicit Git preparation and CLI-only native read-only preflight orchestration."""
+"""Explicit Git preparation and private-token native read-only preflight orchestration."""
 import base64
 import fnmatch
 import hashlib
@@ -326,7 +326,12 @@ GATES = frozenset(('active_or_document_root_invalid', 'active_config_missing_or_
     'actual_source_pdo_identity_mismatch', 'native_uapi_failed', 'native_uapi_inventory_missing',
     'command_unavailable', 'command_failed', 'active_sql_root_invalid', 'active_sql_entry_invalid',
     'active_sql_empty', 'backup_storage_not_private_or_archive_inside_storage', 'native_preflight_failed',
-    'unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented'))
+    'unknown_writer_dispatch_exclusion_and_verified_promotion_not_implemented',
+    'command_output_too_large', 'api_linux_identity_required', 'api_operator_identity_mismatch',
+    'api_token_path_invalid', 'api_token_root_not_private', 'api_token_missing_or_path_invalid',
+    'api_token_unreadable', 'api_token_not_private', 'api_token_invalid', 'api_http_failed',
+    'api_response_too_large', 'api_response_invalid', 'api_uapi_failed', 'api_readonly_function_required',
+    'api_curl_unavailable', 'api_transport_failed', 'api_account_home_mismatch'))
 
 
 def owned_mode(client, path, mode, directory=False):
@@ -336,6 +341,92 @@ def owned_mode(client, path, mode, directory=False):
         raise CpanelError('Private deployment path permissions refused.')
 
 
+TOKEN = DEPLOY_ROOT + '/cpanel-token'
+
+
+def private_chmod(client, path):
+    client._api2('fileop', {'op': 'chmod', 'sourcefiles': path[len(HOME)+1:],
+                          'doubledecode': '0', 'metadata': '0600'})
+    owned_mode(client, path, '0600')
+
+
+def deployment_inventory_guard(client):
+    for row in entries(client, DEPLOY_ROOT):
+        name = row.get('name')
+        if name == 'operator-plan.json':
+            continue
+        if name == 'deploy.lock':
+            owned_mode(client, DEPLOY_ROOT + '/deploy.lock', '0600')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'preflight-[a-f0-9]{40}-[a-f0-9]{16}\.json', name):
+            path = DEPLOY_ROOT + '/' + name
+            owned_mode(client, path, '0600')
+            data = json.loads(read(client, path))
+            if (not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-preflight-v1'
+                    or data.get('mode') != 'preflight'
+                    or data.get('status') not in ('inspected-not-authorized', 'capability-inspection-refused')
+                    or data.get('databaseDdlTouched') is not False or data.get('liveFilesTouched') is not False
+                    or not isinstance(data.get('commit'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['commit'])
+                    or not name.startswith('preflight-' + data['commit'] + '-')
+                    or not isinstance(data.get('planSha256'), str) or not re.fullmatch(r'[a-f0-9]{64}', data['planSha256'])):
+                raise CpanelError('Private deployment receipt collision; refused.')
+            continue
+        if isinstance(name, str) and re.fullmatch(r'plan-roll-[a-f0-9]{64}\.json', name):
+            path = DEPLOY_ROOT + '/' + name
+            owned_mode(client, path, '0600')
+            data = json.loads(read(client, path))
+            if not isinstance(data, dict) or set(data) != {'format', 'originalBytesBase64', 'originalSha256'} or data.get('format') != 'a777-preflight-plan-roll-intent-v1':
+                raise CpanelError('Private plan intent collision; refused.')
+            raw = base64.b64decode(data['originalBytesBase64'], validate=True)
+            digest = hashlib.sha256(raw).hexdigest()
+            if data['originalSha256'] != digest or name != 'plan-roll-' + digest + '.json':
+                raise CpanelError('Private plan intent collision; refused.')
+            continue
+        raise CpanelError('Private deployment inventory collision; refused.')
+
+
+def provision_token(client, state):
+    token = client.config.api_token
+    if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{16,4096}', token):
+        raise CpanelError('Private token contract refused.')
+    owned_mode(client, DEPLOY_ROOT, '0700', True)
+    if exists(client, TOKEN):
+        raise CpanelError('Private token collision; refused.')
+    # Mark intent before POST: a lost response must reconcile bytes, not retry upload.
+    state['attempted'] = True
+    try:
+        client.save_file(TOKEN, token)
+    except Exception:
+        if not exists(client, TOKEN) or read(client, TOKEN) != token:
+            raise CpanelError('Private token upload refused.') from None
+    if read(client, TOKEN) != token:
+        raise CpanelError('Private token read-back refused.')
+    private_chmod(client, TOKEN)
+    owned_mode(client, DEPLOY_ROOT, '0700', True)
+    if read(client, TOKEN) != token:
+        raise CpanelError('Private token read-back refused.')
+
+
+def cleanup_token(client, state):
+    if not state.get('attempted'):
+        return not exists(client, TOKEN) if exists(client, DEPLOY_ROOT) else True
+    owned_mode(client, DEPLOY_ROOT, '0700', True)
+    if not exists(client, TOKEN):
+        return True
+    owned_mode(client, TOKEN, '0600')
+    expected = hashlib.sha256(client.config.api_token.encode('ascii')).digest()
+    if hashlib.sha256(read(client, TOKEN).encode('ascii')).digest() != expected:
+        raise CpanelError('Private token cleanup refused.')
+    try:
+        client.trash(TOKEN)
+    except Exception:
+        if exists(client, TOKEN):
+            raise CpanelError('Private token cleanup refused.') from None
+    if exists(client, TOKEN):
+        raise CpanelError('Private token cleanup refused.')
+    return True
+
+
 def preflight_plan(client, commit):
     if not exists(client, DEPLOY_ROOT):
         client.mkdir(DEPLOY_ROOT, '0700')
@@ -343,20 +434,65 @@ def preflight_plan(client, commit):
     owned_mode(client, DEPLOY_ROOT, '0700', True)
     plan = {'mode': 'preflight', 'account': 'archite4', 'repository': ROOT,
             'activeRoot': HOME + '/public_html/.a777-runtime-active',
-            'documentRoot': HOME + '/public_html/php.architex.co.za', 'expectedCommit': commit}
+            'documentRoot': HOME + '/public_html/php.architex.co.za', 'expectedCommit': commit,
+            'readOnlyUapiTransport': 'native-cli-then-private-token-https'}
+    deployment_inventory_guard(client)
     text = json.dumps(plan, sort_keys=True, separators=(',', ':')) + '\n'
     if exists(client, PLAN):
         owned_mode(client, PLAN, '0600')
-        old = json.loads(read(client, PLAN))
-        if not isinstance(old, dict) or old.get('mode') != 'preflight':
+        original = read(client, PLAN)
+        old = json.loads(original)
+        base = {k: v for k, v in plan.items() if k not in ('expectedCommit', 'readOnlyUapiTransport')}
+        if (not isinstance(old, dict) or any(old.get(k) != v for k, v in base.items())
+                or set(old) not in (set(base) | {'expectedCommit'}, set(plan))
+                or not isinstance(old.get('expectedCommit'), str)
+                or not re.fullmatch(r'[a-f0-9]{40}', old['expectedCommit'])
+                or ('readOnlyUapiTransport' in old and old['readOnlyUapiTransport'] != plan['readOnlyUapiTransport'])):
             raise CpanelError('Existing operator plan collision; refused.')
         if old != plan:
-            raise CpanelError('Existing operator plan commit collision; operator review required.')
+            old_sha = hashlib.sha256(original.encode('ascii')).hexdigest()
+            matched = False
+            for row in entries(client, DEPLOY_ROOT):
+                name = row.get('name', '')
+                if not isinstance(name, str) or not re.fullmatch(r'preflight-[a-f0-9]{40}-[a-f0-9]{16}\.json', name):
+                    continue
+                path = DEPLOY_ROOT + '/' + name
+                owned_mode(client, path, '0600')
+                receipt = json.loads(read(client, path))
+                if (not isinstance(receipt, dict) or receipt.get('format') != 'a777-cpanel-native-preflight-v1'
+                        or receipt.get('mode') != 'preflight'
+                        or receipt.get('status') not in ('capability-inspection-refused', 'inspected-not-authorized')
+                        or receipt.get('databaseDdlTouched') is not False or receipt.get('liveFilesTouched') is not False
+                        or not isinstance(receipt.get('commit'), str)
+                        or not re.fullmatch(r'[a-f0-9]{40}', receipt['commit'])
+                        or not name.startswith('preflight-' + receipt['commit'] + '-')
+                        or not isinstance(receipt.get('planSha256'), str)
+                        or not re.fullmatch(r'[a-f0-9]{64}', receipt['planSha256'])):
+                    raise CpanelError('Private preflight receipt collision; refused.')
+                matched |= receipt['commit'] == old['expectedCommit'] and receipt['planSha256'] == old_sha
+            if not matched:
+                raise CpanelError('Matching old preflight receipt required.')
+            intent_path = DEPLOY_ROOT + '/plan-roll-' + old_sha + '.json'
+            intent = json.dumps({'format': 'a777-preflight-plan-roll-intent-v1',
+                                 'originalBytesBase64': base64.b64encode(original.encode('ascii')).decode('ascii'),
+                                 'originalSha256': old_sha}, sort_keys=True, separators=(',', ':')) + '\n'
+            if exists(client, intent_path):
+                owned_mode(client, intent_path, '0600')
+                if read(client, intent_path) != intent:
+                    raise CpanelError('Plan roll intent collision; refused.')
+            else:
+                client.save_file(intent_path, intent)
+                private_chmod(client, intent_path)
+            if read(client, intent_path) != intent or read(client, PLAN) != original:
+                raise CpanelError('Plan roll read-back refused.')
+            client.save_file(PLAN, text)
     else:
         client.save_file(PLAN, text)
         client._api2('fileop', {'op': 'chmod', 'sourcefiles': '.a777-deploy/operator-plan.json',
                               'doubledecode': '0', 'metadata': '0600'})
     owned_mode(client, PLAN, '0600')
+    # Prove authenticated API 2 chmod capability before handing a token to Fileman.
+    private_chmod(client, PLAN)
     actual = read(client, PLAN)
     if json.loads(actual) != plan:
         raise CpanelError('Private plan read-back mismatch.')
@@ -374,6 +510,8 @@ def receipts(client, commit, plan_sha, previous):
         data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
         if not isinstance(data, dict) or data.get('format') != 'a777-cpanel-native-preflight-v1' or data.get('commit') != commit or data.get('mode') != 'preflight' or data.get('planSha256') != plan_sha:
             continue
+        if data.get('databaseDdlTouched') is not False or data.get('liveFilesTouched') is not False:
+            raise CpanelError('Preflight receipt write-safety contract refused.')
         safe = {'report_id': name, 'commit': commit, 'planSha256': plan_sha}
         safe['status'] = data.get('status') if data.get('status') in ('inspected-not-authorized', 'capability-inspection-refused') else 'invalid_contract'
         for key in BOOL_FIELDS:
@@ -384,13 +522,36 @@ def receipts(client, commit, plan_sha, previous):
             safe['blockingGate'] = data['blockingGate'] if data['blockingGate'] in GATES else 'native_preflight_failed'
         for key in ('runtimeConfigSha256', 'activeSqlTreeSha256'):
             if isinstance(data.get(key), str) and re.fullmatch(r'[a-f0-9]{64}', data[key]): safe[key] = data[key]
+        for key in ('mysqlDatabaseTransport', 'mysqlUserTransport'):
+            value = data.get(key)
+            if isinstance(value, str) and value in ('native-cli', 'authenticated-https-fallback-attempted', 'authenticated-https'):
+                safe[key] = value
+            diagnostic = data.get(key + 'Cli')
+            if isinstance(diagnostic, dict):
+                clean = {}
+                if diagnostic.get('status') in ('unavailable', 'success', 'failed'):
+                    clean['status'] = diagnostic['status']
+                exit_code = diagnostic.get('exitCode')
+                if exit_code is None or type(exit_code) is int and -1 <= exit_code <= 255:
+                    clean['exitCode'] = exit_code
+                if diagnostic.get('stderrClass') in ('permission_denied', 'not_found', 'unknown_option', 'access_denied', 'command_not_found', 'empty', 'unclassified'):
+                    clean['stderrClass'] = diagnostic['stderrClass']
+                for observation in ('absoluteExecutablePresent', 'absoluteExecutableUsable', 'pathExecutableUsable'):
+                    if type(diagnostic.get(observation)) is bool:
+                        clean[observation] = diagnostic[observation]
+                safe[key + 'Cli'] = clean
+        if type(data.get('apiAccountHomeValidated')) is bool:
+            safe['apiAccountHomeValidated'] = data['apiAccountHomeValidated']
         reports.append(safe)
     return sorted(reports, key=lambda r: r['report_id'])
 
 
 def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attempts=36, pause=5):
     report = {'mode': 'native-preflight', 'status': 'failed', 'runtime_deployed': False,
-              'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': []}
+              'native_preflight_status': 'not_started', 'deployment_status': 'not_started', 'reports': [],
+              'tokenAbsenceVerified': False}
+    token_state = {}
+    authorized = False
     stage = 'input'
     try:
         if not isinstance(expected_commit, str) or not re.fullmatch(r'[a-f0-9]{40}', expected_commit) or expected_key != DEPLOY_KEY_PIN:
@@ -398,6 +559,7 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         stage = 'pull_master'
         # Preflight must never create a new repository implicitly.
         authorize(client)
+        authorized = True
         if inventory(client) is None: raise CpanelError('Existing managed repository required.')
         pulled = clone(client, expected_key, attempts=attempts, pause=pause)
         report['remote_head'] = pulled.get('commit')
@@ -406,6 +568,8 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
         stage = 'private_plan'
         plan_sha = preflight_plan(client, expected_commit)
         previous = {r.get('name') for r in entries(client, DEPLOY_ROOT)}
+        stage = 'private_token'
+        provision_token(client, token_state)
         stage = 'native_create'
         created = client._uapi('VersionControlDeployment', 'create', {'repository_root': ROOT})
         if not isinstance(created, dict) or created.get('repository_root') != ROOT or not re.fullmatch(r'[0-9]+', str(created.get('deploy_id', ''))) or not isinstance(created.get('task_id'), str) or not re.fullmatch(r'[A-Za-z0-9/-]{1,128}', created['task_id']):
@@ -444,4 +608,14 @@ def native_preflight(client, expected_commit, expected_key=DEPLOY_KEY_PIN, attem
                 report['reports'] = receipts(client, expected_commit, plan_sha, previous)
                 if report['reports']: report['native_preflight_status'] = report['reports'][-1]['status']
             except Exception: pass
+    finally:
+        if authorized:
+            try:
+                report['tokenAbsenceVerified'] = cleanup_token(client, token_state)
+                if not report['tokenAbsenceVerified']:
+                    raise CpanelError('Private token cleanup refused.')
+            except Exception:
+                report['cleanup'] = 'cleanupfailed'
+                if report['status'] == 'preflight_complete':
+                    report['status'] = 'failed_or_incomplete'
     return report

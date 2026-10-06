@@ -15,15 +15,41 @@ final class CpanelGitDeploy
         if (!$ok) throw new RuntimeException($gate);
     }
 
+    private static array $commandEvidence = [];
+
+    public static function commandDiagnostics(): array { return self::$commandEvidence; }
+
+    public static function stderrClass(string $bytes): string
+    {
+        // Only constant categories leave this process; raw output is never persisted.
+        foreach (['permission_denied'=>'permission denied', 'not_found'=>'no such file or directory',
+            'unknown_option'=>'unknown option', 'access_denied'=>'access denied',
+            'command_not_found'=>'command not found'] as $class => $needle) {
+            if (str_contains(strtolower($bytes), $needle)) return $class;
+        }
+        return $bytes === '' ? 'empty' : 'unclassified';
+    }
+
     public static function command(array $argv, string $cwd): string
     {
-        $process = proc_open($argv, [['pipe','r'], ['pipe','w'], ['pipe','w']], $pipes, $cwd);
-        self::requireValue(is_resource($process), 'command_unavailable');
-        fclose($pipes[0]);
-        $output = stream_get_contents($pipes[1]); fclose($pipes[1]);
-        stream_get_contents($pipes[2]); fclose($pipes[2]);
-        self::requireValue(proc_close($process) === 0 && is_string($output), 'command_failed');
-        return trim($output);
+        self::$commandEvidence = ['status'=>'unavailable', 'exitCode'=>null, 'stderrClass'=>'empty'];
+        // File-backed pipes avoid stdout/stderr deadlock and never print command bytes.
+        $out = tmpfile(); $err = tmpfile();
+        self::requireValue(is_resource($out) && is_resource($err), 'command_unavailable');
+        try {
+            $process = @proc_open($argv, [['pipe','r'], $out, $err], $pipes, $cwd);
+            self::requireValue(is_resource($process), 'command_unavailable');
+            fclose($pipes[0]);
+            $exit = proc_close($process);
+            rewind($out); rewind($err);
+            $output = stream_get_contents($out, 1048577);
+            $stderr = stream_get_contents($err, 16384);
+            self::$commandEvidence = ['status'=>$exit === 0 ? 'success' : 'failed', 'exitCode'=>$exit,
+                'stderrClass'=>self::stderrClass(is_string($stderr) ? $stderr : '')];
+            self::requireValue($exit === 0 && is_string($output), 'command_failed');
+            self::requireValue(strlen($output) <= 1048576, 'command_output_too_large');
+            return trim($output);
+        } finally { fclose($out); fclose($err); }
     }
 
     // Tree digest includes the manifest itself. No executable artifact is loaded.
@@ -87,6 +113,31 @@ final class CpanelGitDeploy
         return $response['result']['data'];
     }
 
+    public static function inspectInventory(string $function, bool $apiAllowed, array &$evidence): array
+    {
+        $key = $function === 'list_databases' ? 'mysqlDatabaseTransport' : 'mysqlUserTransport';
+        $evidence[$key] = 'native-cli';
+        try { return self::uapi('Mysql', $function); }
+        catch (Throwable $error) {
+            $evidence[$key . 'Cli'] = self::commandDiagnostics();
+            $evidence[$key . 'Cli']['absoluteExecutablePresent'] = is_file('/usr/local/cpanel/bin/uapi');
+            $evidence[$key . 'Cli']['absoluteExecutableUsable'] = is_executable('/usr/local/cpanel/bin/uapi');
+            $evidence[$key . 'Cli']['pathExecutableUsable'] = false;
+            foreach (explode(PATH_SEPARATOR, (string)getenv('PATH')) as $path) {
+                if ($path !== '' && is_file($path . '/uapi') && is_executable($path . '/uapi')) {
+                    $evidence[$key . 'Cli']['pathExecutableUsable'] = true;
+                }
+            }
+            if (!$apiAllowed) throw $error;
+            require_once __DIR__ . '/CpanelReadOnlyApi.php';
+            $evidence[$key] = 'authenticated-https-fallback-attempted';
+            $data = CpanelReadOnlyApi::inventory('Mysql', $function);
+            $evidence[$key] = 'authenticated-https';
+            $evidence['apiAccountHomeValidated'] = true;
+            return $data;
+        }
+    }
+
     public static function exclusiveGrantUser(array $databases, string $user): void
     {
         $matches = array_values(array_filter($databases, static fn($row) => is_array($row) && ($row['database'] ?? null) === 'archite4_dev_rel1'));
@@ -110,7 +161,7 @@ final class CpanelGitDeploy
     }
 
     /** Loads only installed, operator-owned config in RAM; never incoming artifact code. */
-    public static function preflight(array &$evidence = []): array
+    public static function preflight(array &$evidence = [], bool $apiAllowed = false): array
     {
         $evidence = ['zipAvailable'=>class_exists('ZipArchive'), 'curlAvailable'=>function_exists('curl_init'),
             'nativeRestoreCapabilityPresent'=>is_file(self::REPO . '/app/src/Infrastructure/Backup/AccountOwnedRestoreTarget.php'),
@@ -118,9 +169,9 @@ final class CpanelGitDeploy
             'documentRootAvailable'=>realpath(self::DOCROOT) === self::DOCROOT,
             'runtimeConfigAvailable'=>is_file(self::ACTIVE . '/config/runtime.php'),
             'liveDdlAuthorized'=>false];
-        $databases = self::uapi('Mysql', 'list_databases');
+        $databases = self::inspectInventory('list_databases', $apiAllowed, $evidence);
         $evidence['mysqlInventoryAvailable'] = true;
-        self::uapi('Mysql', 'list_users');
+        self::inspectInventory('list_users', $apiAllowed, $evidence);
         $evidence['mysqlUserInventoryAvailable'] = true;
         $cron = [];
         $cronAvailable = false;
@@ -247,6 +298,8 @@ final class CpanelGitDeploy
             self::requireValue(self::command(['/usr/local/cpanel/3rdparty/bin/git', 'rev-parse', '--abbrev-ref', 'HEAD'], self::REPO) === 'master', 'branch_mismatch');
             $requested = $_SERVER['argv'][1] ?? '--preflight';
             self::requireValue(in_array($requested, ['--preflight', '--deploy', '--stage-only'], true), 'invocation_mode_invalid');
+            $apiAllowed = $requested === '--preflight' && $plan['mode'] === 'preflight'
+                && ($plan['readOnlyUapiTransport'] ?? null) === 'native-cli-then-private-token-https';
             if ($requested === '--preflight') $plan['mode'] = 'preflight';
             else self::requireValue($plan['mode'] === substr($requested, 2), 'explicit_plan_mode_required');
             if ($plan['mode'] !== 'stage-only') {
@@ -254,13 +307,21 @@ final class CpanelGitDeploy
                     'planSha256'=>hash_file('sha256', $planPath), 'databaseDdlTouched'=>false, 'liveFilesTouched'=>false];
                 $evidence = [];
                 try {
-                    $observed = self::preflight($evidence);
+                    $observed = self::preflight($evidence, $apiAllowed);
                     $report += $observed['report'];
                     $report['status'] = 'inspected-not-authorized';
                 } catch (Throwable $error) {
                     $report['status'] = 'capability-inspection-refused';
                     // Do not persist PDO/provider error strings or config values.
-                    $report['blockingGate'] = preg_match('/\\A[a-z][a-z0-9_]+\\z/', $error->getMessage()) === 1 ? $error->getMessage() : 'native_preflight_failed';
+                    $safeGates = ['command_unavailable','command_failed','command_output_too_large','native_uapi_failed','native_uapi_inventory_missing',
+                        'api_linux_identity_required','api_operator_identity_mismatch','api_token_path_invalid','api_token_root_not_private',
+                        'api_token_missing_or_path_invalid','api_token_unreadable','api_token_not_private','api_token_invalid',
+                        'api_http_failed','api_response_too_large','api_response_invalid','api_uapi_failed','api_readonly_function_required',
+                        'api_curl_unavailable','api_transport_failed','api_account_home_mismatch','active_or_document_root_invalid',
+                        'active_config_missing_or_not_private','active_database_config_identity_mismatch','active_database_password_missing',
+                        'actual_source_pdo_identity_mismatch','active_sql_root_invalid','active_sql_entry_invalid','active_sql_empty',
+                        'backup_storage_not_private_or_archive_inside_storage'];
+                    $report['blockingGate'] = in_array($error->getMessage(), $safeGates, true) ? $error->getMessage() : 'native_preflight_failed';
                 }
                 $report += $evidence;
                 self::journal($root . '/preflight-' . $commit . '-' . bin2hex(random_bytes(8)) . '.json', $report);
