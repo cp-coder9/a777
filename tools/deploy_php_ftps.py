@@ -229,25 +229,49 @@ def probe_source(runtime_name: str) -> bytes:
     return f"""<?php
 declare(strict_types=1);
 ini_set('display_errors', '0');
-require dirname(__DIR__) . '/{runtime_name}/bootstrap.php';
 use Architex\\Infrastructure\\Config\\AppConfig;
 use Architex\\Infrastructure\\Database\\ConnectionFactory;
 use Architex\\Infrastructure\\Database\\MigrationRunner;
 use Architex\\Infrastructure\\Mail\\MailRuntime;
+$result = ['ok' => false, 'php' => PHP_VERSION_ID >= 80300, 'phpVersionId' => PHP_VERSION_ID,
+    'bootstrap' => false, 'config' => false, 'database' => false, 'migrations' => false, 'mail' => false,
+    'reason' => 'bootstrap_failed'];
+// Buffer bootstrap exits/fatals too: never bypass its maintenance/storage fence.
+$bufferLevel = ob_get_level();
+ob_start();
+register_shutdown_function(static function () use (&$result, $bufferLevel): void {{
+    while (ob_get_level() > $bufferLevel) ob_end_clean();
+    http_response_code($result['ok'] ? 200 : 503);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    echo json_encode($result);
+}});
 try {{
+    require dirname(__DIR__) . '/{runtime_name}/bootstrap.php';
+    $result['bootstrap'] = true;
+    $result['reason'] = 'config_failed';
     $env = getenv();
     $env = is_array($env) ? $env : [];
-    $pdo = ConnectionFactory::create(AppConfig::fromEnvironment($env));
-    $php = PHP_VERSION_ID >= 80300;
-    $db = (int) $pdo->query('SELECT 1')->fetchColumn() === 1;
-    $migrations = (new MigrationRunner($pdo, dirname(__DIR__) . '/{runtime_name}/database/migrations'))->status()->isCurrent();
-    $mail = MailRuntime::fromEnvironment($pdo, $env)->isReady();
-    header('Content-Type: application/json');
-    echo json_encode(['ok' => $php && $db && $migrations && $mail, 'php' => $php, 'phpVersionId' => PHP_VERSION_ID, 'database' => $db, 'migrations' => $migrations, 'mail' => $mail], JSON_THROW_ON_ERROR);
+    $config = AppConfig::fromEnvironment($env);
+    $result['config'] = true;
+    $result['reason'] = 'database_failed';
+    $pdo = ConnectionFactory::create($config);
+    $result['database'] = (int) $pdo->query('SELECT 1')->fetchColumn() === 1;
+    if (!$result['database']) throw new RuntimeException();
+    $result['reason'] = 'migrations_failed';
+    $status = (new MigrationRunner($pdo, dirname(__DIR__) . '/{runtime_name}/database/migrations'))->status();
+    // Accept array status and this repository's typed report via pendingCount.
+    $pendingCount = is_array($status) ? ($status['pendingCount'] ?? null) : ($status->pendingCount ?? null);
+    if (!is_int($pendingCount) || $pendingCount < 0) throw new RuntimeException();
+    $result['pendingCount'] = $pendingCount;
+    $result['migrations'] = $pendingCount === 0;
+    $result['reason'] = 'mail_failed';
+    $result['mail'] = MailRuntime::fromEnvironment($pdo, $env)->isReady();
+    $result['ok'] = $result['php'] && $result['database'] && $result['migrations'] && $result['mail'];
+    $result['reason'] = !$result['php'] ? 'php_unsupported' : (!$result['migrations'] ? 'migrations_pending' : (!$result['mail'] ? 'mail_not_ready' : 'ready'));
 }} catch (Throwable) {{
-    http_response_code(503);
-    header('Content-Type: application/json');
-    echo json_encode(['ok' => false, 'php' => PHP_VERSION_ID >= 80300, 'phpVersionId' => PHP_VERSION_ID, 'database' => false, 'migrations' => false, 'mail' => false]);
+    // Keep only the constant stage reason and completed booleans, never exception details.
+    $result['ok'] = false;
 }}
 """.encode("utf-8")
 
