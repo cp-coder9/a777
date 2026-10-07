@@ -906,6 +906,18 @@ final class CpanelNativeDeployment
         $response=$controller(\Architex\Http\Request::fromGlobals());
         self::httpReady(['status'=>$response->status(),'body'=>$response->body()]);
     }
+    /** Fixed-shape diagnostic only: never retain bodies, headers or capabilities. */
+    public static function readinessMetadata(array $response): array
+    {
+        $json=is_string($response['body']??null)?json_decode($response['body'],true,32):null;
+        $data=is_array($json)?($json['data']??null):null;
+        $enum=static fn($value)=>in_array($value,['ready','not_ready','unavailable'],true)?$value:null;
+        $components=[];
+        foreach (['database','migrations','jobs','mail'] as $name) $components[$name]=$enum($data['components'][$name]['status']??null);
+        return ['status'=>is_int($response['status']??null)?$response['status']:0,
+            'hasJson'=>is_array($json),'readinessStatus'=>$enum($data['status']??null),
+            'components'=>$components,'maintenanceLeasePresent'=>isset($response['headers']['x-a777-deployment-lease'])];
+    }
     private static function httpReady(array $response): void
     {
         self::need($response['status']===200,'readiness_http'); $json=json_decode($response['body'],true,32,JSON_THROW_ON_ERROR); $data=$json['data']??null;
