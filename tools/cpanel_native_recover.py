@@ -162,6 +162,9 @@ def validated_pointer(client, plan, original, consumed_path, consumed):
     raw = private_read(client, pointer['planPath'])
     require(digest(raw.encode('ascii')) == pointer['planSha256'])
     shadow = dict(plan, expectedRecoveryCommit=recovery)
+    if recovery != plan['expectedRecoveryCommit'] and 'privateRuntimeRelocation' not in json.loads(raw):
+        shadow.pop('privateRuntimeRelocation', None)
+        shadow.pop('privateRuntimeDestination', None)
     require(json.loads(raw) == shadow and raw == encoded(shadow) + '\n')
     pointer_guard_commit(client, plan, pointer)
     require(private_read(client, p.PLAN) == original and private_read(client, consumed_path) == consumed)
@@ -241,6 +244,8 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         plan_path = p.DEPLOY_ROOT + '/recovery-plan-' + expected + '.json'
         # Existing recovery state is validated below before any private writes.
         plan = {'mode': 'native-recover', 'account': 'archite4', 'repository': p.ROOT, 'target': p.HOME,
+                'privateRuntimeRelocation': True,
+                'privateRuntimeDestination': '/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061',
                 'expectedRecoveryCommit': expected, 'releaseCommit': release, 'oldPlanSha256': old_sha,
                 'recoveredDeploymentId': prior['deploymentId'], 'originalPlanPath': p.PLAN,
                 'artifactPath': old['artifactPath'], 'backupId': prior['backupId'],

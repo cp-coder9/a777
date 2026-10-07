@@ -98,6 +98,9 @@ jobs:
           php tools/tests/CpanelNativeDeployment_files_native.php
           php tools/tests/CpanelNativeRecovery_test.php
           TMPDIR="$RUNNER_TEMP" php tools/tests/CpanelNativeRecovery_nativeFilesystem_test.php
+          sudo useradd --uid 2657 --no-create-home a777-relocation-fixture
+          sudo install -d -o 2657 -g 2657 -m 0700 "$RUNNER_TEMP/private-relocation-fixture"
+          sudo -u '#2657' env TMPDIR="$RUNNER_TEMP/private-relocation-fixture" php tools/tests/CpanelPrivateRuntimeRelocation_test.php
       - name: Verify real locked production artifact without hosting credentials
         if: ${{ inputs.mode != 'native-status' && inputs.mode != 'native-recover' }}
         env:
