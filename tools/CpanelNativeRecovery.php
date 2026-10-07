@@ -246,7 +246,10 @@ final class CpanelNativeRecovery
             self::verifyRelocationPublic($runtime.'/public',self::PUBLIC,$gate,$h,$journal,true);
             $h['provePrivateGate']($lease,$gate,$work);
             self::need((require $runtime.'/config/runtime.php')===$new);
-            $h['ready']($pdo,$runtime,$new); $h['privateWebProbe']($work,$lease,self::OLD,$journal);
+            $h['ready']($pdo,$runtime,$new);
+            if (($relocationApproval['directPublicActivation']??false)===true) {
+                $h['append']($journal,['phase'=>'explicit-direct-public-activation','freshNonceProbeRequired'=>false]);
+            } else $h['privateWebProbe']($work,$lease,self::OLD,$journal);
             $normal=file_get_contents($runtime.'/public/.htaccess'); self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));
             $h['append']($journal,['phase'=>'recovery-maintenance-release-intent','sha256'=>hash('sha256',$normal)]);
             $h['replace'](self::PUBLIC.'/.htaccess',$gate,$normal,0644,$journal);
@@ -282,8 +285,12 @@ final class CpanelNativeRecovery
             if (isset($h['replace']) && is_string($gate) && is_file(self::PUBLIC.'/.htaccess')) {
                 try {
                     $current=file_get_contents(self::PUBLIC.'/.htaccess');
-                    if ($current!==$gate && ($current===$normal || str_contains($current,'# a777-native-maintenance'))) $h['replace'](self::PUBLIC.'/.htaccess',$current,$gate,0644,$journal);
-                    self::need(file_get_contents(self::PUBLIC.'/.htaccess')===$gate);
+                    if (($relocationApproval['directPublicActivation']??false)===true && is_string($normal) && $current===$normal) {
+                        $result['maintenanceRetained']=false;
+                    } else {
+                        if ($current!==$gate && ($current===$normal || str_contains($current,'# a777-native-maintenance'))) $h['replace'](self::PUBLIC.'/.htaccess',$current,$gate,0644,$journal);
+                        self::need(file_get_contents(self::PUBLIC.'/.htaccess')===$gate);
+                    }
                 } catch (Throwable) { $result['maintenanceStateUnknown']=true; }
             }
         } finally { if (is_resource($lock)) { flock($lock,LOCK_UN); fclose($lock); } umask($mask); }

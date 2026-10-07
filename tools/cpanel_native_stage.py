@@ -352,6 +352,8 @@ def native_status(client):
             **{key: prior[key] for key in ('archiveSha256', 'artifactTreeSha256', 'artifactManifestSha256', 'buildSha256')}}
         if 'privateRuntimeRelocation' in recovery_plan:
             expected_plan.update(privateRuntimeRelocation=True, privateRuntimeDestination='/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061')
+        if 'directPublicActivation' in recovery_plan:
+            expected_plan['directPublicActivation'] = True
         require(recovery_plan == expected_plan and raw == encoded(recovery_plan) + '\n')
         work = p.DEPLOY_ROOT + '/deployment-' + prior['deploymentId']
         preflights = []
