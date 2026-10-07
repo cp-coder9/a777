@@ -38,6 +38,20 @@ try {
     foreach (['account-origin-http','account-origin-https'] as $transport) if (!$invoke('runtimeLoopbackDenied',['transport'=>$transport,'status'=>403,'peerVerified'=>true,'curlErrorCode'=>0])) throw new RuntimeException('denial refused');
     echo "PASS scoped HTTPS upgrade, TLS/interface/resolve pins and challenge refusal (synthetic contracts only)\n";
     $source=file_get_contents(dirname(__DIR__).'/CpanelNativeDeployment.php');
+    if ($invoke('webProbeScriptMode',true)!==0644 || $invoke('webProbeScriptMode',false)!==0600) throw new RuntimeException('public nonce / legacy private script modes');
+    // Synthetic stat-policy checks, not fabricated observations of Windows file modes.
+    $scriptStat=['mode'=>0100644,'uid'=>123,'nlink'=>1];
+    if (!$invoke('webProbeScriptStat',$scriptStat,123,0644)) throw new RuntimeException('public script stat policy');
+    foreach (['mode'=>0100600,'uid'=>124,'nlink'=>2] as $key=>$bad) {
+        $changed=$scriptStat; $changed[$key]=$bad;
+        if ($invoke('webProbeScriptStat',$changed,123,0644)) throw new RuntimeException('unsafe public script stat accepted');
+    }
+    if ($invoke('webProbeScriptStat',false,123,0644) || $invoke('webProbeScriptStat',['mode'=>0120644,'uid'=>123,'nlink'=>1],123,0644)) throw new RuntimeException('nonregular public script accepted');
+    foreach (['self::put($path,$code,$scriptMode)', 'self::replaceOwned($path,$code,$newCode,$scriptMode,$journal)', 'self::webProbeScriptStat(self::freshStat($path),posix_geteuid(),$scriptMode)', '!file_exists($path) && !is_link($path)', 'self::privateFile($proof)', 'chmod($proofPath,0600)', 'chmod($diagnosticPath,0600)', "(\$stat['mode']&07777)!==0700", "(\$stat['mode']&07777)!==0600"] as $required) {
+        if (!str_contains($source,$required)) throw new RuntimeException('probe mode/cleanup/private policy missing');
+    }
+    echo "PASS public nonce 0644, legacy/private proof 0600, private directory 0700 and strict cleanup (synthetic policy/source assertions)\n";
+    echo "UNAVAILABLE native public-script 0644/private-proof 0600 Apache execution fixture on Windows; host retry required\n";
     $preflightStart=strpos($source,'private static function accountOriginPreflight');
     $preflightEnd=strpos($source,'private static function runtimeLoopbackOptions',$preflightStart);
     $preflight=substr($source,$preflightStart,$preflightEnd-$preflightStart);
