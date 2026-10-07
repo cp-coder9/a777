@@ -1084,6 +1084,48 @@ PHP;
             && ($stat['mode']&0170000)===0100000 && ($stat['mode']&07777)===$mode
             && $stat['uid']===$owner && $stat['nlink']===1;
     }
+    /** Pure policy: maintenance is never readiness, only a bounded propagation observation. */
+    private static function webProbeMaintenanceRetry(array $r,string $lease,int $attempt,bool $proofPresent,bool $preflightPresent,bool $bound): bool
+    {
+        $headers=$r['headers']??null;
+        if (!is_array($headers) || array_diff(array_keys($headers),[
+            'x-a777-deployment-lease','cache-control','date','server','content-type','content-length',
+            'connection','keep-alive','transfer-encoding','expires','pragma','retry-after','vary','strict-transport-security'
+        ])!==[] || (isset($headers['cache-control']) && $headers['cache-control']!=='no-store')) return false;
+        return $attempt>=1 && $attempt<12 && $bound && !$proofPresent && !$preflightPresent
+            && ($r['status']??null)===503 && ($r['curlErrorCode']??null)===0
+            && ($r['body']??null)==='Deployment maintenance'
+            && ($r['headers']['x-a777-deployment-lease']??null)===$lease;
+    }
+    /** Prove this process still owns the existing activation lock; never acquire another lock. */
+    private static function activeNativeActivationLock(): bool
+    {
+        $path=self::PRIVATE_ROOT.'/native-activation.lock';
+        $stat=self::freshStat($path);
+        if (!self::webProbeScriptStat($stat,posix_geteuid(),0600)) return false;
+        $fds=glob('/proc/self/fdinfo/[0-9]*');
+        if (!is_array($fds)) return false;
+        foreach ($fds as $fd) {
+            $info=@file_get_contents($fd);
+            if (!is_string($info)) continue;
+            if (preg_match('/^lock:\s+\d+: FLOCK\s+ADVISORY\s+WRITE\s+(\d+)\s+([a-f0-9]+):([a-f0-9]+):(\d+)\s+0\s+EOF$/mi',$info,$m)
+                && (int)$m[1]===getmypid() && (int)$m[4]===$stat['ino']) {
+                $major=(($stat['dev']>>8)&0xfff)|(($stat['dev']>>32)&0xfffff000);
+                $minor=($stat['dev']&0xff)|(($stat['dev']>>12)&0xffffff00);
+                if (hexdec($m[2])===$major && hexdec($m[3])===$minor) return true;
+            }
+        }
+        return false;
+    }
+    private static function webProbeAttemptBound(string $path,string $code,int $mode,string $temporary): bool
+    {
+        clearstatcache();
+        return self::activeNativeActivationLock()
+            && self::webProbeScriptStat(self::freshStat(self::DOCROOT.'/.htaccess'),posix_geteuid(),0644)
+            && file_get_contents(self::DOCROOT.'/.htaccess')===$temporary
+            && self::webProbeScriptStat(self::freshStat($path),posix_geteuid(),$mode)
+            && hash_file('sha256',$path)===hash('sha256',$code);
+    }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal,bool $privateRecovery=false): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
@@ -1105,7 +1147,30 @@ PHP;
         self::replaceOwned($path,$code,$newCode,$scriptMode,$journal);
         $primary=null;
         try {
-            $r=self::http('/'.$name,self::WEB,$privateRecovery?[]:['X-A777-Native-Probe: '.$secret],true);
+            $attemptCount=0; $observedStatuses=[]; $bound=true;
+            do {
+                if ($privateRecovery) {
+                    $bound=self::webProbeAttemptBound($path,$newCode,$scriptMode,$temporary);
+                    clearstatcache();
+                    if (!$bound || file_exists($proof) || is_link($proof) || file_exists($preflight) || is_link($preflight)) {
+                        if ($attemptCount>0) break;
+                        self::need(false,'probe_absence');
+                    }
+                }
+                $r=self::http('/'.$name,self::WEB,$privateRecovery?['Cache-Control: no-cache']:['X-A777-Native-Probe: '.$secret],true);
+                ++$attemptCount; $observedStatuses[]=(int)$r['status'];
+                clearstatcache();
+                if (!$privateRecovery) break;
+                $bound=self::webProbeAttemptBound($path,$newCode,$scriptMode,$temporary);
+                clearstatcache();
+                $retry=self::webProbeMaintenanceRetry($r,$lease,$attemptCount,
+                    file_exists($proof)||is_link($proof),file_exists($preflight)||is_link($preflight),$bound);
+                self::append($journal,['phase'=>$retry?'web-probe-maintenance-observed':'web-probe-attempts-complete',
+                    'attemptCount'=>$attemptCount,'observedStatuses'=>$observedStatuses]);
+                if (!$retry) break;
+                // Foreground hosting-account delay; same nonce, gate and transport on the next GET.
+                sleep(5);
+            } while ($attemptCount<12);
             $transport='public-https'; clearstatcache(true,$proof);
             if (!$privateRecovery && self::webProbeFallback($r,is_file($proof))) {
                 $r=self::webProbeLoopbackHttp($name,$secret); $transport=$r['transport'];
@@ -1125,6 +1190,7 @@ PHP;
                 self::replaceOwned($responsePath,(string)file_get_contents($responsePath),$responseBytes,0600,$journal);
             } else self::put($responsePath,$responseBytes,0600);
             self::need($r['curlErrorCode']===0,'http_transport'); self::need($r['status']===200,'web_pool_probe');
+            if ($privateRecovery) self::need($bound,'replace_identity');
             $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&self::webProbeIdentity($p,$name)&&is_string($p['webSapi']??null)&&!in_array($p['webSapi'],['cli','phpdbg'],true),'web_pool_identity'); self::httpReady($p);
             self::httpBuild(['status'=>200,'body'=>json_encode($p['build'],JSON_THROW_ON_ERROR)],$commit);
             self::privateFile($proof); self::need(json_decode(file_get_contents($proof),true,32,JSON_THROW_ON_ERROR)===$p,'web_pool_readback');
