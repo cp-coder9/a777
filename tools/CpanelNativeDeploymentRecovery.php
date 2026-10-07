@@ -32,7 +32,7 @@ final class CpanelNativeDeploymentRecovery
             'releaseCommit'=>$p['releaseCommit'],'oldPlanSha256'=>$p['oldPlanSha256'],'planSha256'=>$sha,
             'recoveredDeploymentId'=>$p['recoveredDeploymentId'],'phase'=>$ok?'complete':'recovery_required',
             'deployed'=>$ok,'sourceMigrationsReplayed'=>false,'sourceAlreadyCurrent'=>$ok,
-            'sourceAppliedPriorCount'=>$ok?8:0,'maintenanceActive'=>!$ok,'maintenanceRetained'=>!$ok,
+            'sourceAppliedPriorCount'=>$ok?8:0,'maintenanceActive'=>$outcome['maintenanceRetained']??true,'maintenanceRetained'=>$outcome['maintenanceRetained']??true,
             'appPrivilegesRestored'=>$ok,'operatorPrivilegesRevoked'=>$ok,'operatorStateUnknown'=>!$ok,
             'sourcePrivilegeStateUnknown'=>!$ok,'appConfigDeltaVerified'=>$ok,'readinessPassed'=>$ok,'artifactVerified'=>$ok];
         foreach (['backupId','archiveSha256','artifactTreeSha256','artifactManifestSha256','buildSha256'] as $key) $r[$key]=$ok?($outcome[$key]??null):null;
