@@ -1,0 +1,45 @@
+name: cPanel same-docroot refresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a777-cpanel-git
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact synthetic API2 fixtures (no hosting credentials)
+        run: python -m unittest discover -s tools/tests -p 'test_cpanel_docroot_refresh.py'
+      - name: Explicit same-value owned subdomain update and public verification
+        env:
+          A777_CPANEL_HOST: cp73.domains.co.za
+          A777_CPANEL_PORT: '2083'
+          A777_CPANEL_USER: archite4
+          A777_CPANEL_ACCOUNT_HOME: /home/archite4
+          A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/master ]] || exit 1
+          umask 077
+          python tools/cpanel_docroot_refresh.py account-docroot-refresh --report "$RUNNER_TEMP/cpanel-docroot-refresh.json"
+      - name: Retain allowlisted result (not a reload claim)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpanel-docroot-refresh
+          path: ${{ runner.temp }}/cpanel-docroot-refresh.json
+          if-no-files-found: warn
+          retention-days: 7
