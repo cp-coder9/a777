@@ -178,8 +178,10 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         client.trash(POINTER); require(not p.exists(client, POINTER))
         require(p.cleanup_token(client, {'attempted': True}))
         report.update(status='native_recover_complete', runtime_deployed=True, tokenAbsenceVerified=True, tokenRetainedForRecovery=False, originalPlanUnchanged=True)
-    except Exception:
+    except Exception as failure:
         report.update(error='native_recovery_refused_or_incomplete', failureStage=stage)
+        import os, traceback
+        report['failureLocations'] = [{'file': os.path.basename(frame.filename), 'line': frame.lineno, 'function': frame.name} for frame in traceback.extract_tb(failure.__traceback__) if os.path.basename(frame.filename) in {'cpanel_native_recover.py', 'cpanel_git_prepare.py', 'cpanel_native_stage.py'}]
         try:
             retained_token(client)
             report['tokenProtectionVerified'] = True
