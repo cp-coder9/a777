@@ -289,6 +289,14 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         report['terminalTaskState'] = terminal
         stage = 'fresh_recovery_metadata'
         report['recoveryDiagnostics'] = recovery_diagnostics(client, expected, previous)
+        for name in ('web-probe-check.json', 'runtime-origin-check.json'):
+            diagnostic_path = work + '/' + name
+            if p.exists(client, diagnostic_path):
+                data = json.loads(private_read(client, diagnostic_path))
+                allowed = {'status', 'curlErrorCode', 'proofPresent'} if name == 'web-probe-check.json' else {'transport', 'status', 'peerVerified', 'curlErrorCode'}
+                require(isinstance(data, dict) and set(data) == allowed)
+                require(type(data['status']) is int and 0 <= data['status'] <= 599 and type(data['curlErrorCode']) is int)
+                report[name] = data
         metadata = recovery_metadata(client, expected, plan_sha, old_sha, release, prior, previous)
         if metadata is not None:
             report['receipt'] = metadata
