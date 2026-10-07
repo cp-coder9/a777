@@ -148,7 +148,11 @@ def pointer_guard_commit(client, plan, pointer):
     previous = commit((latest.get('repository_state') or {}).get('identifier'))
     failed_recovery_guard(client, previous)
     shadow = dict(plan, expectedRecoveryCommit=previous)
-    require(private_read(client, p.DEPLOY_ROOT + '/recovery-plan-' + previous + '.json') == encoded(shadow) + '\n')
+    previous_raw = private_read(client, p.DEPLOY_ROOT + '/recovery-plan-' + previous + '.json')
+    if 'privateRuntimeRelocation' not in json.loads(previous_raw):
+        shadow.pop('privateRuntimeRelocation', None)
+        shadow.pop('privateRuntimeDestination', None)
+    require(previous_raw == encoded(shadow) + '\n')
     return previous
 
 
