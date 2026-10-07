@@ -99,7 +99,8 @@ jobs:
           php tools/tests/CpanelNativeRecovery_test.php
           TMPDIR="$RUNNER_TEMP" php tools/tests/CpanelNativeRecovery_nativeFilesystem_test.php
           sudo useradd --uid 2657 --no-create-home a777-relocation-fixture
-          RELOCATION_FIXTURE=$(sudo mktemp -d /opt/a777-relocation.XXXXXXXX)
+          sudo install -d -o root -g root -m 0755 /a777-relocation-fixtures
+          RELOCATION_FIXTURE=$(sudo mktemp -d /a777-relocation-fixtures/run.XXXXXXXX)
           sudo cp -a tools app "$RELOCATION_FIXTURE/"
           sudo chown -R 2657:2657 "$RELOCATION_FIXTURE"
           sudo -u '#2657' env TMPDIR="$RELOCATION_FIXTURE" php "$RELOCATION_FIXTURE/tools/tests/CpanelPrivateRuntimeRelocation_test.php"
