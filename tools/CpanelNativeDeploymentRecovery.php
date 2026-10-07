@@ -38,7 +38,38 @@ final class CpanelNativeDeploymentRecovery
         foreach (['backupId','archiveSha256','artifactTreeSha256','artifactManifestSha256','buildSha256'] as $key) $r[$key]=$ok?($outcome[$key]??null):null;
         return $r;
     }
+    public static function diagnostic(array $internal): array
+    {
+        $file=$internal['sourceFile']??null; $line=$internal['sourceLine']??null;
+        $reason=$internal['reason']??'unclassified';
+        if (!in_array($reason,['recovery_evidence_refused','native_recovery_contract_refused','native_deployment_refused','unclassified'],true)) $reason='unclassified';
+        if (!in_array($file,['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php'],true) || !is_int($line) || $line<1 || $line>100000) {
+            $file='CpanelNativeDeploymentRecovery.php'; $line=__LINE__; $reason='unclassified';
+        }
+        return ['file'=>$file,'reasonCode'=>$reason,'line'=>$line];
+    }
+    private static function writeDiagnostic(string $sha,array $internal): void
+    {
+        self::need(preg_match('/\A[a-f0-9]{40}\z/',$sha)===1);
+        $path=CpanelGitDeploy::PRIVATE_ROOT.'/recoverydiag-'.$sha.'-'.bin2hex(random_bytes(8)).'.json';
+        self::need(!file_exists($path) && !is_link($path));
+        $diagnostic=self::diagnostic($internal);
+        CpanelGitDeploy::journal($path,$diagnostic);
+        self::need(json_decode(self::privateBytes($path),true,32,JSON_THROW_ON_ERROR)===$diagnostic);
+    }
     public static function run(string $pointer): void
+    {
+        try { self::runReviewed($pointer); }
+        catch (Throwable $failure) {
+            try {
+                $sha=CpanelGitDeploy::command(['/usr/local/cpanel/3rdparty/bin/git','rev-parse','HEAD'],CpanelGitDeploy::REPO);
+                self::need(preg_match('/\A[a-f0-9]{40}\z/',$sha)===1);
+                self::writeDiagnostic($sha,CpanelNativeRecovery::safeFailure($failure));
+            } catch (Throwable) { /* Diagnostics must never alter refusal or emit private material. */ }
+            throw $failure;
+        }
+    }
+    private static function runReviewed(string $pointer): void
     {
         $root=CpanelGitDeploy::PRIVATE_ROOT;
         $v=json_decode(self::privateBytes($pointer),true,32,JSON_THROW_ON_ERROR);
@@ -76,6 +107,9 @@ final class CpanelNativeDeploymentRecovery
             if (str_starts_with($class,'Architex\\')) { $path=CpanelGitDeploy::REPO.'/app/src/'.str_replace('\\','/',substr($class,9)).'.php'; if(is_file($path)) require_once $path; }
         },true,true);
         $outcome=CpanelNativeRecovery::run($p['originalPlanPath'],$matches[0],$p['expectedRecoveryCommit'],$p['oldPlanSha256']);
+        if (isset($outcome['failureDiagnostic'])) {
+            self::writeDiagnostic($p['expectedRecoveryCommit'],$outcome['failureDiagnostic']);
+        }
         $r=self::receipt($outcome,$p,$v['planSha256']);
         $path=$root.'/native-recover-'.$p['expectedRecoveryCommit'].'-'.bin2hex(random_bytes(8)).'.json';
         CpanelGitDeploy::journal($path,$r);

@@ -182,9 +182,29 @@ def native_status(client):
                 inventory[label]={'exists':True,'candidateMarkerPresent':any(row.get('name')=='.candidate-id' for row in rows)}
             else:
                 inventory[label]={'exists':False,'candidateMarkerPresent':False}
+    recovery_status = {}
+    from cpanel_native_recover import POINTER, private_read, validated_pointer, old_receipt, recovery_metadata, recovery_diagnostics
+    if p.exists(client, POINTER):
+        pointer = json.loads(private_read(client, POINTER))
+        require(isinstance(pointer, dict) and set(pointer) == {'mode', 'expectedRecoveryCommit', 'planPath', 'planSha256'})
+        recovery = commit(pointer['expectedRecoveryCommit'])
+        require(pointer['mode'] == 'native-recover' and pointer['planPath'] == p.DEPLOY_ROOT + '/recovery-plan-' + recovery + '.json')
+        raw = private_read(client, pointer['planPath'])
+        require(digest(raw.encode('ascii')) == pointer['planSha256'])
+        recovery_plan = json.loads(raw)
+        prior = old_receipt(client, expected, plan_sha)
+        expected_plan = {'mode': 'native-recover', 'account': 'archite4', 'repository': p.ROOT, 'target': p.HOME,
+            'expectedRecoveryCommit': recovery, 'releaseCommit': expected, 'oldPlanSha256': plan_sha,
+            'recoveredDeploymentId': prior['deploymentId'], 'originalPlanPath': p.PLAN,
+            'artifactPath': old.get('artifactPath'), 'backupId': prior['backupId'],
+            **{key: prior[key] for key in ('archiveSha256', 'artifactTreeSha256', 'artifactManifestSha256', 'buildSha256')}}
+        require(recovery_plan == expected_plan and raw == encoded(expected_plan) + '\n')
+        recovery_status['recoveryDiagnostics'] = recovery_diagnostics(client, recovery, set())
+        recovery_status['recoveryReceipt'] = recovery_metadata(client, recovery, pointer['planSha256'], plan_sha, expected, prior, set())
+        recovery_status['independentRecoveryDeployment'] = native_task_state(client, recovery)
     return {'mode':'native-status','status':'native_status_complete','runtime_deployed':False,
             'mutations_enabled':False,'commit':expected,'planSha256':plan_sha,
-            'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory}
+            'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory, **recovery_status}
 
 
 def safe_retry_plan(client, old, original, expected):
