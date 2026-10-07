@@ -845,7 +845,7 @@ final class CpanelNativeDeployment
         }
     }
     /** Capture normal returns and bootstrap exit without weakening any application gate. */
-    public static function webProbeCaptureCode(string $root,string $proof,string $prelude=''): string
+    public static function webProbeCaptureCode(string $root,string $proof,string $prelude='',string $probeId=''): string
     {
         $code = <<<'PHP'
 $root=ROOT_LITERAL;
@@ -866,7 +866,7 @@ register_shutdown_function(static function () use ($root,$proofPath,$level): voi
     $data['status']=in_array($data['status'],['ready','not_ready','unavailable'],true)?$data['status']:null;
     $build=json_decode((string)file_get_contents($root.'/public/build-info.json'),true);
     $build=array_intersect_key(is_array($build)?$build:[],array_flip(['sourceCommit','sourceDirty','environment']));
-    $proof=['status'=>(int)http_response_code(),'body'=>json_encode(['data'=>$data],JSON_THROW_ON_ERROR),'build'=>$build,'webSapi'=>PHP_SAPI];
+    $proof=['status'=>(int)http_response_code(),'body'=>json_encode(['data'=>$data],JSON_THROW_ON_ERROR),'build'=>$build,'webSapi'=>PHP_SAPI,'probeId'=>PROBE_ID_LITERAL];
     $bytes=json_encode($proof,JSON_THROW_ON_ERROR);
     $handle=fopen($proofPath,'x+b');
     if ($handle===false) { http_response_code(503); return; }
@@ -879,10 +879,10 @@ register_shutdown_function(static function () use ($root,$proofPath,$level): voi
 PRELUDE_LITERAL
 require $root.'/public/index.php';
 PHP;
-        return str_replace(['ROOT_LITERAL','PROOF_LITERAL','PRELUDE_LITERAL'],[var_export($root,true),var_export($proof,true),$prelude],$code);
+        return str_replace(['ROOT_LITERAL','PROOF_LITERAL','PRELUDE_LITERAL','PROBE_ID_LITERAL'],[var_export($root,true),var_export($proof,true),$prelude,var_export($probeId,true)],$code);
     }
     /** Fixed private diagnostics contain no request bytes, secrets or application output. */
-    public static function webProbeCode(string $root,string $proof,string $preflight,string $secret,string $gateHash): string
+    public static function webProbeCode(string $root,string $proof,string $preflight,string $secret,string $gateHash,string $probeId=''): string
     {
         $auth = <<<'PHP'
 <?php
@@ -916,13 +916,44 @@ if (extension_loaded('Zend OPcache')) {
 $diagnostic['probeStage']='bootstrap';
 $writeDiagnostic();
 PHP;
-        return str_replace(['SECRET_LITERAL','GATE_LITERAL','DIAGNOSTIC_LITERAL'],[var_export($secret,true),var_export($gateHash,true),var_export($preflight,true)],$auth)."\n".self::webProbeCaptureCode($root,$proof,$prelude);
+        return str_replace(['SECRET_LITERAL','GATE_LITERAL','DIAGNOSTIC_LITERAL'],[var_export($secret,true),var_export($gateHash,true),var_export($preflight,true)],$auth)."\n".self::webProbeCaptureCode($root,$proof,$prelude,$probeId);
     }
+    private static function webProbeLoopbackOptions(string $name,string $secret): array
+    {
+        self::need(preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1 && preg_match('/\A[a-f0-9]{64}\z/D',$secret)===1,'http_scope');
+        return [CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,
+            CURLOPT_RESOLVE=>['php.architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,
+            CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,
+            CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,
+            CURLOPT_HTTPGET=>true,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],
+            CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45];
+    }
+    private static function webProbeLoopbackHttp(string $name,string $secret): array
+    {
+        $options=self::webProbeLoopbackOptions($name,$secret);
+        $curl=curl_init(); self::need($curl!==false,'http_curl'); $body=''; $received=0;
+        try {
+            $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$body,&$received): int {
+                $received+=strlen($chunk); if ($received>1048576) return 0; $body.=$chunk; return strlen($chunk);
+            };
+            self::need(curl_setopt_array($curl,$options),'http_transport');
+            $ok=curl_exec($curl)!==false; $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
+            $error=curl_errno($curl);
+            return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$ok?$body:'',
+                'headers'=>[],'curlErrorCode'=>($ok && $peer==='127.0.0.1')?$error:max(1,$error),
+                'peerVerified'=>$peer==='127.0.0.1'];
+        } finally { curl_close($curl); }
+    }
+    private static function webProbeFallback(array $response,bool $proofPresent): bool
+    { return ($response['status']??null)===503 && !$proofPresent; }
+    private static function webProbeIdentity(array $proof,string $name): bool
+    { return ($proof['probeId']??null)===$name && preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1; }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
         $proof=$work.'/web-proof.json'; $gate=self::gateBytes($lease);
-        $code=self::webProbeCode(self::RUNTIME,$proof,$work.'/web-probe-preflight.json',$secret,hash('sha256',$gate));
+        self::need(!file_exists($proof) && !is_link($proof) && !file_exists($work.'/web-probe-preflight.json') && !is_link($work.'/web-probe-preflight.json'),'probe_absence');
+        $code=self::webProbeCode(self::RUNTIME,$proof,$work.'/web-probe-preflight.json',$secret,hash('sha256',$gate),$name);
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
         $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
@@ -933,6 +964,12 @@ PHP;
         $primary=null;
         try {
             $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
+            $transport='public-https'; clearstatcache(true,$proof);
+            if (self::webProbeFallback($r,is_file($proof))) {
+                $transport='loopback-http'; $r=self::webProbeLoopbackHttp($name,$secret);
+            }
+            clearstatcache(true,$proof);
+            self::append($journal,['phase'=>'web-probe-transport','transport'=>$transport]);
             $checkPath=$work.'/web-probe-check.json';
             $checkBytes=json_encode(['status'=>$r['status'],'curlErrorCode'=>$r['curlErrorCode'],'proofPresent'=>is_file($proof)],JSON_THROW_ON_ERROR);
             if (file_exists($checkPath) || is_link($checkPath)) {
@@ -940,7 +977,7 @@ PHP;
                 self::replaceOwned($checkPath,(string)file_get_contents($checkPath),$checkBytes,0600,$journal);
             } else self::put($checkPath,$checkBytes,0600);
             self::need($r['curlErrorCode']===0,'http_transport'); self::need($r['status']===200,'web_pool_probe');
-            $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&($p['webSapi']??'cli')!=='cli','web_pool_identity'); self::httpReady($p);
+            $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&self::webProbeIdentity($p,$name)&&is_string($p['webSapi']??null)&&!in_array($p['webSapi'],['cli','phpdbg'],true),'web_pool_identity'); self::httpReady($p);
             self::httpBuild(['status'=>200,'body'=>json_encode($p['build'],JSON_THROW_ON_ERROR)],$commit);
             self::privateFile($proof); self::need(json_decode(file_get_contents($proof),true,32,JSON_THROW_ON_ERROR)===$p,'web_pool_readback');
         } catch (Throwable $error) { $primary=$error; throw $error; } finally {
