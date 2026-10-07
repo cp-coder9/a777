@@ -305,6 +305,13 @@ def private_root_metadata(client):
 
 def native_status(client):
     p.authorize(client)
+    ancestor_rules = {}
+    for label, path in (('account', p.HOME + '/.htaccess'), ('publicParent', p.HOME + '/public_html/.htaccess')):
+        if p.exists(client, path):
+            rules = p.read(client, path)
+            ancestor_rules[label] = {'exists': True, 'nativeMaintenanceMarker': '# a777-native-maintenance' in rules, 'rewrite503Present': any(line.lstrip().startswith('RewriteRule ') and 'R=503' in line for line in rules.splitlines()), 'deploymentLeaseHeaderPresent': 'X-A777-Deployment-Lease' in rules}
+        else:
+            ancestor_rules[label] = {'exists': False}
     p.owned_mode(client, p.DEPLOY_ROOT, '0700', True)
     p.owned_mode(client, p.PLAN, '0600')
     original = p.read(client, p.PLAN)
@@ -365,7 +372,7 @@ def native_status(client):
     return {'mode':'native-status','status':'native_status_complete','runtime_deployed':False,
             'mutations_enabled':False,'commit':expected,'planSha256':plan_sha,
             'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory,
-            'vhostInventory':vhost_inventory(client), **recovery_status}
+            'vhostInventory':vhost_inventory(client), 'ancestorRuleMetadata':ancestor_rules, **recovery_status}
 
 
 def safe_retry_plan(client, old, original, expected):
