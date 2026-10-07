@@ -31,6 +31,10 @@ class StatusTests(unittest.TestCase):
         client.config=Mock(host='cp73.domains.co.za',port=2083,username='archite4',account_home=n.p.HOME,allowed_root=n.p.HOME,api_token='fixture')
         def api(module,function,args):
             if (module,function)==('Variables','get_user_information'): return {'home':n.p.HOME}
+            if (module,function)==('DomainInfo','domains_data'):
+                self.assertEqual(args, {'format':'hash'})
+                return {'main_domain': {'servername':'architex.co.za','documentroot':n.p.HOME+'/public_html'},
+                        'sub_domains':[{'servername':'php.architex.co.za','documentroot':n.p.HOME+'/public_html/php.architex.co.za'}]}
             if (module,function)==('VersionControlDeployment','retrieve'): return [dict(repository_root=n.p.ROOT,repository_state={'identifier':SHA},task_id='task/13',timestamps={'failed':1})]
             if (module,function)==('Fileman','get_file_content'): return {'content':plan if args['file']=='operator-plan.json' else json.dumps(receipt)}
             if (module,function)==('Fileman','list_files'): return [{'name':'native-deploy-'+SHA+'-'+'b'*16+'.json'}]
@@ -64,5 +68,35 @@ class StatusTests(unittest.TestCase):
         report={'commit':SHA,'planSha256':n.digest(raw.encode()),'receipt':self.safe(),'independentNativeDeployment':{'status':'succeeded'}}
         with patch.object(n,'native_status',return_value=report):
             with self.assertRaises(CpanelError): n.safe_retry_plan(Mock(),old,raw,'b'*40)
+
+    def test_vhost_allowlist_and_unknown_socket_inventory(self):
+        row={'servername':'php.architex.co.za','documentroot':n.p.HOME+'/public_html/php.architex.co.za',
+             'user':'archite4','ip':'8.8.8.8','ipv4_port':'81','ipv6_port':443,'ssl':'1','password':'NEVER'}
+        data={'main_domain':{'servername':'architex.co.za','documentroot':n.p.HOME+'/public_html'},
+              'sub_domains':[row,{'servername':'unrelated.example','password':'NEVER'}]}
+        result=n.validated_vhost_inventory(data)
+        self.assertEqual(set(result['domains']),set(n.VHOST_TARGETS))
+        self.assertNotIn('NEVER',json.dumps(result))
+        self.assertTrue(result['domains']['php.architex.co.za']['originIPValidatedPublic'])
+        self.assertEqual(result['domains']['php.architex.co.za']['ipv4_port'],81)
+        self.assertTrue(result['domains']['php.architex.co.za']['ssl'])
+        self.assertNotIn('ipv4_port',result['domains']['architex.co.za'])
+        self.assertFalse(result['apacheSocketPortsVerified'])
+        self.assertFalse(result['httpDenialProven'])
+        for root in ('/home/other/public_html',n.p.HOME+'/../other',n.p.HOME+'//public_html'):
+            with self.subTest(root=root),self.assertRaises(CpanelError):
+                n.validated_vhost_inventory({'main_domain':dict(row,documentroot=root)})
+        with self.assertRaises(CpanelError):
+            n.validated_vhost_inventory({'sub_domains':[row,row]})
+        for ip in ('127.0.0.1','10.0.0.1','invalid','169.254.169.254'):
+            result=n.validated_vhost_inventory({'main_domain':dict(row,ip=ip,ipv4_port=True)})
+            safe=result['domains']['php.architex.co.za']
+            self.assertFalse(safe['originIPValidatedPublic']); self.assertNotIn('ip',safe)
+            self.assertNotIn('ipv4_port',safe)
+        client=Mock(); client._uapi.side_effect=CpanelError('SECRET provider response')
+        result=n.vhost_inventory(client)
+        self.assertEqual(result['status'],'unavailable')
+        self.assertNotIn('SECRET',json.dumps(result))
+        client._uapi.assert_called_once_with('DomainInfo','domains_data',{'format':'hash'})
 
 if __name__=='__main__': unittest.main()
