@@ -280,7 +280,20 @@ def native_status(client):
             'recoveredDeploymentId': prior['deploymentId'], 'originalPlanPath': p.PLAN,
             'artifactPath': old.get('artifactPath'), 'backupId': prior['backupId'],
             **{key: prior[key] for key in ('archiveSha256', 'artifactTreeSha256', 'artifactManifestSha256', 'buildSha256')}}
+        if 'privateRuntimeRelocation' in recovery_plan:
+            expected_plan.update(privateRuntimeRelocation=True, privateRuntimeDestination='/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061')
         require(recovery_plan == expected_plan and raw == encoded(expected_plan) + '\n')
+        work = p.DEPLOY_ROOT + '/deployment-' + prior['deploymentId']
+        preflights = []
+        for row in p.entries(client, work):
+            name = row.get('name', '')
+            if re.fullmatch(r'web-probe-preflight-[a-f0-9]{48}\.json', name):
+                data = json.loads(private_read(client, work + '/' + name))
+                flags = {'headerPresent', 'headerMatched', 'gateMatched', 'opcacheAvailable'}
+                require(isinstance(data, dict) and set(data) == flags | {'probeStage'})
+                require(all(type(data[k]) is bool for k in flags) and data['probeStage'] in {'authorization', 'opcache', 'bootstrap'})
+                preflights.append(data)
+        recovery_status['privateProbePreflights'] = preflights
         recovery_status['recoveryDiagnostics'] = recovery_diagnostics(client, recovery, set())
         recovery_status['recoveryReceipt'] = recovery_metadata(client, recovery, pointer['planSha256'], plan_sha, expected, prior, set())
         recovery_status['independentRecoveryDeployment'] = native_task_state(client, recovery)
