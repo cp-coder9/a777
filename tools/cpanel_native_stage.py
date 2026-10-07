@@ -158,6 +158,88 @@ def native_task_state(client, expected):
     return {'commit': expected, 'status': terminal[0], 'task_id': row['task_id']}
 
 
+VHOST_DOCUMENTATION = 'https://api.docs.cpanel.net/specifications/cpanel.openapi/domaininfo/domains_data'
+VHOST_TARGETS = ('php.architex.co.za', 'architex.co.za')
+
+
+def validated_vhost_inventory(data):
+    """Filter account userdata, not live socket discovery or HTTP denial proof.
+
+    DomainInfo documents optional returns: absence is unknown, never a default port.
+    Only exact target servernames with lexical account-owned roots are exported.
+    """
+    import ipaddress
+    require(isinstance(data, dict))
+    rows = []
+    def collect(value):
+        if isinstance(value, dict):
+            if 'servername' in value:
+                rows.append(value)
+            else:
+                for item in value.values():
+                    collect(item)
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+    for group in ('main_domain', 'addon_domains', 'sub_domains', 'parked_domains'):
+        collect(data.get(group))
+    domains = {}
+    for target in VHOST_TARGETS:
+        matches = [row for row in rows if row.get('servername') == target]
+        if not matches:
+            continue
+        require(len(matches) == 1)
+        row = matches[0]
+        root = row.get('documentroot')
+        require(isinstance(root, str) and root.isascii()
+                and re.fullmatch(r'/[A-Za-z0-9._/-]+', root)
+                and str(PurePosixPath(root)) == root
+                and '..' not in PurePosixPath(root).parts
+                and root.startswith(p.HOME + '/')
+                and row.get('user', 'archite4') == 'archite4')
+        safe = {'servername': target, 'documentroot': root, 'accountBound': True,
+                'matchesExpectedDocumentRoot': root == (p.HOME + '/public_html/php.architex.co.za'
+                    if target == 'php.architex.co.za' else p.HOME + '/public_html'),
+                'originIPValidatedPublic': False}
+        value = row.get('ip')
+        if isinstance(value, str):
+            try:
+                address = ipaddress.ip_address(value)
+            except ValueError:
+                pass
+            else:
+                if address.is_global:
+                    safe.update(ip=str(address), originIPValidatedPublic=True)
+        for key in ('ipv4_port', 'ipv6_port'):
+            value = row.get(key)
+            if type(value) is int or (isinstance(value, str) and re.fullmatch(r'[0-9]{1,5}', value)):
+                number = int(value)
+                if 1 <= number <= 65535:
+                    safe[key] = number
+        for key in ('ssl', 'has_ssl', 'is_https_redirecting'):
+            value = row.get(key)
+            if type(value) is bool or value in ('0', '1') or type(value) is int and value in (0, 1):
+                safe[key] = value is True or value == 1 or value == '1'
+        domains[target] = safe
+    return {'status': 'validated' if len(domains) == len(VHOST_TARGETS) else 'incomplete',
+            'source': 'DomainInfo/domains_data', 'documentation': VHOST_DOCUMENTATION,
+            'domains': domains, 'missingDomains': [d for d in VHOST_TARGETS if d not in domains],
+            'configuredRoutingOnly': True, 'apacheSocketInventoryCapability': 'UNSUPPORTED',
+            'apacheSocketPortsVerified': False, 'httpDenialProven': False}
+
+
+def vhost_inventory(client):
+    # Authorization is performed by native_status before this single account-only read.
+    try:
+        data = client._uapi('DomainInfo', 'domains_data', {'format': 'hash'})
+    except CpanelError:
+        return {'status': 'unavailable', 'source': 'DomainInfo/domains_data',
+                'documentation': VHOST_DOCUMENTATION, 'domains': {},
+                'apacheSocketInventoryCapability': 'UNSUPPORTED',
+                'apacheSocketPortsVerified': False, 'httpDenialProven': False}
+    return validated_vhost_inventory(data)
+
+
 def native_status(client):
     p.authorize(client)
     p.owned_mode(client, p.DEPLOY_ROOT, '0700', True)
@@ -204,7 +286,8 @@ def native_status(client):
         recovery_status['independentRecoveryDeployment'] = native_task_state(client, recovery)
     return {'mode':'native-status','status':'native_status_complete','runtime_deployed':False,
             'mutations_enabled':False,'commit':expected,'planSha256':plan_sha,
-            'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory, **recovery_status}
+            'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory,
+            'vhostInventory':vhost_inventory(client), **recovery_status}
 
 
 def safe_retry_plan(client, old, original, expected):
