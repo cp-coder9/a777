@@ -31,6 +31,15 @@ final class CpanelNativeRecovery
         foreach ($e->getTrace() as $frame) $locations[]=$frame;
         // A guard's throw line is less useful than the pinned caller's failed condition.
         if ($reason!=='unclassified' || ($e instanceof RuntimeException && $e->getFile()===__DIR__.DIRECTORY_SEPARATOR.'CpanelNativeDeployment.php')) $locations=array_merge($e->getTrace(),$locations);
+        // For branded native readiness refusals, prefer the recovery invocation,
+        // not need() or the shared httpReady() assertion line.
+        if (CpanelNativeDeployment::safeFailureCode($e)==='readiness_http') {
+            foreach ($e->getTrace() as $frame) {
+                if (($frame['file']??null)===__FILE__ && is_int($frame['line']??null)) {
+                    array_unshift($locations,$frame); break;
+                }
+            }
+        }
         foreach ($locations as $frame) {
             foreach ($owned as $name) if (($frame['file']??null)===__DIR__.DIRECTORY_SEPARATOR.$name && is_int($frame['line']??null) && $frame['line']>0) {
                 $out['sourceFile']=$name; $out['sourceLine']=$frame['line'];
@@ -238,7 +247,9 @@ final class CpanelNativeRecovery
             $normal=file_get_contents($runtime.'/public/.htaccess'); self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));
             $h['append']($journal,['phase'=>'recovery-maintenance-release-intent','sha256'=>hash('sha256',$normal)]);
             $h['replace'](self::PUBLIC.'/.htaccess',$gate,$normal,0644,$journal);
-            $h['httpReady']($h['http']('/api/v1/readiness')); $h['httpBuild']($h['http']('/build-info.json'),self::OLD);
+            $finalReadiness=$h['http']('/api/v1/readiness');
+            self::writeReadinessMetadata($work,$finalReadiness,$h,$journal);
+            $h['httpReady']($finalReadiness); $h['httpBuild']($h['http']('/build-info.json'),self::OLD);
             self::auditApis($h['http']);
             $result['apiAuditPassed']=true;
             $h['append']($journal,['phase'=>'recovery-api-audit','apiAuditPassed'=>true]);
@@ -249,7 +260,9 @@ final class CpanelNativeRecovery
                 && file_get_contents($runtime.'/config/runtime.php')===CpanelNativeDeployment::rewriteStorage((string)file_get_contents($work.'/original-runtime.php'),$new['FILE_STORAGE_PATH'])
                 && hash_file('sha256',$work.'/old-runtime/config/runtime.php')===self::PIN);
             self::verifyRelocationPublic($runtime.'/public',self::PUBLIC,$normal,$h,$journal,false);
-            $h['httpReady']($h['http']('/api/v1/readiness'));
+            $finalReadiness=$h['http']('/api/v1/readiness');
+            self::writeReadinessMetadata($work,$finalReadiness,$h,$journal);
+            $h['httpReady']($finalReadiness);
             $result+=['oldReleaseSHA'=>self::OLD,'approvedRecoveryGitSHA'=>$expectedApprovedRecoveryGitSHA,'planSha256'=>$expectedOldPlanSHA256,'deploymentId'=>self::ID];
             foreach (['backupId','archiveSha256','artifactTreeSha256','artifactManifestSha256','buildSha256'] as $key) $result[$key]=$r[$key];
             $result['sourceAlreadyCurrent']=true; $result['sourceAppliedPriorCount']=8;
@@ -272,6 +285,15 @@ final class CpanelNativeRecovery
             }
         } finally { if (is_resource($lock)) { flock($lock,LOCK_UN); fclose($lock); } umask($mask); }
         return $result;
+    }
+    private static function writeReadinessMetadata(string $work,array $response,array $h,string $journal): void
+    {
+        $path=$work.'/final-readiness-check.json';
+        $bytes=json_encode(CpanelNativeDeployment::readinessMetadata($response),JSON_THROW_ON_ERROR);
+        if (file_exists($path)) {
+            $h['privateFile']($path);
+            $h['replace']($path,(string)file_get_contents($path),$bytes,0600,$journal);
+        } else $h['put']($path,$bytes,0600);
     }
     public static function renameState(bool $candidate,bool $active,bool $oldRuntime,bool $publicCandidate,bool $public,bool $oldPublic): int
     {

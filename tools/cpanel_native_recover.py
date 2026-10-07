@@ -298,6 +298,14 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         report['terminalTaskState'] = terminal
         stage = 'fresh_recovery_metadata'
         report['recoveryDiagnostics'] = recovery_diagnostics(client, expected, previous)
+        final_path = work + '/final-readiness-check.json'
+        if p.exists(client, final_path):
+            final = json.loads(private_read(client, final_path))
+            require(isinstance(final, dict) and set(final) == {'status', 'hasJson', 'readinessStatus', 'components', 'maintenanceLeasePresent'})
+            require(type(final['status']) is int and type(final['hasJson']) is bool and type(final['maintenanceLeasePresent']) is bool)
+            states = {None, 'ready', 'not_ready', 'unavailable', 'degraded', 'error'}
+            require(final['readinessStatus'] in states and isinstance(final['components'], dict) and set(final['components']) == {'database', 'migrations', 'jobs', 'mail'} and all(v in states for v in final['components'].values()))
+            report['finalReadiness'] = final
         response_path = work + '/web-probe-response.json'
         if p.exists(client, response_path):
             response_flags = json.loads(private_read(client, response_path))
