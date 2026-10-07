@@ -289,6 +289,13 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         report['terminalTaskState'] = terminal
         stage = 'fresh_recovery_metadata'
         report['recoveryDiagnostics'] = recovery_diagnostics(client, expected, previous)
+        preflight_path = work + '/web-probe-preflight.json'
+        if p.exists(client, preflight_path):
+            preflight = json.loads(private_read(client, preflight_path))
+            flags = {'headerPresent', 'headerMatched', 'gateMatched', 'opcacheAvailable'}
+            require(isinstance(preflight, dict) and set(preflight) == flags | {'probeStage'})
+            require(all(type(preflight[k]) is bool for k in flags) and preflight['probeStage'] in {'authorization', 'opcache', 'bootstrap'})
+            report['webProbePreflight'] = preflight
         for name in ('web-probe-check.json', 'runtime-origin-check.json'):
             diagnostic_path = work + '/' + name
             if p.exists(client, diagnostic_path):

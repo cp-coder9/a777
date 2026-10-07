@@ -845,7 +845,7 @@ final class CpanelNativeDeployment
         }
     }
     /** Capture normal returns and bootstrap exit without weakening any application gate. */
-    public static function webProbeCaptureCode(string $root,string $proof): string
+    public static function webProbeCaptureCode(string $root,string $proof,string $prelude=''): string
     {
         $code = <<<'PHP'
 $root=ROOT_LITERAL;
@@ -876,19 +876,55 @@ register_shutdown_function(static function () use ($root,$proofPath,$level): voi
     header('Content-Type: application/json');
     echo $bytes;
 });
+PRELUDE_LITERAL
 require $root.'/public/index.php';
 PHP;
-        return str_replace(['ROOT_LITERAL','PROOF_LITERAL'],[var_export($root,true),var_export($proof,true)],$code);
+        return str_replace(['ROOT_LITERAL','PROOF_LITERAL','PRELUDE_LITERAL'],[var_export($root,true),var_export($proof,true),$prelude],$code);
+    }
+    /** Fixed private diagnostics contain no request bytes, secrets or application output. */
+    public static function webProbeCode(string $root,string $proof,string $preflight,string $secret,string $gateHash): string
+    {
+        $auth = <<<'PHP'
+<?php
+declare(strict_types=1);
+$header=(string)($_SERVER['HTTP_X_A777_NATIVE_PROBE']??'');
+$diagnostic=['headerPresent'=>$header!=='','headerMatched'=>hash_equals(SECRET_LITERAL,$header),'gateMatched'=>hash_equals(GATE_LITERAL,(string)hash_file('sha256',__DIR__.'/.htaccess')),'opcacheAvailable'=>function_exists('opcache_invalidate'),'probeStage'=>'authorization'];
+$diagnosticPath=DIAGNOSTIC_LITERAL;
+$writeDiagnostic=static function () use (&$diagnostic,$diagnosticPath): void {
+    $bytes=json_encode($diagnostic,JSON_THROW_ON_ERROR);
+    $handle=fopen($diagnosticPath,'x+b');
+    if ($handle===false) { http_response_code(503); exit; }
+    try {
+        if (!chmod($diagnosticPath,0600) || !flock($handle,LOCK_EX) || fwrite($handle,$bytes)!==strlen($bytes) || !fflush($handle)) { http_response_code(503); exit; }
+    } finally { fclose($handle); }
+};
+if (!$diagnostic['headerMatched'] || !$diagnostic['gateMatched']) { $writeDiagnostic(); http_response_code(503); exit; }
+PHP;
+        $prelude = <<<'PHP'
+$diagnostic['probeStage']='opcache';
+if (extension_loaded('Zend OPcache')) {
+    if (!function_exists('opcache_get_status') || !function_exists('opcache_invalidate') || !function_exists('opcache_is_script_cached')) { $writeDiagnostic(); http_response_code(503); exit; }
+    $cacheStatus=opcache_get_status(false);
+    $disabled=in_array(strtolower(trim((string)ini_get('opcache.enable'))),['0','off','false'],true);
+    if ($cacheStatus===false && !$disabled) { $writeDiagnostic(); http_response_code(503); exit; }
+    if ($cacheStatus!==false) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS)) as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(),'.php') && opcache_is_script_cached($f->getPathname()) && !opcache_invalidate($f->getPathname(),true)) { $writeDiagnostic(); http_response_code(503); exit; }
+        }
+    }
+}
+$diagnostic['probeStage']='bootstrap';
+$writeDiagnostic();
+PHP;
+        return str_replace(['SECRET_LITERAL','GATE_LITERAL','DIAGNOSTIC_LITERAL'],[var_export($secret,true),var_export($gateHash,true),var_export($preflight,true)],$auth)."\n".self::webProbeCaptureCode($root,$proof,$prelude);
     }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
         $proof=$work.'/web-proof.json'; $gate=self::gateBytes($lease);
-        $code="<?php\ndeclare(strict_types=1);\nif (!hash_equals(".var_export($secret,true).", (string)(\$_SERVER['HTTP_X_A777_NATIVE_PROBE']??'')) || !hash_equals(".var_export(hash('sha256',$gate),true).", (string)hash_file('sha256',__DIR__.'/.htaccess'))) { http_response_code(503); exit; }\n";
-        $code.="if (!function_exists('opcache_invalidate')) { http_response_code(503); exit; }\n\$root=".var_export(self::RUNTIME,true)."; \$failed=[]; foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$root,FilesystemIterator::SKIP_DOTS)) as \$f) if(\$f->isFile()&&str_ends_with(\$f->getFilename(),'.php')&&function_exists('opcache_is_script_cached')&&opcache_is_script_cached(\$f->getPathname())&&!opcache_invalidate(\$f->getPathname(),true)) \$failed[]=true;\nif(\$failed!==[]) { http_response_code(503); exit; }\n";
-        $code.=self::webProbeCaptureCode(self::RUNTIME,$proof);
+        $code=self::webProbeCode(self::RUNTIME,$proof,$work.'/web-probe-preflight.json',$secret,hash('sha256',$gate));
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
-        $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [L]\n";
+        $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
         self::replaceOwned(self::DOCROOT.'/.htaccess',$gate,$temporary,0644,$journal);
         // Authentication reads the exact temporary lease hash, not any application-wide bypass.
