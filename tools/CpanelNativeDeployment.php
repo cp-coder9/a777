@@ -605,6 +605,51 @@ final class CpanelNativeDeployment
         if ($before<0 || $now<0 || $before>$now || $before===PHP_INT_MAX) throw new RuntimeException('Gate timestamp refused.');
         return $before===$now ? $now+1 : $now;
     }
+    private static function gateNotifyStat(array $stat,int $uid): bool
+    {
+        return ($stat['mode']&0170000)===0100000 && ($stat['mode']&07777)===0644
+            && $stat['uid']===$uid && $stat['nlink']===1;
+    }
+    /** Private engine; production caller supplies fixed-root canonical/owner validation. */
+    private static function gateNotifyEngine(string $path,string $bytes,int $priorMtime,callable $validate,callable $record): void
+    {
+        self::need($bytes!=='','gate_notify_empty');
+        $validate(); $current=self::freshStat($path);
+        self::need(is_array($current),'gate_notify_identity');
+        $h=fopen($path,'r+b'); self::need(is_resource($h),'gate_notify_open');
+        try {
+            $opened=fstat($h); $validate(); $fresh=self::freshStat($path);
+            self::need(is_array($opened) && is_array($fresh),'gate_notify_identity');
+            foreach (['dev','ino','uid','mode','nlink','size','mtime'] as $field) self::need($opened[$field]===$fresh[$field] && $fresh[$field]===$current[$field],'gate_notify_identity');
+            self::need(stream_get_contents($h)===$bytes,'gate_notify_bytes');
+            $record(['phase'=>'gate-notify-intent','expectedSha256'=>hash('sha256',$bytes),'currentInode'=>$fresh['ino'],'mtime'=>$fresh['mtime']]);
+            // Same existing byte, no truncation and no intermediate logical content change.
+            self::need(fseek($h,0)===0 && fwrite($h,$bytes[0])===1 && fflush($h) && fsync($h),'gate_notify_durability');
+            $after=self::freshStat($path); self::need(is_array($after),'gate_notify_identity');
+            if ($after['mtime']<=$priorMtime) {
+                $target=self::nextGateMtime($after['mtime'],time());
+                $deadline=hrtime(true)+1250000000;
+                while (time()<$target && hrtime(true)<$deadline) usleep(10000);
+                self::need(time()>=$target && touch($path,$target) && fsync($h),'gate_notify_mtime');
+            }
+            $validate(); $after=self::freshStat($path); $opened=fstat($h);
+            self::need(is_array($after) && is_array($opened) && $after['mtime']>$priorMtime,'gate_notify_mtime');
+            foreach (['dev','ino','uid','mode','nlink','size'] as $field) self::need($after[$field]===$current[$field] && $opened[$field]===$after[$field],'gate_notify_identity');
+            self::need(fseek($h,0)===0 && stream_get_contents($h)===$bytes && file_get_contents($path)===$bytes
+                && hash_file('sha256',$path)===hash('sha256',$bytes),'gate_notify_readback');
+            $record(['phase'=>'gate-notify-complete','expectedSha256'=>hash('sha256',$bytes),'currentInode'=>$after['ino'],'mtime'=>$after['mtime']]);
+        } finally { fclose($h); }
+    }
+    private static function notifyRootGate(string $path,string $bytes,int $priorMtime,string $journal): void
+    {
+        self::need($path===self::DOCROOT.'/.htaccess','gate_notify_scope');
+        $validate=static function () use ($path): void {
+            self::canonical(self::DOCROOT); self::canonical($path);
+            $stat=self::freshStat($path);
+            self::need(is_array($stat) && self::gateNotifyStat($stat,posix_geteuid()),'gate_notify_identity');
+        };
+        self::gateNotifyEngine($path,$bytes,$priorMtime,$validate,static fn(array $entry)=>self::append($journal,$entry));
+    }
     private static function replaceOwned(string $path,string $expected,string $bytes,int $mode,string $journal): void
     {
         self::canonical($path); self::need(fileowner($path)===posix_geteuid() && file_get_contents($path)===$expected,'replace_identity');
@@ -646,6 +691,8 @@ final class CpanelNativeDeployment
                 && ($after['mode']&0170000)===0100000 && $after['nlink']===1,'replace_readback');
             $dir=fopen(self::DOCROOT,'rb'); self::need(is_resource($dir),'rename_dir');
             try { self::need(fsync($dir),'rename_dir_sync'); } finally { fclose($dir); }
+            self::notifyRootGate($path,$bytes,$before['mtime'],$journal);
+            $after=self::freshStat($path);
             self::append($journal,['phase'=>'gate-mtime-complete','path'=>$path,'beforeMtime'=>$before['mtime'],'afterMtime'=>$after['mtime'],
                 'beforeSha256'=>hash('sha256',$expected),'afterSha256'=>hash('sha256',$bytes)]);
         }
