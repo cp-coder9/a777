@@ -599,13 +599,56 @@ final class CpanelNativeDeployment
         try { self::need(chmod($path,$mode) && fwrite($h,$bytes)===strlen($bytes) && fflush($h) && fsync($h),'file_durability'); } finally { fclose($h); }
         self::need(file_get_contents($path)===$bytes,'file_readback');
     }
+    /** Fixed document-root gate policy only; never accept a future source clock. */
+    public static function nextGateMtime(int $before,int $now): int
+    {
+        if ($before<0 || $now<0 || $before>$now || $before===PHP_INT_MAX) throw new RuntimeException('Gate timestamp refused.');
+        return $before===$now ? $now+1 : $now;
+    }
     private static function replaceOwned(string $path,string $expected,string $bytes,int $mode,string $journal): void
     {
         self::canonical($path); self::need(fileowner($path)===posix_geteuid() && file_get_contents($path)===$expected,'replace_identity');
+        $gate=$path===self::DOCROOT.'/.htaccess'; $before=null; $target=null;
+        if ($gate) {
+            self::canonical(self::DOCROOT); $before=self::freshStat($path);
+            self::need(is_array($before) && $before['uid']===posix_geteuid() && ($before['mode']&0170000)===0100000
+                && ($before['mode']&07777)===0644 && $before['nlink']===1 && $mode===0644,'replace_identity');
+            $target=self::nextGateMtime($before['mtime'],time());
+            // At most one clock tick, bounded even if the wall clock moves backwards.
+            $deadline=hrtime(true)+1250000000;
+            while (time()<$target && hrtime(true)<$deadline) usleep(10000);
+            self::need(time()>=$target,'replace_identity');
+        }
         $tmp=$path.'.native-'.bin2hex(random_bytes(8));
-        self::append($journal,['phase'=>'replace-intent','path'=>$path,'beforeSha256'=>hash('sha256',$expected),'afterSha256'=>hash('sha256',$bytes),'temporary'=>$tmp]);
+        self::append($journal,['phase'=>'replace-intent','path'=>$path,'beforeSha256'=>hash('sha256',$expected),'afterSha256'=>hash('sha256',$bytes),'temporary'=>$tmp]
+            +($gate?['beforeMtime'=>$before['mtime'],'targetMtime'=>$target]:[]));
         self::put($tmp,$bytes,$mode);
+        if ($gate) {
+            self::need(touch($tmp,$target),'replace_identity');
+            $new=self::freshStat($tmp);
+            self::need(is_array($new) && $new['mtime']===$target && $new['uid']===$before['uid'] && ($new['mode']&07777)===0644
+                && ($new['mode']&0170000)===0100000 && $new['nlink']===1 && $new['dev']===$before['dev']
+                && file_get_contents($tmp)===$bytes,'replace_identity');
+            $h=fopen($tmp,'r+b'); self::need(is_resource($h),'file_open');
+            try { $opened=fstat($h); self::need(is_array($opened) && $opened['dev']===$new['dev'] && $opened['ino']===$new['ino'] && fsync($h),'file_durability'); }
+            finally { fclose($h); }
+            // Independently recheck source identity and exact bytes immediately before rename.
+            $source=self::freshStat($path);
+            self::need(is_array($source),'replace_identity');
+            foreach (['dev','ino','uid','gid','mode','nlink','size','mtime','ctime'] as $field) self::need($source[$field]===$before[$field],'replace_identity');
+            self::need(file_get_contents($path)===$expected,'replace_identity');
+        }
         self::need(rename($tmp,$path),'replace_rename'); self::need(file_get_contents($path)===$bytes,'replace_readback');
+        if ($gate) {
+            $after=self::freshStat($path);
+            self::need(is_array($after) && $after['dev']===$new['dev'] && $after['ino']===$new['ino'] && $after['mtime']===$target
+                && $after['mtime']>$before['mtime'] && $after['uid']===$before['uid'] && ($after['mode']&07777)===0644
+                && ($after['mode']&0170000)===0100000 && $after['nlink']===1,'replace_readback');
+            $dir=fopen(self::DOCROOT,'rb'); self::need(is_resource($dir),'rename_dir');
+            try { self::need(fsync($dir),'rename_dir_sync'); } finally { fclose($dir); }
+            self::append($journal,['phase'=>'gate-mtime-complete','path'=>$path,'beforeMtime'=>$before['mtime'],'afterMtime'=>$after['mtime'],
+                'beforeSha256'=>hash('sha256',$expected),'afterSha256'=>hash('sha256',$bytes)]);
+        }
     }
     public static function ownedRename(string $from,string $to,string $journal): void
     {
