@@ -204,7 +204,7 @@ final class CpanelNativeRecovery
             $h['ready']($pdo,$runtime,$new);
             $moves=[[self::RUNTIME,$work.'/old-runtime'],[$candidate,self::RUNTIME],[self::PUBLIC,$work.'/old-docroot'],[$public,self::PUBLIC]];
             foreach ($moves as $i=>[$from,$to]) if ($i>=$state) $h['rename']($from,$to,$journal);
-            $h['proveGate']($lease,$gate);
+            $h['proveGate']($lease,$gate,$work);
             self::need((require self::RUNTIME.'/config/runtime.php')===$new);
             $h['ready']($pdo,self::RUNTIME,$new); $h['webProbe']($work,$lease,self::OLD,$journal);
             $normal=file_get_contents(self::RUNTIME.'/public/.htaccess'); self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));

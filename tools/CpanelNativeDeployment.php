@@ -99,13 +99,13 @@ final class CpanelNativeDeployment
             $stage='apache-maintenance'; $lease=bin2hex(random_bytes(24));
             $gate=true; $result['maintenanceActive']=true; $result['maintenanceRetained']=true; self::installGate($work,$lease,$journal,$original);
             $gateBytes=self::gateBytes($lease);
-            self::proveGate($lease,$gateBytes);
+            self::proveGate($lease,$gateBytes,$work);
             self::cronZero(); self::workersZero();
             self::sourceIdentity($sourcePDO,$actualAppConfig,$expectedPin);
 
             $issuerKey=random_bytes(32);
-            $issuer=static function(string $kind,array $binding) use ($sourcePDO,$actualAppConfig,$expectedPin,$lease,$gateBytes,$issuerKey,$candidate,$actual): array {
-                if ($kind==='apache-maintenance') { self::proveGate($lease,$gateBytes); self::cronZero(); self::workersZero(); }
+            $issuer=static function(string $kind,array $binding) use ($sourcePDO,$actualAppConfig,$expectedPin,$lease,$gateBytes,$issuerKey,$candidate,$actual,$work): array {
+                if ($kind==='apache-maintenance') { self::proveGate($lease,$gateBytes,$work); self::cronZero(); self::workersZero(); }
                 elseif ($kind==='source-config-identity') self::sourceIdentity($sourcePDO,$actualAppConfig,$expectedPin);
                 elseif ($kind==='restore-readiness') self::ready($sourcePDO,is_dir($candidate)?$candidate:self::RUNTIME,$actual);
                 else throw new RuntimeException('issuer_kind');
@@ -179,7 +179,7 @@ final class CpanelNativeDeployment
             self::privateDirectory($candidate.'/config');
             self::put($candidate.'/config/runtime.php',$rewritten,0600);
             $loaded=require $candidate.'/config/runtime.php'; self::need($loaded===$newValues,'config_only_storage');
-            self::proveGate($lease,$gateBytes); self::cronZero(); self::workersZero();
+            self::proveGate($lease,$gateBytes,$work); self::cronZero(); self::workersZero();
             self::assertSourceIdentity($before,self::sourceInventory($storage,true));
             self::need(hash_equals($archiveSha,self::openedFileIdentity($backup->path)['sha256']),'archive_immutable');
             self::sourceIdentity($sourcePDO,$actualAppConfig,$expectedPin);
@@ -209,7 +209,7 @@ final class CpanelNativeDeployment
             self::ownedRename($candidate,self::RUNTIME,$journal);
             self::ownedRename(self::DOCROOT,$work.'/old-docroot',$journal);
             self::ownedRename($public,self::DOCROOT,$journal);
-            self::proveGate($lease,$gateBytes);
+            self::proveGate($lease,$gateBytes,$work);
             self::completed($result,$journal,'promoted');
             $stage='restore-grants';
             $binding=['account'=>'archite4','database'=>$actualAppConfig->dbName,'user'=>$actualAppConfig->dbUser,'configSha256'=>$expectedPin];
@@ -650,7 +650,7 @@ final class CpanelNativeDeployment
             else { self::need(unlink($path),'gate_remove'); clearstatcache(true,$path); self::need(!file_exists($path),'gate_remove_readback'); }
         }
     }
-    private static function proveGate(string $lease,string $bytes): void
+    private static function proveGate(string $lease,string $bytes,?string $work=null): void
     {
         self::need(file_get_contents(self::DOCROOT.'/.htaccess')===$bytes && file_get_contents(self::RUNTIME.'/.htaccess')==="Require all denied\n",'apache_readback');
         foreach (['/','/index.php','/api/v1/readiness','/build-info.json'] as $path) {
@@ -670,11 +670,59 @@ final class CpanelNativeDeployment
                 self::need(is_string($ip),'runtime_origin_dns_shape');
                 self::runtimeOriginResolve($ip); $ips[$ip]=true;
             }
+            $originDenied=true;
             foreach (array_keys($ips) as $ip) {
-                self::need(in_array(self::runtimeOriginHttp($ip),[403,404],true),'direct_runtime_origin_denied');
+                if (!in_array(self::runtimeOriginHttp($ip),[403,404],true)) $originDenied=false;
             }
             self::need($ips!==[],'direct_runtime_origin_unavailable');
+            if (!$originDenied) {
+                // This proves only the owned Apache virtualhost root, not public TLS.
+                // Authenticate account first and require the exact installed deny bytes.
+                self::need(file_get_contents(self::RUNTIME.'/.htaccess')==="Require all denied\n",'apache_readback');
+                self::need($work!==null,'runtime_origin_diagnostic_work');
+                self::privateDirectory($work);
+                $check=self::runtimeLoopbackHttp();
+                $diagnostic=$work.'/runtime-origin-check.json';
+                $encoded=json_encode($check,JSON_THROW_ON_ERROR)."\n";
+                if (file_exists($diagnostic) || is_link($diagnostic)) {
+                    self::privateFile($diagnostic);
+                    self::replaceOwned($diagnostic,(string)file_get_contents($diagnostic),$encoded,0600,$work.'/journal.jsonl');
+                } else self::put($diagnostic,$encoded,0600);
+                self::need(file_get_contents(self::DOCROOT.'/.htaccess')===$bytes && file_get_contents(self::RUNTIME.'/.htaccess')==="Require all denied\n",'apache_readback');
+                self::need(self::runtimeLoopbackDenied($check),'direct_runtime_origin_denied');
+            }
         }
+    }
+    private static function runtimeLoopbackOptions(): array
+    {
+        // No caller-controlled URL, host, port, address or headers; HTTP is local only.
+        return [CURLOPT_URL=>'http://architex.co.za:80/.a777-runtime-active/config/runtime.php',
+            CURLOPT_RESOLVE=>['architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,
+            CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',
+            CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,
+            CURLOPT_HTTPGET=>true,CURLOPT_HTTPHEADER=>[],CURLOPT_NETRC=>CURL_NETRC_IGNORED,
+            CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45];
+    }
+    private static function runtimeLoopbackDenied(array $check): bool
+    {
+        return ($check['transport']??null)==='loopback-http'
+            && ($check['peerVerified']??null)===true && ($check['curlErrorCode']??null)===0
+            && in_array($check['status']??null,[403,404],true);
+    }
+    private static function runtimeLoopbackHttp(): array
+    {
+        $curl=curl_init(); self::need($curl!==false,'runtime_loopback_curl'); $received=0;
+        try {
+            $options=self::runtimeLoopbackOptions();
+            $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$received): int {
+                $received+=strlen($chunk); return $received<=1048576?strlen($chunk):0;
+            };
+            self::need(curl_setopt_array($curl,$options),'runtime_loopback_options');
+            $ok=curl_exec($curl); $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
+            return ['transport'=>'loopback-http','status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),
+                'peerVerified'=>is_string($peer) && $peer==='127.0.0.1',
+                'curlErrorCode'=>$ok===false?max(1,curl_errno($curl)):curl_errno($curl)];
+        } finally { curl_close($curl); }
     }
     private static function runtimeOriginResolve(string $ip): string
     {
