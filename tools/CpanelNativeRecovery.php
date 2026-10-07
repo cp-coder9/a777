@@ -29,7 +29,7 @@ final class CpanelNativeRecovery
         $locations=[['file'=>$e->getFile(),'line'=>$e->getLine()]];
         foreach ($e->getTrace() as $frame) $locations[]=$frame;
         // A guard's throw line is less useful than the pinned caller's failed condition.
-        if ($reason!=='unclassified') $locations=array_merge($e->getTrace(),$locations);
+        if ($reason!=='unclassified' || ($e instanceof RuntimeException && $e->getFile()===__DIR__.DIRECTORY_SEPARATOR.'CpanelNativeDeployment.php')) $locations=array_merge($e->getTrace(),$locations);
         foreach ($locations as $frame) {
             foreach ($owned as $name) if (($frame['file']??null)===__DIR__.DIRECTORY_SEPARATOR.$name && is_int($frame['line']??null) && $frame['line']>0) {
                 $out['sourceFile']=$name; $out['sourceLine']=$frame['line'];

@@ -43,7 +43,7 @@ final class CpanelNativeDeploymentRecovery
         $file=$internal['sourceFile']??null; $line=$internal['sourceLine']??null;
         $reason=$internal['reason']??'unclassified';
         if (!in_array($reason,['recovery_evidence_refused','native_recovery_contract_refused','native_deployment_refused','unclassified'],true)) $reason='unclassified';
-        if (!in_array($file,['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php'],true) || !is_int($line) || $line<1 || $line>100000) {
+        if (!in_array($file,['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php','CpanelNativeDeployment.php','cpanel_git_deploy.php'],true) || !is_int($line) || $line<1 || $line>100000) {
             $file='CpanelNativeDeploymentRecovery.php'; $line=__LINE__; $reason='unclassified';
         }
         return ['file'=>$file,'reasonCode'=>$reason,'line'=>$line];
