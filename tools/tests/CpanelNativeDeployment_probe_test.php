@@ -5,6 +5,44 @@ use Architex\Deployment\CpanelNativeDeployment as Deploy;
 $dir=sys_get_temp_dir().'/native-probe-test-'.bin2hex(random_bytes(8));
 mkdir($dir.'/public',0700,true);
 try {
+    $invoke=static fn(string $method,...$args)=>(new ReflectionMethod(Deploy::class,$method))->invoke(null,...$args);
+    $name='native-probe-'.str_repeat('a',48).'.php'; $secret=str_repeat('b',64);
+    $options=$invoke('webProbeLoopbackOptions',$name,$secret);
+    foreach ([CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,CURLOPT_RESOLVE=>['php.architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45] as $key=>$expected) {
+        if (($options[$key]??null)!==$expected) throw new RuntimeException('loopback option scope');
+    }
+    foreach (['index.php',$name.'?x=1','../'.$name,'https://example.com/'.$name,'native-probe-'.str_repeat('a',47).'.php'] as $bad) {
+        try { $invoke('webProbeLoopbackOptions',$bad,$secret); throw new LogicException('scope accepted'); } catch (RuntimeException) {}
+    }
+    try { $invoke('webProbeLoopbackOptions',$name,$secret."\r\nAuthorization: planted"); throw new LogicException('header injection accepted'); } catch (RuntimeException) {}
+    if (!$invoke('webProbeFallback',['status'=>503],false) || $invoke('webProbeFallback',['status'=>503],true) || $invoke('webProbeFallback',['status'=>301],false)) throw new RuntimeException('fallback scope');
+    if (!$invoke('webProbeIdentity',['probeId'=>$name],$name) || $invoke('webProbeIdentity',['probeId'=>'old'],$name) || $invoke('webProbeIdentity',[],$name)) throw new RuntimeException('stale proof accepted');
+    // Real curl, fixed port 80 and virtualhost. Never borrow an existing listener.
+    $listener=@stream_socket_server('tcp://127.0.0.1:80',$errno,$errstr);
+    if ($listener===false) { echo "UNAVAILABLE real loopback fixture: port 80 in use or inaccessible\n"; }
+    else {
+        fclose($listener);
+        file_put_contents($dir.'/router.php','<?php $status=(int)file_get_contents(__DIR__."/status"); if ($_SERVER["HTTP_HOST"]!=="php.architex.co.za" && $_SERVER["HTTP_HOST"]!=="php.architex.co.za:80") { http_response_code(400); exit; } if (($_SERVER["HTTP_X_A777_NATIVE_PROBE"]??"")!=='.var_export($secret,true).') { http_response_code(401); exit; } http_response_code($status); if ($status===301) header("Location: https://example.invalid/no-follow"); echo $status===200?str_repeat("x",(int)file_get_contents(__DIR__."/size")):"fixture";');
+        file_put_contents($dir.'/status','200'); file_put_contents($dir.'/size','2');
+        $server=proc_open([PHP_BINARY,'-S','127.0.0.1:80',$dir.'/router.php'],[['pipe','r'],['file',$dir.'/server.out','a'],['file',$dir.'/server.err','a']],$serverPipes);
+        if (!is_resource($server)) throw new RuntimeException('local fixture launch');
+        fclose($serverPipes[0]);
+        try {
+            $ready=false;
+            for ($attempt=0;$attempt<30;$attempt++) { $socket=@stream_socket_client('tcp://127.0.0.1:80',$errno,$errstr,0.1); if ($socket) { fclose($socket); $ready=true; break; } usleep(100000); }
+            if (!$ready) throw new RuntimeException('local fixture unavailable');
+            foreach ([200,301,401,503] as $status) {
+                file_put_contents($dir.'/status',(string)$status);
+                $r=$invoke('webProbeLoopbackHttp',$name,$secret);
+                if ($r['status']!==$status || $r['curlErrorCode']!==0 || !$r['peerVerified']) throw new RuntimeException('real curl status/peer');
+                echo 'PASS real loopback curl '.$status."\n";
+            }
+            file_put_contents($dir.'/status','200'); file_put_contents($dir.'/size','1048577');
+            if ($invoke('webProbeLoopbackHttp',$name,$secret)['curlErrorCode']===0) throw new RuntimeException('body bound bypass');
+            echo "PASS real loopback body bound\n";
+        } finally { proc_terminate($server); proc_close($server); }
+    }
+    echo "PASS fixed loopback options, header/path scope and stale proof binding\n";
     foreach ([false,true,'fence'] as $terminate) {
         $proof=$dir.'/proof.json'; @unlink($proof);
         file_put_contents($dir.'/public/build-info.json','{"sourceCommit":"fixture","sourceDirty":false,"environment":"production"}');
@@ -14,13 +52,13 @@ try {
             $fence=dirname(__DIR__,2).'/app/src/Infrastructure/Deployment/MaintenanceFence.php';
             file_put_contents($dir.'/public/index.php','<?php require '.var_export($fence,true).'; try { (new \\Architex\\Infrastructure\\Deployment\\MaintenanceFence('.var_export($dir,true).'))->enter(); } catch (Throwable) { http_response_code(503); exit("Application maintenance in progress."); }');
         }
-        $code=Deploy::webProbeCaptureCode($dir,$proof);
+        $code=Deploy::webProbeCaptureCode($dir,$proof,'',$name);
         file_put_contents($dir.'/runner.php',"<?php\n".$code);
         $pipes=[]; $process=proc_open([PHP_BINARY,$dir.'/runner.php'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
         fclose($pipes[0]); $output=stream_get_contents($pipes[1]); $error=stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);
         if(proc_close($process)!==0 || $error!=='' || !is_file($proof)) throw new RuntimeException('proof absent after index termination: '.$error);
         $data=json_decode($output,true,32,JSON_THROW_ON_ERROR);
-        if($data['status']!==503 || json_decode(file_get_contents($proof),true)!==$data || str_contains($output,'MUST_NOT_ESCAPE')) throw new RuntimeException('status/readback/redaction failed');
+        if($data['probeId']!==$name || $data['status']!==503 || json_decode(file_get_contents($proof),true)!==$data || str_contains($output,'MUST_NOT_ESCAPE')) throw new RuntimeException('status/readback/redaction failed');
     }
     foreach (['header_absent','header','hash','none','disabled','functions_disabled'] as $case) {
         $proof=$dir.'/proof.json'; $preflight=$dir.'/web-probe-preflight.json'; @unlink($proof); @unlink($preflight);
