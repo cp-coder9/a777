@@ -126,7 +126,13 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         for row in p.entries(client, work):
             name = row.get('name')
             require(isinstance(name, str) and re.fullmatch(r'[A-Za-z0-9_.-]+', name))
-            p.owned_mode(client, work + '/' + name, '0700' if row.get('type') in ('dir', 'directory') else '0600', row.get('type') in ('dir', 'directory'))
+            directory = row.get('type') in ('dir', 'directory')
+            # Promotion retains the original public docroot, whose normal mode
+            # is 0755. Recovery validates its canonical ownership and inventory
+            # on-host; it is not a private recovery-output directory.
+            mode = '0755' if name == 'old-docroot' and directory else ('0700' if directory else '0600')
+            report.setdefault('workInventory', []).append({'name': name, 'type': row.get('type'), 'mode': str(row.get('nicemode', ''))})
+            p.owned_mode(client, work + '/' + name, mode, directory)
         stage = 'approved_recovery_code_pull'
         pulled = p.clone(client, p.DEPLOY_KEY_PIN)
         require(pulled.get('status') == 'cloned_and_pulled' and pulled.get('commit') == expected)
