@@ -752,7 +752,7 @@ final class CpanelNativeDeployment
             return (int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);
         } finally { curl_close($curl); }
     }
-    private static function http(string $path,string $origin=self::WEB,array $headers=[]): array
+    private static function http(string $path,string $origin=self::WEB,array $headers=[],bool $probeMetadata=false): array
     {
         self::need(in_array($origin,[self::WEB,'https://architex.co.za'],true) && str_starts_with($path,'/') && !str_starts_with($path,'//'),'http_scope');
         $curl=curl_init($origin.$path); self::need($curl!==false,'http_curl'); $body=''; $received=[]; $receivedBytes=0;
@@ -760,7 +760,9 @@ final class CpanelNativeDeployment
             curl_setopt_array($curl,[CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45,CURLOPT_HTTPHEADER=>$headers,
                 CURLOPT_WRITEFUNCTION=>static function($c,string $b) use (&$body,&$receivedBytes,$path): int { $receivedBytes+=strlen($b); if ($receivedBytes>1048576) return 0; if ($path!=='/.a777-runtime-active/config/runtime.php') $body.=$b; return strlen($b); },
                 CURLOPT_HEADERFUNCTION=>static function($c,string $b) use (&$received): int { $p=explode(':',$b,2); if(count($p)===2) $received[strtolower(trim($p[0]))]=trim($p[1]); return strlen($b); }]);
-            self::need(curl_exec($curl)!==false,'http_transport'); return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$body,'headers'=>$received];
+            $ok=curl_exec($curl)!==false; $errorCode=curl_errno($curl);
+            if (!$probeMetadata) self::need($ok,'http_transport');
+            return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$ok?$body:'','headers'=>$received,'curlErrorCode'=>$errorCode];
         } finally { curl_close($curl); }
     }
     private static function cronZero(): void
@@ -842,12 +844,49 @@ final class CpanelNativeDeployment
             else self::need(copy($entry->getPathname(),$to) && chmod($to,0644) && hash_file('sha256',$to)===hash_file('sha256',$entry->getPathname()),'public_copy_readback');
         }
     }
+    /** Capture normal returns and bootstrap exit without weakening any application gate. */
+    public static function webProbeCaptureCode(string $root,string $proof): string
+    {
+        $code = <<<'PHP'
+$root=ROOT_LITERAL;
+$proofPath=PROOF_LITERAL;
+$_SERVER['REQUEST_URI']='/api/v1/readiness';
+$_SERVER['REQUEST_METHOD']='GET';
+$level=ob_get_level();
+ob_start();
+register_shutdown_function(static function () use ($root,$proofPath,$level): void {
+    $body='';
+    while (ob_get_level()>$level) { $body=(string)ob_get_clean().$body; }
+    $decoded=json_decode($body,true);
+    $data=['status'=>$decoded['data']['status']??null,'components'=>[]];
+    foreach (['database','migrations','jobs','mail'] as $name) {
+        $value=$decoded['data']['components'][$name]['status']??null;
+        $data['components'][$name]=['status'=>in_array($value,['ready','unavailable','not_ready'],true)?$value:null];
+    }
+    $data['status']=in_array($data['status'],['ready','not_ready','unavailable'],true)?$data['status']:null;
+    $build=json_decode((string)file_get_contents($root.'/public/build-info.json'),true);
+    $build=array_intersect_key(is_array($build)?$build:[],array_flip(['sourceCommit','sourceDirty','environment']));
+    $proof=['status'=>(int)http_response_code(),'body'=>json_encode(['data'=>$data],JSON_THROW_ON_ERROR),'build'=>$build,'webSapi'=>PHP_SAPI];
+    $bytes=json_encode($proof,JSON_THROW_ON_ERROR);
+    $handle=fopen($proofPath,'x+b');
+    if ($handle===false) { http_response_code(503); return; }
+    try {
+        if (!chmod($proofPath,0600) || !flock($handle,LOCK_EX) || fwrite($handle,$bytes)!==strlen($bytes) || !fflush($handle)) { http_response_code(503); return; }
+    } finally { fclose($handle); }
+    header('Content-Type: application/json');
+    echo $bytes;
+});
+require $root.'/public/index.php';
+PHP;
+        return str_replace(['ROOT_LITERAL','PROOF_LITERAL'],[var_export($root,true),var_export($proof,true)],$code);
+    }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
         $proof=$work.'/web-proof.json'; $gate=self::gateBytes($lease);
         $code="<?php\ndeclare(strict_types=1);\nif (!hash_equals(".var_export($secret,true).", (string)(\$_SERVER['HTTP_X_A777_NATIVE_PROBE']??'')) || !hash_equals(".var_export(hash('sha256',$gate),true).", (string)hash_file('sha256',__DIR__.'/.htaccess'))) { http_response_code(503); exit; }\n";
-        $code.="if (!function_exists('opcache_invalidate')) { http_response_code(503); exit; }\n\$root=".var_export(self::RUNTIME,true)."; \$failed=[]; foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$root,FilesystemIterator::SKIP_DOTS)) as \$f) if(\$f->isFile()&&str_ends_with(\$f->getFilename(),'.php')&&function_exists('opcache_is_script_cached')&&opcache_is_script_cached(\$f->getPathname())&&!opcache_invalidate(\$f->getPathname(),true)) \$failed[]=true;\nif(\$failed!==[]) { http_response_code(503); exit; }\n\$_SERVER['REQUEST_URI']='/api/v1/readiness'; \$_SERVER['REQUEST_METHOD']='GET'; ob_start(); require \$root.'/public/index.php'; \$body=ob_get_clean(); \$proof=['status'=>http_response_code(),'body'=>\$body,'build'=>json_decode(file_get_contents(\$root.'/public/build-info.json'),true),'webSapi'=>PHP_SAPI]; file_put_contents(".var_export($proof,true).",json_encode(\$proof,JSON_THROW_ON_ERROR),LOCK_EX); chmod(".var_export($proof,true).",0600); header('Content-Type: application/json'); echo json_encode(\$proof,JSON_THROW_ON_ERROR);\n";
+        $code.="if (!function_exists('opcache_invalidate')) { http_response_code(503); exit; }\n\$root=".var_export(self::RUNTIME,true)."; \$failed=[]; foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator(\$root,FilesystemIterator::SKIP_DOTS)) as \$f) if(\$f->isFile()&&str_ends_with(\$f->getFilename(),'.php')&&function_exists('opcache_is_script_cached')&&opcache_is_script_cached(\$f->getPathname())&&!opcache_invalidate(\$f->getPathname(),true)) \$failed[]=true;\nif(\$failed!==[]) { http_response_code(503); exit; }\n";
+        $code.=self::webProbeCaptureCode(self::RUNTIME,$proof);
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
         $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [L]\n";
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
@@ -857,7 +896,9 @@ final class CpanelNativeDeployment
         self::replaceOwned($path,$code,$newCode,0600,$journal);
         $primary=null;
         try {
-            $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret]); self::need($r['status']===200,'web_pool_probe');
+            $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
+            self::put($work.'/web-probe-check.json',json_encode(['status'=>$r['status'],'curlErrorCode'=>$r['curlErrorCode'],'proofPresent'=>is_file($proof)],JSON_THROW_ON_ERROR),0600);
+            self::need($r['curlErrorCode']===0,'http_transport'); self::need($r['status']===200,'web_pool_probe');
             $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&($p['webSapi']??'cli')!=='cli','web_pool_identity'); self::httpReady($p);
             self::httpBuild(['status'=>200,'body'=>json_encode($p['build'],JSON_THROW_ON_ERROR)],$commit);
             self::privateFile($proof); self::need(json_decode(file_get_contents($proof),true,32,JSON_THROW_ON_ERROR)===$p,'web_pool_readback');
