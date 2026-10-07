@@ -107,8 +107,9 @@ def public_get(path):
     except urllib.error.HTTPError as error:
         response = error
     with response:
-        body = response.read(1048577)
-        require(len(body) <= 1048576, 'public_response_too_large')
+        limit = 4194304 if path == '/app' else 1048576
+        body = response.read(limit + 1)
+        require(len(body) <= limit, 'public_response_too_large')
         return response.code, body
 
 
