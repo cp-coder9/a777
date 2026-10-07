@@ -1055,6 +1055,14 @@ PHP;
         $conditions=$urlCapability?"RewriteCond %{REQUEST_METHOD} ^GET$\nRewriteCond %{QUERY_STRING} ^$\n":"RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\n";
         return $conditions."RewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
     }
+    private static function webProbeScriptMode(bool $urlCapability): int
+    { return $urlCapability?0644:0600; }
+    private static function webProbeScriptStat(array|false $stat,int $owner,int $mode): bool
+    {
+        return is_array($stat) && in_array($mode,[0600,0644],true)
+            && ($stat['mode']&0170000)===0100000 && ($stat['mode']&07777)===$mode
+            && $stat['uid']===$owner && $stat['nlink']===1;
+    }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal,bool $privateRecovery=false): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
@@ -1064,13 +1072,16 @@ PHP;
         $root=$privateRecovery?CpanelPrivateRuntimeRelocation::DESTINATION:self::RUNTIME;
         if ($privateRecovery) CpanelPrivateRuntimeRelocation::prove(CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains()));
         $code=self::webProbeCode($root,$proof,$preflight,$secret,hash('sha256',$gate),$name,$privateRecovery?$path:null);
-        self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
+        // The public nonce contains no app credentials; front-end web workers may need read access.
+        // Legacy header-bearing probes and every private receipt retain owner-only permissions.
+        $scriptMode=self::webProbeScriptMode($privateRecovery);
+        self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,$scriptMode);
         $rule=self::webProbeRule($name,$secret,$privateRecovery);
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
         self::replaceOwned(self::DOCROOT.'/.htaccess',$gate,$temporary,0644,$journal);
         // Authentication reads the exact temporary lease hash, not any application-wide bypass.
         $newCode=str_replace(hash('sha256',$gate),hash('sha256',$temporary),$code);
-        self::replaceOwned($path,$code,$newCode,0600,$journal);
+        self::replaceOwned($path,$code,$newCode,$scriptMode,$journal);
         $primary=null;
         try {
             $r=self::http('/'.$name,self::WEB,$privateRecovery?[]:['X-A777-Native-Probe: '.$secret],true);
@@ -1094,7 +1105,9 @@ PHP;
             try {
                 self::replaceOwned(self::DOCROOT.'/.htaccess',$temporary,$gate,0644,$journal);
                 self::canonical($path);
-                self::need(is_file($path) && fileowner($path)===posix_geteuid() && hash_file('sha256',$path)===hash('sha256',$newCode) && unlink($path),'probe_cleanup');
+                self::need($path===self::DOCROOT.'/'.$name && preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1
+                    && self::webProbeScriptStat(self::freshStat($path),posix_geteuid(),$scriptMode)
+                    && hash_file('sha256',$path)===hash('sha256',$newCode) && unlink($path),'probe_cleanup');
                 clearstatcache(true,$path); self::need(!file_exists($path) && !is_link($path),'probe_absence');
                 self::need(file_get_contents(self::DOCROOT.'/.htaccess')===$gate,'apache_readback');
             } catch (Throwable $cleanup) { if ($primary===null) throw $cleanup; }
