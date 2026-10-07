@@ -971,8 +971,13 @@ PHP;
         return str_replace(['ROOT_LITERAL','PROOF_LITERAL','PRELUDE_LITERAL','PROBE_ID_LITERAL'],[var_export($root,true),var_export($proof,true),$prelude,var_export($probeId,true)],$code);
     }
     /** Fixed private diagnostics contain no request bytes, secrets or application output. */
-    public static function webProbeCode(string $root,string $proof,string $preflight,string $secret,string $gateHash,string $probeId=''): string
+    public static function webProbeCode(string $root,string $proof,string $preflight,string $secret,string $gateHash,string $probeId='',?string $capabilityFile=null): string
     {
+        if ($capabilityFile!==null) {
+            self::need($root==='/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061'
+                && preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$probeId)===1
+                && $capabilityFile===self::DOCROOT.'/'.$probeId,'http_scope');
+        }
         $auth = <<<'PHP'
 <?php
 declare(strict_types=1);
@@ -989,6 +994,20 @@ $writeDiagnostic=static function () use (&$diagnostic,$diagnosticPath): void {
 };
 if (!$diagnostic['headerMatched'] || !$diagnostic['gateMatched']) { $writeDiagnostic(); http_response_code(503); exit; }
 PHP;
+        if ($capabilityFile!==null) {
+            // Only this one-use filename authorizes readiness; no header or role grant.
+            $auth=str_replace("if (!\$diagnostic['headerMatched'] || !\$diagnostic['gateMatched'])", "if (!\$capabilityMatched || !\$diagnostic['gateMatched'])",$auth);
+            $guard = <<<'PHP'
+$capabilityMatched=($_SERVER['REQUEST_URI']??null)===URI_LITERAL
+    && ($_SERVER['REQUEST_METHOD']??null)==='GET'
+    && ($_SERVER['QUERY_STRING']??null)===''
+    && __FILE__===FILE_LITERAL && realpath(__FILE__)===FILE_LITERAL
+    && ($_SERVER['SCRIPT_FILENAME']??null)===FILE_LITERAL
+    && realpath((string)($_SERVER['SCRIPT_FILENAME']??''))===FILE_LITERAL;
+PHP;
+            $guard=str_replace(['URI_LITERAL','FILE_LITERAL'],[var_export('/'.$probeId,true),var_export($capabilityFile,true)],$guard);
+            $auth=str_replace('$header=(string)', $guard."\n".'$header=(string)',$auth);
+        }
         $prelude = <<<'PHP'
 $diagnostic['probeStage']='opcache';
 if (extension_loaded('Zend OPcache')) {
@@ -1029,6 +1048,13 @@ PHP;
     { return ($response['status']??null)===503 && !$proofPresent; }
     private static function webProbeIdentity(array $proof,string $name): bool
     { return ($proof['probeId']??null)===$name && preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1; }
+    private static function webProbeRule(string $name,string $secret,bool $urlCapability=false): string
+    {
+        self::need(preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1
+            && preg_match('/\A[a-f0-9]{64}\z/D',$secret)===1,'http_scope');
+        $conditions=$urlCapability?"RewriteCond %{REQUEST_METHOD} ^GET$\nRewriteCond %{QUERY_STRING} ^$\n":"RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\n";
+        return $conditions."RewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
+    }
     private static function webPoolProbe(string $work,string $lease,string $commit,string $journal,bool $privateRecovery=false): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
@@ -1037,9 +1063,9 @@ PHP;
         self::need(!file_exists($proof) && !is_link($proof) && !file_exists($preflight) && !is_link($preflight),'probe_absence');
         $root=$privateRecovery?CpanelPrivateRuntimeRelocation::DESTINATION:self::RUNTIME;
         if ($privateRecovery) CpanelPrivateRuntimeRelocation::prove(CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains()));
-        $code=self::webProbeCode($root,$proof,$preflight,$secret,hash('sha256',$gate),$name);
+        $code=self::webProbeCode($root,$proof,$preflight,$secret,hash('sha256',$gate),$name,$privateRecovery?$path:null);
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
-        $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
+        $rule=self::webProbeRule($name,$secret,$privateRecovery);
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
         self::replaceOwned(self::DOCROOT.'/.htaccess',$gate,$temporary,0644,$journal);
         // Authentication reads the exact temporary lease hash, not any application-wide bypass.
@@ -1047,7 +1073,7 @@ PHP;
         self::replaceOwned($path,$code,$newCode,0600,$journal);
         $primary=null;
         try {
-            $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
+            $r=self::http('/'.$name,self::WEB,$privateRecovery?[]:['X-A777-Native-Probe: '.$secret],true);
             $transport='public-https'; clearstatcache(true,$proof);
             if (!$privateRecovery && self::webProbeFallback($r,is_file($proof))) {
                 $r=self::webProbeLoopbackHttp($name,$secret); $transport=$r['transport'];
@@ -1067,7 +1093,10 @@ PHP;
         } catch (Throwable $error) { $primary=$error; throw $error; } finally {
             try {
                 self::replaceOwned(self::DOCROOT.'/.htaccess',$temporary,$gate,0644,$journal);
-                self::need(file_get_contents($path)===$newCode && unlink($path),'probe_cleanup'); clearstatcache(true,$path); self::need(!file_exists($path),'probe_absence');
+                self::canonical($path);
+                self::need(is_file($path) && fileowner($path)===posix_geteuid() && hash_file('sha256',$path)===hash('sha256',$newCode) && unlink($path),'probe_cleanup');
+                clearstatcache(true,$path); self::need(!file_exists($path) && !is_link($path),'probe_absence');
+                self::need(file_get_contents(self::DOCROOT.'/.htaccess')===$gate,'apache_readback');
             } catch (Throwable $cleanup) { if ($primary===null) throw $cleanup; }
         }
     }

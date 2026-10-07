@@ -93,6 +93,43 @@ try {
         if ($case==='functions_disabled' && json_decode(json_decode(file_get_contents($proof),true)['body'],true)['data']['status']!==null) throw new RuntimeException('bootstrap ran despite disabled invalidator');
         echo 'PASS preflight '.$case."\n";
     }
+    $fixed='/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061';
+    $installed='/home/archite4/public_html/php.architex.co.za/'.$name;
+    foreach ([$dir,$fixed.'/other','/home/archite4/.a777-runtime-private/other'] as $badRoot) {
+        try { Deploy::webProbeCode($badRoot,'proof','diagnostic',$secret,str_repeat('0',64),$name,$installed); throw new LogicException('arbitrary root accepted'); } catch (RuntimeException) {}
+    }
+    foreach ([$installed.'.extra','/other/'.$name] as $badFile) {
+        try { Deploy::webProbeCode($fixed,'proof','diagnostic',$secret,str_repeat('0',64),$name,$badFile); throw new LogicException('arbitrary file accepted'); } catch (RuntimeException) {}
+    }
+    $rule=$invoke('webProbeRule',$name,$secret,true);
+    if ($rule!=="RewriteCond %{REQUEST_METHOD} ^GET$\nRewriteCond %{QUERY_STRING} ^$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n" || str_contains($rule,$secret)) throw new RuntimeException('capability Apache scope');
+    foreach (['valid','uri','method','query','uri_query','filename','hash','unhealthy'] as $case) {
+        $proof=$dir.'/proof.json'; $preflight=$dir.'/web-probe-preflight.json'; @unlink($proof); @unlink($preflight);
+        file_put_contents($dir.'/.htaccess','fixed gate');
+        $status=$case==='unhealthy'?503:200;
+        $ready=$case==='unhealthy'?'not_ready':'ready';
+        file_put_contents($dir.'/public/index.php',"<?php http_response_code($status); echo json_encode(['data'=>['status'=>'$ready','components'=>array_fill_keys(['database','migrations','jobs','mail'],['status'=>'$ready'])]]); exit;");
+        file_put_contents($dir.'/runner.php',''); $localFile=realpath($dir.'/runner.php');
+        $code=Deploy::webProbeCode($fixed,$proof,$preflight,$secret,$case==='hash'?str_repeat('0',64):hash('sha256','fixed gate'),$name,$installed);
+        // Synthetic subprocess fixture: substitute only validated fixed literals, never production scope.
+        $code=str_replace([var_export($fixed,true),var_export($installed,true)],[var_export($dir,true),var_export($localFile,true)],$code);
+        $server=['REQUEST_URI'=>$case==='uri'?'/wrong':('/'.$name.($case==='uri_query'?'?x=1':'')), 'REQUEST_METHOD'=>$case==='method'?'POST':'GET','QUERY_STRING'=>$case==='query'?'x=1':'','SCRIPT_FILENAME'=>$case==='filename'?$localFile.'.wrong':$localFile];
+        $code=str_replace('declare(strict_types=1);','declare(strict_types=1); $_SERVER='.var_export($server,true).'; register_shutdown_function(static function(){ file_put_contents('.var_export($dir.'/status.json',true).',json_encode(http_response_code())); });',$code);
+        file_put_contents($dir.'/runner.php',$code);
+        $process=proc_open([PHP_BINARY,'-n',$dir.'/runner.php'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);
+        fclose($pipes[0]); $output=stream_get_contents($pipes[1]); $error=stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);
+        if (proc_close($process)!==0 || $error!=='') throw new RuntimeException('capability fixture execution failed: '.$case.' '.$error);
+        $accepted=in_array($case,['valid','unhealthy'],true);
+        if (is_file($proof)!==$accepted) throw new RuntimeException('capability proof authorization failed: '.$case);
+        if (!$accepted && json_decode(file_get_contents($dir.'/status.json'),true)!==503) throw new RuntimeException('capability refusal status');
+        if ($accepted) {
+            $p=json_decode(file_get_contents($proof),true,32,JSON_THROW_ON_ERROR);
+            if ($p['status']!==$status || !$invoke('webProbeIdentity',$p,$name) || json_decode($output,true)!==$p) throw new RuntimeException('capability status/readback/binding');
+            if ($case==='valid') $invoke('httpReady',$p);
+            else { try { $invoke('httpReady',$p); throw new LogicException('unhealthy accepted'); } catch (RuntimeException) {} }
+        }
+        echo 'PASS URL capability '.$case." (synthetic subprocess)\n";
+    }
     echo "PASS returning and exiting index: private proof, real 503, redacted body\n";
 } finally {
     @unlink($dir.'/.htaccess');
