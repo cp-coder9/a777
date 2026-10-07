@@ -277,6 +277,24 @@ final class CpanelNativeDeployment
         if ($result['operatorStateUnknown'] || !$result['operatorPrivilegesRevoked'] || $result['sourcePrivilegeStateUnknown'] || $result['sourcePrivilegesRevoked']) $result['status']='recovery_required';
         return $result;
     }
+    /** Recovery-only audited helpers. No migration, fence, operator creation or backup issuance. */
+    public static function recoveryHelpers(string $approvedCommit): array
+    {
+        self::account(); self::need(posix_geteuid()===2657,'recovery_uid');
+        self::need(preg_match('/\A[a-f0-9]{40}\z/',$approvedCommit)===1 && self::git(self::REPO,['rev-parse','HEAD'])===$approvedCommit && self::git(self::REPO,['status','--porcelain','--untracked-files=all'])==='','clean_git');
+        self::trackedFile(self::REPO,__FILE__);
+        self::trackedFile(self::REPO,__DIR__.'/CpanelNativeRecovery.php');
+        return [
+            'privateDirectory'=>self::privateDirectory(...), 'privateFile'=>self::privateFile(...),
+            'canonical'=>self::canonical(...), 'inventory'=>self::artifactInventory(...), 'digest'=>self::treeDigest(...),
+            'append'=>self::append(...), 'put'=>self::put(...), 'replace'=>self::replaceOwned(...),
+            'rename'=>self::ownedRename(...), 'gate'=>self::gateBytes(...), 'proveGate'=>self::proveGate(...),
+            'cron'=>self::cronZero(...), 'workers'=>self::workersZero(...), 'storageInventory'=>self::sourceInventory(...),
+            'privateTree'=>self::privateTree(...), 'restoreGrants'=>self::restoreGrants(...), 'ready'=>self::ready(...),
+            'webProbe'=>self::webPoolProbe(...), 'http'=>self::http(...), 'httpReady'=>self::httpReady(...), 'httpBuild'=>self::httpBuild(...),
+            'tracked'=>self::trackedFile(...), 'git'=>self::git(...)
+        ];
+    }
     private static function assertSnapshotEquality(array $source, array $target, string $sourceName, string $targetName): void
     {
         if ($sourceName === $targetName || ($source['database']['name'] ?? null) !== $sourceName || ($target['database']['name'] ?? null) !== $targetName) throw new RuntimeException('Archived identity mismatch.');

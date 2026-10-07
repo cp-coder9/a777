@@ -536,6 +536,13 @@ final class CpanelGitDeploy
         umask(0077);
         $root = self::PRIVATE_ROOT;
         self::requireValue(realpath($root) === $root && (fileperms($root) & 07777) === 0700 && fileowner($root) === posix_geteuid(), 'private_root_not_owned_0700');
+        $pointer=$root.'/recovery-plan-pointer.json';
+        if (file_exists($pointer) || is_link($pointer)) {
+            self::requireValue(count($_SERVER['argv'])===2 && $_SERVER['argv'][1]==='--from-plan','invocation_mode_invalid');
+            require_once __DIR__.'/CpanelNativeDeploymentRecovery.php';
+            CpanelNativeDeploymentRecovery::run($pointer);
+            return;
+        }
         $planPath = $root . '/operator-plan.json';
         self::requireValue(is_file($planPath) && !is_link($planPath) && (fileperms($planPath) & 07777) === 0600 && fileowner($planPath) === posix_geteuid(), 'private_plan_not_owned_0600');
         $lockPath = $root . '/deploy.lock';

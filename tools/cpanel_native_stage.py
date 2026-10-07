@@ -171,9 +171,20 @@ def native_status(client):
     receipt = native_receipt(client, expected, plan_sha, set())
     require(receipt is not None)
     task = native_task_state(client, expected)
+    inventory = {}
+    deployment_id = receipt.get('deploymentId')
+    if isinstance(deployment_id, str) and re.fullmatch(r'[a-f0-9]{32}', deployment_id):
+        for label,path in (
+                ('runtimeCandidate',p.DEPLOY_ROOT+'/deployment-'+deployment_id+'/candidate'),
+                ('publicCandidate',p.HOME+'/public_html/php.architex.co.za.candidate-'+deployment_id)):
+            if p.exists(client,path):
+                rows=p.entries(client,path)
+                inventory[label]={'exists':True,'candidateMarkerPresent':any(row.get('name')=='.candidate-id' for row in rows)}
+            else:
+                inventory[label]={'exists':False,'candidateMarkerPresent':False}
     return {'mode':'native-status','status':'native_status_complete','runtime_deployed':False,
             'mutations_enabled':False,'commit':expected,'planSha256':plan_sha,
-            'receipt':receipt,'independentNativeDeployment':task}
+            'receipt':receipt,'independentNativeDeployment':task,'candidateInventory':inventory}
 
 
 def safe_retry_plan(client, old, original, expected):
