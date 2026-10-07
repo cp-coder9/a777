@@ -116,7 +116,26 @@ try {
         try { Deploy::webProbeCode($fixed,'proof','diagnostic',$secret,str_repeat('0',64),$name,$badFile); throw new LogicException('arbitrary file accepted'); } catch (RuntimeException) {}
     }
     $rule=$invoke('webProbeRule',$name,$secret,true);
-    if ($rule!=="RewriteCond %{REQUEST_METHOD} ^GET$\nRewriteCond %{QUERY_STRING} ^$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n" || str_contains($rule,$secret)) throw new RuntimeException('capability Apache scope');
+    if ($rule!=="RewriteCond %{REQUEST_URI} !^/".str_replace('.','\\.',$name)."$\n" || str_contains($rule,$secret)) throw new RuntimeException('capability Apache scope');
+    $pattern=substr(trim($rule),strlen('RewriteCond %{REQUEST_URI} !'));
+    foreach (['/'.$name=>false,'/'=>true,'/index.php'=>true,'/app/index.php'=>true,'/api/v1/readiness'=>true,'/other/'.$name=>true,'/wrong-prefix-'.str_repeat('a',48).'.php'=>true,'/native-probe-'.str_repeat('c',48).'.php'=>true,'/'.$name.'.extra'=>true,'/'.$name.'/'=>true] as $uri=>$denied) {
+        if ((preg_match('~'.$pattern.'~D',$uri)!==1)!==$denied) throw new RuntimeException('exact capability maintenance exclusion');
+    }
+    if ($invoke('webProbeRule',$name,$secret,false)!=="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n") throw new RuntimeException('legacy gate changed');
+    $gate=$invoke('gateBytes','fixture-lease');
+    $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
+    if (!str_contains($temporary,$rule."RewriteRule ^ - [R=503,L]\n") || str_contains($temporary,'[END]')) throw new RuntimeException('condition not directly on catchall');
+    foreach ([['body'=>'Deployment maintenance','headers'=>['x-a777-deployment-lease'=>'fixture-lease']],['body'=>'','headers'=>[]],['body'=>'Deployment maintenance\n','headers'=>['x-a777-deployment-lease'=>'wrong']]] as $response) {
+        foreach ([false,true] as $present) {
+            $diagnostic=$invoke('webProbeResponse',$response,'fixture-lease',$present);
+            $expected=['maintenanceBody'=>$response['body']==='Deployment maintenance','leaseMatched'=>($response['headers']['x-a777-deployment-lease']??null)==='fixture-lease','emptyBody'=>$response['body']==='','proofPresent'=>$present];
+            if ($diagnostic!==$expected || count(array_filter($diagnostic,'is_bool'))!==4) throw new RuntimeException('response boolean whitelist');
+        }
+    }
+    foreach (["'/web-probe-response.json'",'self::webProbeResponse($r,$lease,is_file($proof))','self::put($responsePath,$responseBytes,0600)'] as $required) {
+        if (!str_contains($source,$required)) throw new RuntimeException('private actual-response receipt missing');
+    }
+    echo "PASS exact nonce catchall exclusion, ordinary/wrong-path denial and response boolean whitelist (synthetic contracts)\n";
     foreach (['valid','uri','method','query','uri_query','filename','hash','unhealthy'] as $case) {
         $proof=$dir.'/proof.json'; $preflight=$dir.'/web-probe-preflight.json'; @unlink($proof); @unlink($preflight);
         file_put_contents($dir.'/.htaccess','fixed gate');
