@@ -734,25 +734,75 @@ final class CpanelNativeDeployment
     }
     private static function runtimeLoopbackDenied(array $check): bool
     {
-        return ($check['transport']??null)==='account-origin-http'
+        return in_array($check['transport']??null,['account-origin-http','account-origin-https'],true)
             && ($check['peerVerified']??null)===true && ($check['curlErrorCode']??null)===0
             && in_array($check['status']??null,[403,404],true);
+    }
+    private static function accountOriginHttpsOptions(array $options): array
+    {
+        $url=$options[CURLOPT_URL]??'';
+        self::need(is_string($url) && preg_match('#\Ahttp://(architex\.co\.za|php\.architex\.co\.za):80(/[^?\#]*)\z#D',$url,$m)===1,'account_origin_https_scope');
+        $options[CURLOPT_URL]='https://'.$m[1].':443'.$m[2];
+        $options[CURLOPT_RESOLVE]=[$m[1].':443:'.self::ACCOUNT_ORIGIN_IP];
+        $options[CURLOPT_INTERFACE]=self::ACCOUNT_ORIGIN_IP;
+        $options[CURLOPT_PROTOCOLS]=CURLPROTO_HTTPS;
+        $options[CURLOPT_REDIR_PROTOCOLS]=CURLPROTO_HTTPS;
+        $options[CURLOPT_SSL_VERIFYPEER]=true; $options[CURLOPT_SSL_VERIFYHOST]=2;
+        $options[CURLOPT_FOLLOWLOCATION]=false; $options[CURLOPT_MAXREDIRS]=0;
+        return $options;
+    }
+    private static function accountOriginExpectedLocation(string $location,array $options): bool
+    {
+        $expected=self::accountOriginHttpsOptions($options)[CURLOPT_URL];
+        return $location===$expected || $location===str_replace(':443/','/',$expected);
+    }
+    private static function accountOriginHttpsPreflight(): void
+    {
+        // No application bytes or nonce until both endpoints establish the owned self-route.
+        $context=stream_context_create(['socket'=>['bindto'=>self::ACCOUNT_ORIGIN_IP.':0']]);
+        $socket=@stream_socket_client('tcp://'.self::ACCOUNT_ORIGIN_IP.':443',$errno,$error,5,STREAM_CLIENT_CONNECT,$context);
+        self::need(is_resource($socket),'account_origin_https_self_route');
+        try {
+            $local=stream_socket_get_name($socket,false); $peer=stream_socket_get_name($socket,true);
+            self::need(is_string($local) && preg_match('/\A'.preg_quote(self::ACCOUNT_ORIGIN_IP,'/').':[1-9][0-9]{0,4}\z/D',$local)===1
+                && $peer===self::ACCOUNT_ORIGIN_IP.':443','account_origin_https_self_route');
+        } finally { fclose($socket); }
+    }
+    private static function accountOriginRequest(array $options,bool $retainBody): array
+    {
+        for ($attempt=0;$attempt<2;$attempt++) {
+            $curl=curl_init(); self::need($curl!==false,'account_origin_curl');
+            $body=''; $received=0; $locations=[];
+            try {
+                $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$body,&$received,$retainBody): int {
+                    $received+=strlen($chunk); if ($received>1048576) return 0;
+                    if ($retainBody) $body.=$chunk; return strlen($chunk);
+                };
+                $options[CURLOPT_HEADERFUNCTION]=static function($c,string $line) use (&$locations): int {
+                    if (str_starts_with($line,'HTTP/')) $locations=[];
+                    if (stripos($line,'Location:')===0) $locations[]=trim(substr($line,9));
+                    return strlen($line);
+                };
+                self::need(curl_setopt_array($curl,$options),'account_origin_options');
+                $ok=curl_exec($curl)!==false; $error=curl_errno($curl);
+                $verified=self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),curl_getinfo($curl,CURLINFO_PRIMARY_IP));
+                $r=['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$ok?$body:'','headers'=>[],
+                    'curlErrorCode'=>$ok?$error:max(1,$error),'peerVerified'=>$verified,
+                    'transport'=>$attempt===0?'account-origin-http':'account-origin-https'];
+            } finally { curl_close($curl); }
+            if ($attempt!==0 || !in_array($r['status'],[301,302],true) || !$verified || !$ok || $error!==0
+                || count($locations)!==1 || !self::accountOriginExpectedLocation($locations[0],$options)) return $r;
+            self::accountOriginHttpsPreflight();
+            $options=self::accountOriginHttpsOptions($options);
+        }
+        throw new RuntimeException('account_origin_request');
     }
     private static function runtimeLoopbackHttp(): array
     {
         self::accountOriginPreflight();
-        $curl=curl_init(); self::need($curl!==false,'runtime_loopback_curl'); $received=0;
-        try {
-            $options=self::runtimeLoopbackOptions();
-            $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$received): int {
-                $received+=strlen($chunk); return $received<=1048576?strlen($chunk):0;
-            };
-            self::need(curl_setopt_array($curl,$options),'runtime_loopback_options');
-            $ok=curl_exec($curl); $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
-            return ['transport'=>'account-origin-http','status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),
-                'peerVerified'=>self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer),
-                'curlErrorCode'=>$ok===false?max(1,curl_errno($curl)):curl_errno($curl)];
-        } finally { curl_close($curl); }
+        $r=self::accountOriginRequest(self::runtimeLoopbackOptions(),false);
+        return ['transport'=>$r['transport'],'status'=>$r['status'],
+            'peerVerified'=>$r['peerVerified'],'curlErrorCode'=>$r['curlErrorCode']];
     }
     private static function runtimeOriginResolve(string $ip): string
     {
@@ -958,18 +1008,9 @@ PHP;
     {
         $options=self::webProbeLoopbackOptions($name,$secret);
         self::accountOriginPreflight();
-        $curl=curl_init(); self::need($curl!==false,'http_curl'); $body=''; $received=0;
-        try {
-            $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$body,&$received): int {
-                $received+=strlen($chunk); if ($received>1048576) return 0; $body.=$chunk; return strlen($chunk);
-            };
-            self::need(curl_setopt_array($curl,$options),'http_transport');
-            $ok=curl_exec($curl)!==false; $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
-            $error=curl_errno($curl);
-            return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$ok?$body:'',
-                'headers'=>[],'curlErrorCode'=>($ok && self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer))?$error:max(1,$error),
-                'peerVerified'=>self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer)];
-        } finally { curl_close($curl); }
+        $r=self::accountOriginRequest($options,true);
+        if (!$r['peerVerified']) $r['curlErrorCode']=max(1,$r['curlErrorCode']);
+        return $r;
     }
     private static function webProbeFallback(array $response,bool $proofPresent): bool
     { return ($response['status']??null)===503 && !$proofPresent; }
@@ -993,7 +1034,7 @@ PHP;
             $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
             $transport='public-https'; clearstatcache(true,$proof);
             if (self::webProbeFallback($r,is_file($proof))) {
-                $transport='account-origin-http'; $r=self::webProbeLoopbackHttp($name,$secret);
+                $r=self::webProbeLoopbackHttp($name,$secret); $transport=$r['transport'];
             }
             clearstatcache(true,$proof);
             self::append($journal,['phase'=>'web-probe-transport','transport'=>$transport]);

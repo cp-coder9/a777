@@ -22,6 +22,21 @@ try {
     foreach ([["169.239.218.73","169.239.218.73",true],["127.0.0.1","169.239.218.73",false],["169.239.218.73","127.0.0.1",false],["169.239.218.73","8.8.8.8",false],["8.8.8.8","169.239.218.73",false],[false,"169.239.218.73",false],["169.239.218.73:80","169.239.218.73",false]] as [$local,$peer,$expected]) {
         if ($invoke('accountOriginPeers',$local,$peer)!==$expected) throw new RuntimeException('account-origin peer binding');
     }
+    foreach ([$options,$invoke('runtimeLoopbackOptions')] as $base) {
+        $https=$invoke('accountOriginHttpsOptions',$base); $url=$https[CURLOPT_URL];
+        foreach ([CURLOPT_INTERFACE=>'169.239.218.73',CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS] as $key=>$expected) {
+            if ($https[$key]!==$expected) throw new RuntimeException('HTTPS pin/TLS contract');
+        }
+        if (!$invoke('accountOriginExpectedLocation',$url,$base) || !$invoke('accountOriginExpectedLocation',str_replace(':443/','/',$url),$base)) throw new RuntimeException('canonical upgrade refused');
+        foreach ([$url.'?x=1',$url.'#fragment',str_replace(':443',':444',$url),str_replace('https:','http:',$url),str_replace('architex.co.za','evil.example',$url),'/same-path', $url.'/changed'] as $bad) {
+            if ($invoke('accountOriginExpectedLocation',$bad,$base)) throw new RuntimeException('redirect scope escaped');
+        }
+        $host=parse_url($url,PHP_URL_HOST);
+        if ($https[CURLOPT_RESOLVE]!==[$host.':443:169.239.218.73'] || $https[CURLOPT_HTTPHEADER]!==$base[CURLOPT_HTTPHEADER]) throw new RuntimeException('HTTPS target/header changed');
+    }
+    foreach ([200,301,302,503] as $status) if ($invoke('runtimeLoopbackDenied',['transport'=>'account-origin-https','status'=>$status,'peerVerified'=>true,'curlErrorCode'=>0])) throw new RuntimeException('non-denial accepted');
+    foreach (['account-origin-http','account-origin-https'] as $transport) if (!$invoke('runtimeLoopbackDenied',['transport'=>$transport,'status'=>403,'peerVerified'=>true,'curlErrorCode'=>0])) throw new RuntimeException('denial refused');
+    echo "PASS scoped HTTPS upgrade, TLS/interface/resolve pins and challenge refusal (synthetic contracts only)\n";
     $source=file_get_contents(dirname(__DIR__).'/CpanelNativeDeployment.php');
     $preflightStart=strpos($source,'private static function accountOriginPreflight');
     $preflightEnd=strpos($source,'private static function runtimeLoopbackOptions',$preflightStart);
@@ -30,9 +45,9 @@ try {
         if (!str_contains($preflight,$required)) throw new RuntimeException('self-route preflight omitted');
     }
     foreach (['runtimeLoopbackHttp','webProbeLoopbackHttp'] as $method) {
-        $start=strpos($source,'private static function '.$method); $end=strpos($source,'finally { curl_close($curl); }',$start);
+        $start=strpos($source,'private static function '.$method); $end=strpos($source,'private static function ',$start+25);
         $body=substr($source,$start,$end-$start);
-        if (strpos($body,'self::accountOriginPreflight();')===false || strpos($body,'self::accountOriginPreflight();')>strpos($body,'curl_exec($curl)') || !str_contains($body,'CURLINFO_LOCAL_IP')) throw new RuntimeException('secret transport precedes self-route proof');
+        if (strpos($body,'self::accountOriginPreflight();')===false || strpos($body,'self::accountOriginPreflight();')>strpos($body,'self::accountOriginRequest(')) throw new RuntimeException('secret transport precedes self-route proof');
     }
     echo "PASS fixed account-origin options, self-route ordering, header/path scope and stale proof binding (synthetic contracts only)\n";
     foreach ([false,true,'fence'] as $terminate) {
