@@ -71,6 +71,104 @@ def old_receipt(client, release, old_sha):
     return found[0]
 
 
+RECOVERY_KEYS = frozenset(('format', 'mode', 'commit', 'expectedRecoveryCommit', 'releaseCommit', 'oldPlanSha256', 'planSha256', 'recoveredDeploymentId', 'phase', 'deployed', 'sourceMigrationsReplayed', 'sourceAlreadyCurrent', 'sourceAppliedPriorCount', 'maintenanceActive', 'maintenanceRetained', 'appPrivilegesRestored', 'operatorPrivilegesRevoked', 'operatorStateUnknown', 'sourcePrivilegeStateUnknown', 'appConfigDeltaVerified', 'readinessPassed', 'artifactVerified', 'backupId', *HASH_FIELDS))
+RECOVERY_BOOL_KEYS = frozenset(('deployed', 'sourceMigrationsReplayed', 'sourceAlreadyCurrent', 'maintenanceActive', 'maintenanceRetained', 'appPrivilegesRestored', 'operatorPrivilegesRevoked', 'operatorStateUnknown', 'sourcePrivilegeStateUnknown', 'appConfigDeltaVerified', 'readinessPassed', 'artifactVerified'))
+
+
+def recovery_metadata(client, recovery, plan_sha, old_sha, release, prior, previous):
+    """Only exact fresh flat receipts; failure observations are not safety assertions."""
+    found = []
+    for row in p.entries(client, p.DEPLOY_ROOT):
+        name = row.get('name')
+        if not isinstance(name, str) or name in previous or not re.fullmatch(r'native-recover-' + recovery + r'-[a-f0-9]{16}\.json', name):
+            continue
+        data = json.loads(private_read(client, p.DEPLOY_ROOT + '/' + name))
+        require(isinstance(data, dict) and set(data) == RECOVERY_KEYS)
+        require(data['format'] == 'a777-cpanel-native-recover-v1' and data['mode'] == 'native-recover')
+        require(data['commit'] == data['expectedRecoveryCommit'] == recovery and data['releaseCommit'] == release)
+        require(data['planSha256'] == plan_sha and data['oldPlanSha256'] == old_sha and data['recoveredDeploymentId'] == prior['deploymentId'])
+        require(data['phase'] in ('complete', 'failed', 'recovery_required'))
+        require(all(type(data[k]) is bool for k in RECOVERY_BOOL_KEYS))
+        require(type(data['sourceAppliedPriorCount']) is int and 0 <= data['sourceAppliedPriorCount'] <= 100000)
+        require(all(data[k] == prior[k] or (data['phase'] != 'complete' and data[k] is None) for k in (*HASH_FIELDS, 'backupId')))
+        found.append({k: data[k] for k in RECOVERY_KEYS})
+    require(len(found) <= 1)
+    return found[0] if found else None
+
+
+# The PHP owner must emit only these fixed codes, never exception messages.
+DIAGNOSTIC_CODES = frozenset(('operation_refused', 'recovery_refused', 'source_audit_target_missing', 'source_state_invalid', 'private_lease_invalid', 'current_schema_invalid', 'recovery_evidence_refused', 'native_recovery_contract_refused', 'native_deployment_refused', 'unclassified'))
+
+
+def recovery_diagnostics(client, recovery, previous):
+    found = []
+    for row in p.entries(client, p.DEPLOY_ROOT):
+        name = row.get('name')
+        if not isinstance(name, str) or name in previous or not re.fullmatch(r'recoverydiag-' + recovery + r'-[a-f0-9]{16}\.json', name):
+            continue
+        data = json.loads(private_read(client, p.DEPLOY_ROOT + '/' + name))
+        require(isinstance(data, dict) and set(data) == {'file', 'reasonCode', 'line'})
+        require(data['file'] in ('CpanelNativeRecovery.php', 'CpanelNativeDeploymentRecovery.php'))
+        require(data['reasonCode'] in DIAGNOSTIC_CODES)
+        require(type(data['line']) is int and 1 <= data['line'] <= 100000)
+        found.append({k: data[k] for k in ('file', 'reasonCode', 'line')})
+    return found
+
+
+def failed_recovery_guard(client, recovery):
+    rows = client._uapi('VersionControlDeployment', 'retrieve', {})
+    require(isinstance(rows, list) and all(isinstance(row, dict) for row in rows))
+    rows = [row for row in rows if row.get('repository_root') == p.ROOT]
+    require(rows)
+    for row in rows:
+        require(re.fullmatch(r'[0-9]+', str(row.get('deploy_id', ''))))
+        require(isinstance(row.get('timestamps'), dict))
+        states = [key for key in ('succeeded', 'failed', 'canceled') if re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(row['timestamps'].get(key, '')))]
+        require(len(states) == 1)  # Unknown or running tasks forbid all pointer writes.
+    latest = max(rows, key=lambda row: int(row['deploy_id']))
+    matches = [row for row in rows if isinstance(row.get('repository_state'), dict) and row['repository_state'].get('identifier') == recovery]
+    require(len(matches) == 1 and matches[0] == latest)
+    require(any(re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str(latest['timestamps'].get(key, ''))) for key in ('failed', 'canceled')))
+    require(isinstance(latest.get('task_id'), str) and re.fullmatch(r'[A-Za-z0-9/-]{1,128}', latest['task_id']))
+    return latest
+
+
+def pointer_guard_commit(client, plan, pointer):
+    recovery = pointer['expectedRecoveryCommit']
+    if recovery != plan['expectedRecoveryCommit']:
+        failed_recovery_guard(client, recovery)
+        return recovery
+    # Resume only an exact newly prepared plan that has never been dispatched.
+    rows = client._uapi('VersionControlDeployment', 'retrieve', {})
+    require(isinstance(rows, list) and all(isinstance(row, dict) for row in rows))
+    rows = [row for row in rows if row.get('repository_root') == p.ROOT]
+    require(rows and not any(isinstance(row.get('repository_state'), dict) and row['repository_state'].get('identifier') == recovery for row in rows))
+    require(all(re.fullmatch(r'[0-9]+', str(row.get('deploy_id', ''))) for row in rows))
+    latest = max(rows, key=lambda row: int(row['deploy_id']))
+    previous = commit((latest.get('repository_state') or {}).get('identifier'))
+    failed_recovery_guard(client, previous)
+    shadow = dict(plan, expectedRecoveryCommit=previous)
+    require(private_read(client, p.DEPLOY_ROOT + '/recovery-plan-' + previous + '.json') == encoded(shadow) + '\n')
+    return previous
+
+
+def validated_pointer(client, plan, original, consumed_path, consumed):
+    before = private_read(client, POINTER)
+    pointer = json.loads(before)
+    require(isinstance(pointer, dict) and set(pointer) == {'mode', 'expectedRecoveryCommit', 'planPath', 'planSha256'})
+    recovery = commit(pointer['expectedRecoveryCommit'])
+    require(pointer['mode'] == 'native-recover' and pointer['planPath'] == p.DEPLOY_ROOT + '/recovery-plan-' + recovery + '.json')
+    require(isinstance(pointer['planSha256'], str) and re.fullmatch(r'[a-f0-9]{64}', pointer['planSha256']))
+    raw = private_read(client, pointer['planPath'])
+    require(digest(raw.encode('ascii')) == pointer['planSha256'])
+    shadow = dict(plan, expectedRecoveryCommit=recovery)
+    require(json.loads(raw) == shadow and raw == encoded(shadow) + '\n')
+    pointer_guard_commit(client, plan, pointer)
+    require(private_read(client, p.PLAN) == original and private_read(client, consumed_path) == consumed)
+    require(private_read(client, POINTER) == before and private_read(client, pointer['planPath']) == raw)
+    return before
+
+
 def recovery_receipt(client, recovery, plan_sha, old_sha, release, prior, previous):
     found = []
     required = {'format', 'mode', 'commit', 'expectedRecoveryCommit', 'releaseCommit', 'oldPlanSha256', 'planSha256', 'recoveredDeploymentId', 'phase', 'deployed', 'sourceMigrationsReplayed', 'sourceAlreadyCurrent', 'sourceAppliedPriorCount', 'maintenanceActive', 'maintenanceRetained', 'appPrivilegesRestored', 'operatorPrivilegesRevoked', 'operatorStateUnknown', 'sourcePrivilegeStateUnknown', 'appConfigDeltaVerified', 'readinessPassed', 'artifactVerified', 'backupId', *HASH_FIELDS}
@@ -141,7 +239,7 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         pulled = p.clone(client, p.DEPLOY_KEY_PIN)
         require(pulled.get('status') == 'cloned_and_pulled' and pulled.get('commit') == expected)
         plan_path = p.DEPLOY_ROOT + '/recovery-plan-' + expected + '.json'
-        require(not p.exists(client, plan_path) and not p.exists(client, POINTER))
+        # Existing recovery state is validated below before any private writes.
         plan = {'mode': 'native-recover', 'account': 'archite4', 'repository': p.ROOT, 'target': p.HOME,
                 'expectedRecoveryCommit': expected, 'releaseCommit': release, 'oldPlanSha256': old_sha,
                 'recoveredDeploymentId': prior['deploymentId'], 'originalPlanPath': p.PLAN,
@@ -151,8 +249,21 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         plan_sha = digest(text.encode('ascii'))
         pointer = encoded({'mode': 'native-recover', 'expectedRecoveryCommit': expected, 'planPath': plan_path, 'planSha256': plan_sha}) + '\n'
         stage = 'separate_private_recovery_plan'
-        client.save_file(plan_path, text); p.private_chmod(client, plan_path)
+        prior_pointer = validated_pointer(client, plan, original, marker_path, consumed) if p.exists(client, POINTER) else None
+        plan_exists = p.exists(client, plan_path)
+        if plan_exists:
+            require(prior_pointer is not None and private_read(client, plan_path) == text)
+            # pointer_guard_commit refuses any task already triggered at this SHA.
+            pointer_guard_commit(client, plan, json.loads(prior_pointer))
+        else:
+            client.save_file(plan_path, text); p.private_chmod(client, plan_path)
         require(private_read(client, plan_path) == text)
+        if prior_pointer is not None:
+            pointer_guard_commit(client, plan, json.loads(prior_pointer))
+            require(private_read(client, POINTER) == prior_pointer)
+        else:
+            require(not p.exists(client, POINTER))
+        require(private_read(client, p.PLAN) == original and private_read(client, marker_path) == consumed)
         client.save_file(POINTER, pointer); p.private_chmod(client, POINTER)
         require(private_read(client, POINTER) == pointer and private_read(client, p.PLAN) == original and private_read(client, marker_path) == consumed)
         retained_token(client)
@@ -175,6 +286,12 @@ def native_recover(client, source, expected, attempts=360, pause=5):
                 if states:
                     terminal = states[0]; break
             if attempt + 1 < attempts: time.sleep(pause)
+        report['terminalTaskState'] = terminal
+        stage = 'fresh_recovery_metadata'
+        report['recoveryDiagnostics'] = recovery_diagnostics(client, expected, previous)
+        metadata = recovery_metadata(client, expected, plan_sha, old_sha, release, prior, previous)
+        if metadata is not None:
+            report['receipt'] = metadata
         require(terminal == 'succeeded')
         stage = 'fresh_recovery_receipt'
         receipt = recovery_receipt(client, expected, plan_sha, old_sha, release, prior, previous)

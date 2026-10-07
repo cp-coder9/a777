@@ -19,14 +19,53 @@ final class CpanelNativeRecovery
     private const PIN='5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8';
     private const BACKUP='5b9e44eb47a24c7f0d47d11609e8c53564d54971379fe8d91fd7da5bb71ed87e';
     private static function need(bool $ok): void { if (!$ok) throw new RuntimeException('recovery_evidence_refused'); }
+    /** Only reviewed code locations and fixed enums; never exception text or trace arguments. */
+    public static function safeFailure(Throwable $e): array
+    {
+        $type=in_array(get_class($e),[RuntimeException::class,\JsonException::class,\TypeError::class,\Error::class,\PDOException::class],true)?get_class($e):'Throwable';
+        $reason=in_array($e->getMessage(),['recovery_evidence_refused','native_recovery_contract_refused','native_deployment_refused'],true)?$e->getMessage():'unclassified';
+        $out=['exceptionType'=>$type,'sourceFile'=>null,'sourceFunction'=>null,'sourceLine'=>null,'reason'=>$reason];
+        $owned=['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php','CpanelNativeDeployment.php','cpanel_git_deploy.php'];
+        $locations=[['file'=>$e->getFile(),'line'=>$e->getLine()]];
+        foreach ($e->getTrace() as $frame) $locations[]=$frame;
+        // A guard's throw line is less useful than the pinned caller's failed condition.
+        if ($reason!=='unclassified') $locations=array_merge($e->getTrace(),$locations);
+        foreach ($locations as $frame) {
+            foreach ($owned as $name) if (($frame['file']??null)===__DIR__.DIRECTORY_SEPARATOR.$name && is_int($frame['line']??null) && $frame['line']>0) {
+                $out['sourceFile']=$name; $out['sourceLine']=$frame['line'];
+                // Derive function from owned source only, not arbitrary exception metadata.
+                $lines=file(__DIR__.DIRECTORY_SEPARATOR.$name); $function=null;
+                foreach (array_slice($lines,0,$frame['line']) as $line) if (preg_match('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/',$line,$m)) $function=$m[1];
+                $out['sourceFunction']=$function; return $out;
+            }
+        }
+        return $out;
+    }
     public static function validateReceipt(array $r,string $planSha): void
     {
-        self::need(($r['status']??null)==='recovery_required' && ($r['lastCompletedStage']??null)==='sourceDDL'
+        self::need(($r['format']??null)==='a777-cpanel-native-deploy-v1' && ($r['phase']??null)==='recovery_required' && ($r['lastCompletedStage']??null)==='sourceDDL'
             && ($r['failureStage']??null)==='promotion' && ($r['sourceMigrationCount']??null)===8
             && ($r['sourceDatabaseDdlTouched']??null)===true && ($r['operatorPrivilegesRevoked']??null)===true
             && ($r['operatorStateUnknown']??null)===false && ($r['maintenanceRetained']??null)===true
             && ($r['commit']??null)===self::OLD && ($r['deploymentId']??null)===self::ID
             && ($r['archiveSha256']??null)===self::BACKUP && ($r['planSha256']??null)===$planSha);
+    }
+    /** Select the actual producer's private sourceDDL snapshot and managed target receipt. */
+    public static function journalTarget(array $records,array $receipt,string $user): string
+    {
+        $sources=array_values(array_filter($records,static fn($v)=>($v['phase']??null)==='sourceDDL'));
+        $targets=array_values(array_filter($records,static fn($v)=>($v['phase']??null)==='target-provisioned'));
+        self::need(count($sources)===1 && count($targets)===1);
+        $source=$sources[0]; $target=$targets[0]['receipt']??null;
+        self::need(is_array($target));
+        foreach (['commit','deploymentId','planSha256','archiveSha256','backupId'] as $key) self::need(isset($receipt[$key]) && ($source[$key]??null)===$receipt[$key]);
+        $name=$source['targetDatabase']??null;
+        self::need(is_string($name) && preg_match('/\Aarchite4_ar_[a-f0-9]{16}_test\z/',$name)===1
+            && ($target['target']??null)===$name && ($target['account']??null)==='archite4'
+            && ($target['managed']??null)===true && ($target['source']??null)==='archite4_dev_rel1' && ($target['user']??null)===$user
+            && ($target['binding']['source']??null)==='archite4_dev_rel1' && ($target['binding']['user']??null)===$user
+            && ($target['binding']['runtimeSha256']??null)===self::PIN);
+        return $name;
     }
     /** Pure inventory comparator: exactly the old artifact plus two owned runtime controls. */
     public static function compareInventory(array $expected,array $actual): void
@@ -158,8 +197,7 @@ final class CpanelNativeRecovery
                 self::need(is_string($version) && preg_match('/\A[0-9]{4}_[a-z0-9_]+\z/',$version)===1);
                 self::need(isset($applied[$version]) && hash_file('sha256',$runtime.'/database/migrations/'.$version.'.sql')===$applied[$version]);
             }
-            $targetDatabase=$r['targetDatabase']??null;
-            self::need(is_string($targetDatabase) && preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$targetDatabase)===1);
+            $targetDatabase=self::journalTarget($records,$r,$original['DB_USER']);
             $schemaHashes=self::auditSchemas($pdo,$targetDatabase,$runtime.'/database/migrations',$priorIds,\CpanelMaintenanceApi::inventory('list_databases'));
             $h['append']($journal,['phase'=>'recovery-schema-audit','targetDatabase'=>$targetDatabase,'schemaHashes'=>$schemaHashes,'schemaAuditPassed'=>true]);
             $result['schemaAuditPassed']=true;
@@ -186,7 +224,8 @@ final class CpanelNativeRecovery
             $result['appConfigDeltaVerified']=true; $result['readinessPassed']=($result['schemaAuditPassed']??false) && ($result['apiAuditPassed']??false); $result['artifactVerified']=true;
             $result['status']='recovered_and_deployed'; $result['maintenanceRetained']=false;
             $h['append']($journal,['phase'=>'recovery-complete']+$result);
-        } catch (Throwable) {
+        } catch (Throwable $failure) {
+            $result['failureDiagnostic']=self::safeFailure($failure);
             // Never report exception text, journal content, credentials or SQL.
             $result['status']='recovery_required'; $result['maintenanceRetained']=true;
             $result['failureCode']='recovery_evidence_or_operation_refused';
@@ -219,7 +258,7 @@ final class CpanelNativeRecovery
     }
     public static function normalizeDefinition(string $sql,string $source,string $target): string
     {
-        self::need($source==='archite4_dev_rel1' && preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$target)===1);
+        self::need($source==='archite4_dev_rel1' && preg_match('/\Aarchite4_ar_[0-9a-f]{16}_test\z/',$target)===1);
         // Leave string literals (including comments/defaults) and external FK databases untouched.
         $parts=preg_split("/('(?:''|\\\\.|[^'\\\\])*')/s",$sql,-1,PREG_SPLIT_DELIM_CAPTURE);
         self::need(is_array($parts));
@@ -230,7 +269,7 @@ final class CpanelNativeRecovery
     }
     public static function auditSchemas(\PDO $pdo,string $target,string $root,array $ids,array $inventory): array
     {
-        self::need(preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$target)===1);
+        self::need(preg_match('/\Aarchite4_ar_[0-9a-f]{16}_test\z/',$target)===1);
         $matches=array_filter($inventory,static fn($row)=>is_array($row)&&($row['database']??null)===$target); self::need(count($matches)===1);
         $hashes=[];
         foreach (self::affectedTables($root,$ids) as $table) {
