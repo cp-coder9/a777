@@ -36,7 +36,7 @@ final class CpanelNativeRecovery
     }
     public static function run(string $privatePlan,string $privateReceipt,string $expectedApprovedRecoveryGitSHA,string $expectedOldPlanSHA256): array
     {
-        $result=['status'=>'recovery_required','sourceMigrationsReplayed'=>false,'maintenanceRetained'=>true,'protectedTokenRetained'=>true];
+        $result=['status'=>'recovery_required','sourceMigrationsReplayed'=>false,'maintenanceRetained'=>true,'protectedTokenRetained'=>true,'schemaAuditPassed'=>false,'apiAuditPassed'=>false];
         $mask=umask(0077); $h=[]; $lock=null; $journal=null; $normal=null; $gate=null;
         try {
             $h=CpanelNativeDeployment::recoveryHelpers($expectedApprovedRecoveryGitSHA);
@@ -158,6 +158,11 @@ final class CpanelNativeRecovery
                 self::need(is_string($version) && preg_match('/\A[0-9]{4}_[a-z0-9_]+\z/',$version)===1);
                 self::need(isset($applied[$version]) && hash_file('sha256',$runtime.'/database/migrations/'.$version.'.sql')===$applied[$version]);
             }
+            $targetDatabase=$r['targetDatabase']??null;
+            self::need(is_string($targetDatabase) && preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$targetDatabase)===1);
+            $schemaHashes=self::auditSchemas($pdo,$targetDatabase,$runtime.'/database/migrations',$priorIds,\CpanelMaintenanceApi::inventory('list_databases'));
+            $h['append']($journal,['phase'=>'recovery-schema-audit','targetDatabase'=>$targetDatabase,'schemaHashes'=>$schemaHashes,'schemaAuditPassed'=>true]);
+            $result['schemaAuditPassed']=true;
             $h['ready']($pdo,$runtime,$new);
             $moves=[[self::RUNTIME,$work.'/old-runtime'],[$candidate,self::RUNTIME],[self::PUBLIC,$work.'/old-docroot'],[$public,self::PUBLIC]];
             foreach ($moves as $i=>[$from,$to]) if ($i>=$state) $h['rename']($from,$to,$journal);
@@ -168,7 +173,9 @@ final class CpanelNativeRecovery
             $h['append']($journal,['phase'=>'recovery-maintenance-release-intent','sha256'=>hash('sha256',$normal)]);
             $h['replace'](self::PUBLIC.'/.htaccess',$gate,$normal,0644,$journal);
             $h['httpReady']($h['http']('/api/v1/readiness')); $h['httpBuild']($h['http']('/build-info.json'),self::OLD);
-            foreach (['/api.php','/maintenance.php'] as $entry) if (is_file(self::RUNTIME.'/public'.$entry)) self::need(in_array($h['http']($entry)['status'],[200,401,403,404],true));
+            self::auditApis($h['http']);
+            $result['apiAuditPassed']=true;
+            $h['append']($journal,['phase'=>'recovery-api-audit','apiAuditPassed'=>true]);
             self::need((new MigrationRunner($pdo,self::RUNTIME.'/database/migrations'))->status()->isCurrent() && hash_file('sha256',$work.'/source.axbackup')===self::BACKUP);
             $h['httpReady']($h['http']('/api/v1/readiness'));
             $result+=['oldReleaseSHA'=>self::OLD,'approvedRecoveryGitSHA'=>$expectedApprovedRecoveryGitSHA,'planSha256'=>$expectedOldPlanSHA256,'deploymentId'=>self::ID];
@@ -176,7 +183,7 @@ final class CpanelNativeRecovery
             $result['sourceAlreadyCurrent']=true; $result['sourceAppliedPriorCount']=8;
             $result['appPrivilegesRestored']=true; $result['operatorPrivilegesRevoked']=true;
             $result['operatorStateUnknown']=false; $result['sourcePrivilegeStateUnknown']=false;
-            $result['appConfigDeltaVerified']=true; $result['readinessPassed']=true; $result['artifactVerified']=true;
+            $result['appConfigDeltaVerified']=true; $result['readinessPassed']=($result['schemaAuditPassed']??false) && ($result['apiAuditPassed']??false); $result['artifactVerified']=true;
             $result['status']='recovered_and_deployed'; $result['maintenanceRetained']=false;
             $h['append']($journal,['phase'=>'recovery-complete']+$result);
         } catch (Throwable) {
@@ -193,6 +200,70 @@ final class CpanelNativeRecovery
     {
         $states=[[true,true,false,true,true,false],[true,false,true,true,true,false],[false,true,true,true,true,false],[false,true,true,true,false,true],[false,true,true,false,true,true]];
         $i=array_search([$candidate,$active,$oldRuntime,$publicCandidate,$public,$oldPublic],$states,true); self::need($i!==false); return $i;
+    }
+    /** Read only: definitions, not row counts or a scratch-table validator. */
+    public static function affectedTables(string $root,array $ids): array
+    {
+        $expected=['0062_wingman_tutorial_progress','0063_v1_feedback_records','0064_v1_practice_programme_milestones_fees','0065_v1_module_records','0066_v1_refuse_area_calculator','0067_production_integration_lifecycles','0069_internal_work_permits','0070_toolbox_pdf_exports'];
+        $sorted=$ids; sort($sorted,SORT_STRING); self::need($sorted===$expected);
+        $lexer=new \Architex\Infrastructure\Database\SqlStatementLexer(); $tables=[];
+        foreach ($ids as $id) {
+            $sql=file_get_contents($root.'/'.$id.'.sql'); self::need(is_string($sql));
+            foreach ($lexer->split($sql) as $statement) {
+                $statement=$lexer->withoutLeadingComments($statement);
+                if (preg_match('/\A(?:CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS|ALTER\s+TABLE)\s+(?:`([a-z][a-z0-9_]*)`|([a-z][a-z0-9_]*))(?=\s|\()/i',$statement,$m)===1) $tables[$m[1]!==''?$m[1]:$m[2]]=true;
+                elseif (preg_match('/\A(?:CREATE|ALTER|DROP|RENAME|TRUNCATE)\b/i',$statement)) self::need(false);
+            }
+        }
+        self::need(isset($tables['tool_run_exports']) && count($tables)>1); ksort($tables,SORT_STRING); return array_keys($tables);
+    }
+    public static function normalizeDefinition(string $sql,string $source,string $target): string
+    {
+        self::need($source==='archite4_dev_rel1' && preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$target)===1);
+        // Leave string literals (including comments/defaults) and external FK databases untouched.
+        $parts=preg_split("/('(?:''|\\\\.|[^'\\\\])*')/s",$sql,-1,PREG_SPLIT_DELIM_CAPTURE);
+        self::need(is_array($parts));
+        foreach ($parts as $i=>&$part) if ($i%2===0) {
+            $part=preg_replace('/`(?:'.preg_quote($source,'/').'|'.preg_quote($target,'/').')`\s*\./','`__recovery_schema__`.',$part);
+            $part=preg_replace('/\sAUTO_INCREMENT=[0-9]+\b/','',$part);
+        } unset($part); return implode('',$parts);
+    }
+    public static function auditSchemas(\PDO $pdo,string $target,string $root,array $ids,array $inventory): array
+    {
+        self::need(preg_match('/\Aarchite4_ar[0-9a-f]{16}_test\z/',$target)===1);
+        $matches=array_filter($inventory,static fn($row)=>is_array($row)&&($row['database']??null)===$target); self::need(count($matches)===1);
+        $hashes=[];
+        foreach (self::affectedTables($root,$ids) as $table) {
+            $definitions=[];
+            foreach (['archite4_dev_rel1',$target] as $database) {
+                $row=$pdo->query('SHOW CREATE TABLE `'.$database.'`.`'.$table.'`')->fetch(\PDO::FETCH_ASSOC);
+                self::need(is_array($row) && isset($row['Create Table']) && is_string($row['Create Table']));
+                $definitions[]=self::normalizeDefinition($row['Create Table'],'archite4_dev_rel1',$target);
+            }
+            self::need($definitions[0]===$definitions[1]); $hashes[$table]=hash('sha256',$definitions[1]);
+        }
+        $query=$pdo->prepare("SELECT COLUMN_NAME,DATA_TYPE,COLUMN_TYPE,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=? AND TABLE_NAME='tool_run_exports' AND COLUMN_NAME IN ('content','format') ORDER BY COLUMN_NAME");
+        foreach (['archite4_dev_rel1',$target] as $database) {
+            $query->execute([$database]); $rows=$query->fetchAll(\PDO::FETCH_ASSOC);
+            self::need(count($rows)===2 && $rows[0]['COLUMN_NAME']==='content' && strtolower($rows[0]['DATA_TYPE'])==='mediumblob' && $rows[0]['IS_NULLABLE']==='NO'
+                && $rows[1]['COLUMN_NAME']==='format' && strtolower($rows[1]['COLUMN_TYPE'])==="enum('json','csv','html','pdf')" && $rows[1]['IS_NULLABLE']==='NO');
+        }
+        return $hashes;
+    }
+    public static function auditApis(callable $http): void
+    {
+        $health=$http('/api/v1/health'); self::need($health['status']===200);
+        $json=json_decode($health['body'],true,32,JSON_THROW_ON_ERROR); self::need(($json['data']['status']??null)==='ok');
+        $legal=$http('/api/v1/legal-notices/signup'); self::need($legal['status']===200);
+        $json=json_decode($legal['body'],true,32,JSON_THROW_ON_ERROR); $rows=$json['data']??null; self::need(is_array($rows) && array_is_list($rows) && count($rows)===4);
+        $types=[];
+        foreach ($rows as $row) {
+            self::need(is_array($row));
+            foreach (['noticeType','version','title','contentSha256','effectiveAt','href'] as $key) self::need(is_string($row[$key]??null) && $row[$key]!=='');
+            self::need(preg_match('/\A[a-f0-9]{64}\z/',$row['contentSha256'])===1); $types[]=$row['noticeType'];
+        }
+        sort($types); self::need($types===['platform_disclaimer','privacy_policy','signup_privacy_notice','terms_of_service']);
+        foreach (['/v1-candidate.php'=>[401],'/app.php'=>[200,401,403,404],'/maintenance.php'=>[401,403,404]] as $path=>$statuses) self::need(in_array($http($path)['status'],$statuses,true));
     }
     private static function runtimeInventory(string $root): array
     {

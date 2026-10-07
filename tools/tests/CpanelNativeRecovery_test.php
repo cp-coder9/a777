@@ -19,4 +19,23 @@ R::validateReceipt($r,$sha); check(true);
 foreach (array_keys($r) as $key) { $bad=$r; unset($bad[$key]); check(refused(fn()=>R::validateReceipt($bad,$sha))); }
 check(refused(fn()=>R::validateReceipt($r,str_repeat('0',64))));
 $fail=R::run('/not-private','/not-private',str_repeat('a',40),$sha); check($fail['status']==='recovery_required' && $fail['sourceMigrationsReplayed']===false && $fail['protectedTokenRetained']===true);
-echo "PASS $n synthetic recovery assertions; no provider or database accessed\n";
+require_once dirname(__DIR__,2).'/app/src/Infrastructure/Database/SqlStatementLexer.php';
+$ids=['0062_wingman_tutorial_progress','0063_v1_feedback_records','0064_v1_practice_programme_milestones_fees','0065_v1_module_records','0066_v1_refuse_area_calculator','0067_production_integration_lifecycles','0069_internal_work_permits','0070_toolbox_pdf_exports'];
+$tables=R::affectedTables(dirname(__DIR__,2).'/app/database/migrations',$ids); check(in_array('tool_run_exports',$tables,true)); check(count($tables)>8);
+check(refused(fn()=>R::affectedTables(dirname(__DIR__,2).'/app/database/migrations',array_slice($ids,1))));
+$target='archite4_ar0123456789abcdef_test';
+$a="CREATE TABLE `t` (`v` varchar(50) DEFAULT ' AUTO_INCREMENT=123', FOREIGN KEY (`v`) REFERENCES `archite4_dev_rel1`.`x` (`v`)) ENGINE=InnoDB AUTO_INCREMENT=42";
+$b=str_replace(['`archite4_dev_rel1`','AUTO_INCREMENT=42'],['`'.$target.'`','AUTO_INCREMENT=99'],$a);
+check(R::normalizeDefinition($a,'archite4_dev_rel1',$target)===R::normalizeDefinition($b,'archite4_dev_rel1',$target));
+check(str_contains(R::normalizeDefinition($a,'archite4_dev_rel1',$target),"' AUTO_INCREMENT=123'"));
+check(R::normalizeDefinition(str_replace('`archite4_dev_rel1`','`external_db`',$a),'archite4_dev_rel1',$target)!==R::normalizeDefinition($b,'archite4_dev_rel1',$target));
+check(refused(fn()=>R::auditApis(static fn($path)=>['status'=>500,'body'=>'{}'])));
+$responses=['/api/v1/health'=>['status'=>200,'body'=>'{"data":{"status":"ok"}}'],'/v1-candidate.php'=>['status'=>401],'/app.php'=>['status'=>200],'/maintenance.php'=>['status'=>404]];
+$notices=[]; foreach (['terms_of_service','privacy_policy','platform_disclaimer','signup_privacy_notice'] as $type) $notices[]=['noticeType'=>$type,'version'=>'synthetic-1','title'=>'Synthetic fixture','contentSha256'=>str_repeat('a',64),'effectiveAt'=>'2026-01-01T00:00:00Z','href'=>'/fixture'];
+$responses['/api/v1/legal-notices/signup']=['status'=>200,'body'=>json_encode(['data'=>$notices])];
+R::auditApis(static fn($path)=>$responses[$path]); check(true);
+foreach (array_keys($responses) as $path) { $bad=$responses; $bad[$path]['status']=500; check(refused(fn()=>R::auditApis(static fn($uri)=>$bad[$uri]))); }
+$bad=$responses; $bad['/api/v1/health']['body']='{"data":{"status":"ready"}}'; check(refused(fn()=>R::auditApis(static fn($uri)=>$bad[$uri])));
+$bad=$responses; $bad['/api/v1/legal-notices/signup']['body']='{"data":[]}'; check(refused(fn()=>R::auditApis(static fn($uri)=>$bad[$uri])));
+check((new ReflectionClass(\Architex\Infrastructure\Database\SqlStatementLexer::class))->getFileName()===realpath(dirname(__DIR__,2).'/app/src/Infrastructure/Database/SqlStatementLexer.php'));
+echo "PASS $n synthetic recovery assertions; real canonical SQL lexer, no provider or database accessed\n";

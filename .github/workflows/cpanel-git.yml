@@ -97,6 +97,7 @@ jobs:
           php tools/tests/CpanelMaintenanceApi_test.php
           php tools/tests/CpanelNativeDeployment_files_native.php
           php tools/tests/CpanelNativeRecovery_test.php
+          TMPDIR="$RUNNER_TEMP" php tools/tests/CpanelNativeRecovery_nativeFilesystem_test.php
       - name: Verify real locked production artifact without hosting credentials
         if: ${{ inputs.mode != 'native-status' && inputs.mode != 'native-recover' }}
         env:
