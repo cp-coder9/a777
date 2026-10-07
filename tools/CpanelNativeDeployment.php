@@ -1070,11 +1070,14 @@ PHP;
         if ($urlCapability) return "RewriteCond %{REQUEST_URI} !^/".str_replace('.','\\.',$name)."$\n";
         return "RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
     }
-    private static function webProbeResponse(array $response,string $lease,bool $proofPresent): array
+    private static function webProbeResponse(array $response,string $lease,bool $proofPresent,?string $expectedRuleSha=null): array
     {
         return ['maintenanceBody'=>($response['body']??null)==='Deployment maintenance',
             'leaseMatched'=>($response['headers']['x-a777-deployment-lease']??null)===$lease,
-            'emptyBody'=>($response['body']??null)==='', 'proofPresent'=>$proofPresent];
+            'emptyBody'=>($response['body']??null)==='', 'proofPresent'=>$proofPresent,
+            'ruleMatched'=>$expectedRuleSha!==null && is_string($response['headers']['x-a777-probe-rule']??null)
+                && hash_equals($expectedRuleSha,$response['headers']['x-a777-probe-rule']),
+            'pathMatched'=>($response['headers']['x-a777-probe-path']??null)==='matched'];
     }
     private static function webProbeScriptMode(bool $urlCapability): int
     { return $urlCapability?0644:0600; }
@@ -1089,7 +1092,7 @@ PHP;
     {
         $headers=$r['headers']??null;
         if (!is_array($headers) || array_diff(array_keys($headers),[
-            'x-a777-deployment-lease','cache-control','date','server','content-type','content-length',
+            'x-a777-deployment-lease','x-a777-probe-rule','x-a777-probe-path','cache-control','date','server','content-type','content-length',
             'connection','keep-alive','transfer-encoding','expires','pragma','retry-after','vary','strict-transport-security'
         ])!==[] || (isset($headers['cache-control']) && $headers['cache-control']!=='no-store')) return false;
         return $attempt>=1 && $attempt<12 && $bound && !$proofPresent && !$preflightPresent
@@ -1140,7 +1143,10 @@ PHP;
         $scriptMode=self::webProbeScriptMode($privateRecovery);
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,$scriptMode);
         $rule=self::webProbeRule($name,$secret,$privateRecovery);
-        $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
+        $ruleSha=hash('sha256',$rule);
+        $pathEvidence="RewriteCond %{REQUEST_URI} ^/".str_replace('.','\\.',$name)."$\nRewriteRule ^ - [E=A777_PROBE_PATH_MATCH:1]\n";
+        $temporary=str_replace("RewriteRule ^ - [R=503,L]",$pathEvidence.$rule."RewriteRule ^ - [R=503,L]",$gate)
+            ."Header always set X-A777-Probe-Rule \"$ruleSha\"\nHeader always set X-A777-Probe-Path matched env=A777_PROBE_PATH_MATCH\n";
         self::replaceOwned(self::DOCROOT.'/.htaccess',$gate,$temporary,0644,$journal);
         // Authentication reads the exact temporary lease hash, not any application-wide bypass.
         $newCode=str_replace(hash('sha256',$gate),hash('sha256',$temporary),$code);
@@ -1184,7 +1190,7 @@ PHP;
                 self::replaceOwned($checkPath,(string)file_get_contents($checkPath),$checkBytes,0600,$journal);
             } else self::put($checkPath,$checkBytes,0600);
             $responsePath=$work.'/web-probe-response.json';
-            $responseBytes=json_encode(self::webProbeResponse($r,$lease,is_file($proof)),JSON_THROW_ON_ERROR);
+            $responseBytes=json_encode(self::webProbeResponse($r,$lease,is_file($proof),$ruleSha),JSON_THROW_ON_ERROR);
             if (file_exists($responsePath) || is_link($responsePath)) {
                 self::privateFile($responsePath);
                 self::replaceOwned($responsePath,(string)file_get_contents($responsePath),$responseBytes,0600,$journal);
