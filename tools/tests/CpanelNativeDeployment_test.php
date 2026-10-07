@@ -29,4 +29,18 @@ check($resolve->invoke(null,'2606:4700:4700::1111')==='architex.co.za:443:[2606:
 foreach (['127.0.0.1','10.0.0.1','192.168.1.1','169.254.169.254','0.0.0.0','::1','fc00::1','fe80::1','::ffff:127.0.0.1','host.example','8.8.8.8:443','8.8.8.8,1.1.1.1',"8.8.8.8\n"] as $ip) {
     refuses(fn()=>$resolve->invoke(null,$ip),'non-public or malformed origin refused');
 }
+$loopOptions=new ReflectionMethod(Deploy::class,'runtimeLoopbackOptions');
+$options=$loopOptions->invoke(null);
+check($loopOptions->getNumberOfParameters()===0,'loopback accepts no configurable scope');
+check($options[CURLOPT_URL]==='http://architex.co.za:80/.a777-runtime-active/config/runtime.php','exact fixed original virtualhost path');
+check($options[CURLOPT_RESOLVE]===['architex.co.za:80:127.0.0.1'],'only fixed loopback resolution');
+check($options[CURLOPT_PROTOCOLS]===CURLPROTO_HTTP && $options[CURLOPT_REDIR_PROTOCOLS]===CURLPROTO_HTTP,'explicit local HTTP transport');
+check($options[CURLOPT_FOLLOWLOCATION]===false && $options[CURLOPT_MAXREDIRS]===0,'redirects disabled');
+check($options[CURLOPT_PROXY]==='' && $options[CURLOPT_NOPROXY]==='*','environment proxies disabled');
+check($options[CURLOPT_HTTPHEADER]===[] && $options[CURLOPT_NETRC]===CURL_NETRC_IGNORED,'no credentials or bypass headers');
+$loopDenied=new ReflectionMethod(Deploy::class,'runtimeLoopbackDenied');
+$metadata=['transport'=>'loopback-http','status'=>403,'peerVerified'=>true,'curlErrorCode'=>0];
+foreach ([403,404] as $status) check($loopDenied->invoke(null,array_replace($metadata,['status'=>$status])),'loopback denial accepted');
+foreach ([0,200,301,302,307,308,401,500,503,'403'] as $status) check(!$loopDenied->invoke(null,array_replace($metadata,['status'=>$status])),'non-denial or noninteger status refused');
+foreach ([['peerVerified'=>false],['peerVerified'=>'127.0.0.1'],['curlErrorCode'=>7],['transport'=>'public-https'],['transport'=>'arbitrary-host']] as $change) check(!$loopDenied->invoke(null,array_replace($metadata,$change)),'unverified peer/error/transport refused');
 echo "PASS $n assertions; literal/config and protocol fixtures only; no host/database calls\n";
