@@ -87,6 +87,7 @@ final class CpanelNativeDeploymentRecovery
             && ($p['account']??null)==='archite4' && ($p['repository']??null)===$repo && ($p['target']??null)==='/home/archite4'
             && ($p['originalPlanPath']??null)===$root.'/operator-plan.json'
             && preg_match('/\A[a-f0-9]{64}\z/',$p['oldPlanSha256']??'')===1);
+        \Architex\Deployment\CpanelPrivateRuntimeRelocation::approval($p);
         $oldBytes=self::privateBytes($p['originalPlanPath']); self::need(hash('sha256',$oldBytes)===$p['oldPlanSha256']);
         $old=json_decode($oldBytes,true,32,JSON_THROW_ON_ERROR);
         self::need(($old['expectedCommit']??null)===$p['releaseCommit'] && ($old['artifactPath']??null)===$p['artifactPath']);
@@ -106,7 +107,7 @@ final class CpanelNativeDeploymentRecovery
         spl_autoload_register(static function(string $class): void {
             if (str_starts_with($class,'Architex\\')) { $path=CpanelGitDeploy::REPO.'/app/src/'.str_replace('\\','/',substr($class,9)).'.php'; if(is_file($path)) require_once $path; }
         },true,true);
-        $outcome=CpanelNativeRecovery::run($p['originalPlanPath'],$matches[0],$p['expectedRecoveryCommit'],$p['oldPlanSha256']);
+        $outcome=CpanelNativeRecovery::run($p['originalPlanPath'],$matches[0],$p['expectedRecoveryCommit'],$p['oldPlanSha256'],$p);
         if (isset($outcome['failureDiagnostic'])) {
             self::writeDiagnostic($p['expectedRecoveryCommit'],$outcome['failureDiagnostic']);
         }

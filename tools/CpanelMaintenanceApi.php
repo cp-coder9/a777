@@ -67,7 +67,7 @@ final class CpanelMaintenanceApi
     }
     public static function requestSpec(string $module, string $function, string $token): array
     {
-        self::need(in_array([$module, $function], [['Variables','get_user_information'], ['Mysql','list_databases'], ['Mysql','list_users'], ['Mysql','get_privileges_on_database'], ['Mysql','revoke_access_to_database'], ['Mysql','set_privileges_on_database'], ['Mysql','create_database'], ['Mysql','create_user']], true), 'api_function_refused');
+        self::need(in_array([$module, $function], [['DomainInfo','domains_data'], ['Variables','get_user_information'], ['Mysql','list_databases'], ['Mysql','list_users'], ['Mysql','get_privileges_on_database'], ['Mysql','revoke_access_to_database'], ['Mysql','set_privileges_on_database'], ['Mysql','create_database'], ['Mysql','create_user']], true), 'api_function_refused');
         return ['url'=>self::ORIGIN . '/execute/' . $module . '/' . $function,
             'headers'=>['Authorization: cpanel archite4:' . $token, 'Accept: application/json']];
     }
@@ -98,6 +98,15 @@ final class CpanelMaintenanceApi
         $identity = self::request('Variables', 'get_user_information', $token, ['name'=>'home']);
         self::need(is_array($identity) && ($identity['home'] ?? null) === '/home/archite4', 'api_account_home_mismatch');
         return self::request('Mysql', $operation, $token, $args);
+    }
+    public static function domains(): array
+    {
+        $token=self::token();
+        $identity=self::request('Variables','get_user_information',$token,['name'=>'home']);
+        self::need(is_array($identity) && ($identity['home']??null)==='/home/archite4','api_account_home_mismatch');
+        $data=self::request('DomainInfo','domains_data',$token,['format'=>'hash']);
+        self::need(is_array($data),'api_inventory_invalid');
+        return $data;
     }
     public static function inventory(string $operation): array
     {

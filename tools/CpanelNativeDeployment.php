@@ -284,6 +284,7 @@ final class CpanelNativeDeployment
         self::need(preg_match('/\A[a-f0-9]{40}\z/',$approvedCommit)===1 && self::git(self::REPO,['rev-parse','HEAD'])===$approvedCommit && self::git(self::REPO,['status','--porcelain','--untracked-files=all'])==='','clean_git');
         self::trackedFile(self::REPO,__FILE__);
         self::trackedFile(self::REPO,__DIR__.'/CpanelNativeRecovery.php');
+        self::trackedFile(self::REPO,__DIR__.'/CpanelPrivateRuntimeRelocation.php');
         return [
             'privateDirectory'=>self::privateDirectory(...), 'privateFile'=>self::privateFile(...),
             'canonical'=>self::canonical(...), 'inventory'=>self::artifactInventory(...), 'digest'=>self::treeDigest(...),
@@ -293,6 +294,8 @@ final class CpanelNativeDeployment
             'privateTree'=>self::privateTree(...), 'restoreGrants'=>self::restoreGrants(...), 'ready'=>self::ready(...),
             'webProbe'=>self::webPoolProbe(...), 'http'=>self::http(...), 'httpReady'=>self::httpReady(...), 'httpBuild'=>self::httpBuild(...),
             'tracked'=>self::trackedFile(...), 'git'=>self::git(...)
+            ,'provePrivateGate'=>self::provePrivateGate(...)
+            ,'privateWebProbe'=>static fn(string $work,string $lease,string $commit,string $journal)=>self::webPoolProbe($work,$lease,$commit,$journal,true)
         ];
     }
     private static function assertSnapshotEquality(array $source, array $target, string $sourceName, string $targetName): void
@@ -599,8 +602,9 @@ final class CpanelNativeDeployment
     private static function replaceOwned(string $path,string $expected,string $bytes,int $mode,string $journal): void
     {
         self::canonical($path); self::need(fileowner($path)===posix_geteuid() && file_get_contents($path)===$expected,'replace_identity');
-        $tmp=$path.'.native-'.bin2hex(random_bytes(8)); self::put($tmp,$bytes,$mode);
+        $tmp=$path.'.native-'.bin2hex(random_bytes(8));
         self::append($journal,['phase'=>'replace-intent','path'=>$path,'beforeSha256'=>hash('sha256',$expected),'afterSha256'=>hash('sha256',$bytes),'temporary'=>$tmp]);
+        self::put($tmp,$bytes,$mode);
         self::need(rename($tmp,$path),'replace_rename'); self::need(file_get_contents($path)===$bytes,'replace_readback');
     }
     public static function ownedRename(string $from,string $to,string $journal): void
@@ -648,6 +652,15 @@ final class CpanelNativeDeployment
             self::append($journal,['phase'=>'apache-rollback-intent','path'=>$path]);
             if ($entry['existed']) self::replaceOwned($path,$entry['installed'],$entry['bytes'],$entry['mode'],$journal);
             else { self::need(unlink($path),'gate_remove'); clearstatcache(true,$path); self::need(!file_exists($path),'gate_remove_readback'); }
+        }
+    }
+    /** Relocation privacy is canonical ancestry, never a wrong-vhost HTTP denial. */
+    private static function provePrivateGate(string $lease,string $bytes,?string $work=null): void
+    {
+        self::need(file_get_contents(self::DOCROOT.'/.htaccess')===$bytes,'apache_readback');
+        CpanelPrivateRuntimeRelocation::prove(CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains()));
+        foreach (['/','/index.php','/api/v1/readiness','/build-info.json'] as $path) {
+            $r=self::http($path); self::need($r['status']===503 && ($r['headers']['x-a777-deployment-lease']??null)===$lease,'apache_http_503_lease');
         }
     }
     private static function proveGate(string $lease,string $bytes,?string $work=null): void
@@ -1016,12 +1029,15 @@ PHP;
     { return ($response['status']??null)===503 && !$proofPresent; }
     private static function webProbeIdentity(array $proof,string $name): bool
     { return ($proof['probeId']??null)===$name && preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1; }
-    private static function webPoolProbe(string $work,string $lease,string $commit,string $journal): void
+    private static function webPoolProbe(string $work,string $lease,string $commit,string $journal,bool $privateRecovery=false): void
     {
         $secret=bin2hex(random_bytes(32)); $name='native-probe-'.bin2hex(random_bytes(24)).'.php'; $path=self::DOCROOT.'/'.$name;
-        $proof=$work.'/web-proof.json'; $gate=self::gateBytes($lease);
-        self::need(!file_exists($proof) && !is_link($proof) && !file_exists($work.'/web-probe-preflight.json') && !is_link($work.'/web-probe-preflight.json'),'probe_absence');
-        $code=self::webProbeCode(self::RUNTIME,$proof,$work.'/web-probe-preflight.json',$secret,hash('sha256',$gate),$name);
+        $suffix=$privateRecovery?'-'.substr($name,13,48):'';
+        $proof=$work.'/web-proof'.$suffix.'.json'; $preflight=$work.'/web-probe-preflight'.$suffix.'.json'; $gate=self::gateBytes($lease);
+        self::need(!file_exists($proof) && !is_link($proof) && !file_exists($preflight) && !is_link($preflight),'probe_absence');
+        $root=$privateRecovery?CpanelPrivateRuntimeRelocation::DESTINATION:self::RUNTIME;
+        if ($privateRecovery) CpanelPrivateRuntimeRelocation::prove(CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains()));
+        $code=self::webProbeCode($root,$proof,$preflight,$secret,hash('sha256',$gate),$name);
         self::append($journal,['phase'=>'probe-create-intent','path'=>$path,'sha256'=>hash('sha256',$code)]); self::put($path,$code,0600);
         $rule="RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
         $temporary=str_replace("RewriteRule ^ - [R=503,L]",$rule."RewriteRule ^ - [R=503,L]",$gate);
@@ -1033,7 +1049,7 @@ PHP;
         try {
             $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
             $transport='public-https'; clearstatcache(true,$proof);
-            if (self::webProbeFallback($r,is_file($proof))) {
+            if (!$privateRecovery && self::webProbeFallback($r,is_file($proof))) {
                 $r=self::webProbeLoopbackHttp($name,$secret); $transport=$r['transport'];
             }
             clearstatcache(true,$proof);

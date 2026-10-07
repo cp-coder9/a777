@@ -6,6 +6,7 @@ use Architex\Infrastructure\Database\{ConnectionFactory,MigrationRunner};
 use RuntimeException;
 use Throwable;
 require_once __DIR__.'/CpanelNativeDeployment.php';
+require_once __DIR__.'/CpanelPrivateRuntimeRelocation.php';
 
 /** Explicit native-recover entry. Caller supplies private plan/old receipt, never secrets. */
 final class CpanelNativeRecovery
@@ -73,11 +74,12 @@ final class CpanelNativeRecovery
         unset($actual['config/runtime.php'],$actual['.htaccess']); ksort($expected,SORT_STRING); ksort($actual,SORT_STRING);
         self::need($expected===$actual);
     }
-    public static function run(string $privatePlan,string $privateReceipt,string $expectedApprovedRecoveryGitSHA,string $expectedOldPlanSHA256): array
+    public static function run(string $privatePlan,string $privateReceipt,string $expectedApprovedRecoveryGitSHA,string $expectedOldPlanSHA256,array $relocationApproval=[]): array
     {
         $result=['status'=>'recovery_required','sourceMigrationsReplayed'=>false,'maintenanceRetained'=>true,'protectedTokenRetained'=>true,'schemaAuditPassed'=>false,'apiAuditPassed'=>false];
         $mask=umask(0077); $h=[]; $lock=null; $journal=null; $normal=null; $gate=null;
         try {
+            CpanelPrivateRuntimeRelocation::approval($relocationApproval);
             $h=CpanelNativeDeployment::recoveryHelpers($expectedApprovedRecoveryGitSHA);
             self::need(preg_match('/\A[a-f0-9]{64}\z/',$expectedOldPlanSHA256)===1);
             foreach ([$privatePlan,$privateReceipt] as $path) {
@@ -99,6 +101,8 @@ final class CpanelNativeRecovery
             $journal=$work.'/recovery-journal.jsonl';
             if (!file_exists($journal)) $h['append']($journal,['phase'=>'recovery-intent','oldReleaseSHA'=>self::OLD,'approvedRecoveryGitSHA'=>$expectedApprovedRecoveryGitSHA,'planSha256'=>$expectedOldPlanSHA256],true);
             else $h['privateFile']($journal);
+            $h['append']($journal,['phase'=>'private-runtime-approval','approvedRecoveryGitSHA'=>$expectedApprovedRecoveryGitSHA,
+                'privateRuntimeRelocation'=>true,'privateRuntimeDestination'=>CpanelPrivateRuntimeRelocation::DESTINATION]);
             $oldJournal=$work.'/journal.jsonl'; $h['privateFile']($oldJournal);
             // Never export this password-bearing journal. Select only exact owned state locally.
             $records=[]; foreach (file($oldJournal,FILE_IGNORE_NEW_LINES) as $line) $records[]=json_decode($line,true,64,JSON_THROW_ON_ERROR);
@@ -150,22 +154,43 @@ final class CpanelNativeRecovery
                 }
             }
             $candidate=$work.'/candidate'; $public=self::PUBLIC.'.candidate-'.self::ID;
-            // Only a sequential rename prefix can be resumed. No guessing from directory names alone.
-            $state=self::renameState(is_dir($candidate),is_dir(self::RUNTIME),is_dir($work.'/old-runtime'),is_dir($public),is_dir(self::PUBLIC),is_dir($work.'/old-docroot'));
-            $runtime=$state<2?$candidate:self::RUNTIME;
+            // The old promotion completed all four renames; this approval never replays them.
+            $private=CpanelPrivateRuntimeRelocation::DESTINATION;
+            clearstatcache(true);
+            // This approval is only for the already-completed four promotion renames.
+            self::need(!file_exists($candidate) && !is_link($candidate) && !file_exists($public) && !is_link($public)
+                && is_dir($work.'/old-runtime') && is_dir($work.'/old-docroot') && is_dir(self::PUBLIC)
+                && !is_link(self::RUNTIME) && !is_link($private) && (is_dir(self::RUNTIME)!==is_dir($private)));
+            $runtime=is_dir($private)?$private:self::RUNTIME;
+            foreach (['old-runtime'=>0755,'old-docroot'=>0750] as $name=>$mode) {
+                $h['canonical']($work.'/'.$name); $s=lstat($work.'/'.$name);
+                self::need($s['uid']===2657 && ($s['mode']&07777)===$mode);
+            }
             $h['privateTree']($runtime); $actual=self::runtimeInventory($runtime); self::compareInventory($expected,$actual);
             self::need(file_get_contents($runtime.'/config/runtime.php')===CpanelNativeDeployment::rewriteStorage((string)file_get_contents($work.'/original-runtime.php'),$new['FILE_STORAGE_PATH']));
             self::need((require $runtime.'/config/runtime.php')===$new && file_get_contents($runtime.'/.htaccess')==="Require all denied\n");
-            if ($state<1) self::need(hash_file('sha256',self::RUNTIME.'/config/runtime.php')===self::PIN);
-            if ($state>=1) self::need(hash_file('sha256',$work.'/old-runtime/config/runtime.php')===self::PIN);
+            self::need(hash_file('sha256',$work.'/old-runtime/config/runtime.php')===self::PIN);
             $h['privateTree']($new['FILE_STORAGE_PATH']);
             self::need(self::storageHashes($original['FILE_STORAGE_PATH'])===self::storageHashes($new['FILE_STORAGE_PATH']));
             $h['storageInventory']($original['FILE_STORAGE_PATH'],true);
-            $publicRoot=$state<4?$public:self::PUBLIC; $h['canonical']($publicRoot);
-            $publicOwned=false;
-            foreach ($records as $record) if (($record['phase']??null)==='public-candidate-create-intent' && ($record['path']??null)===$public) $publicOwned=true;
-            self::verifyPublic($runtime.'/public',$publicRoot,$gate,$h,$journal,$state<4 && $publicOwned);
-            self::need(file_get_contents(($state<3?self::PUBLIC:$work.'/old-docroot').'/.htaccess')===$gate);
+            $publicRoot=self::PUBLIC; $h['canonical']($publicRoot);
+            $normal=file_get_contents($runtime.'/public/.htaccess');
+            self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));
+            $current=file_get_contents(self::PUBLIC.'/.htaccess');
+            if ($current!==$gate) {
+                // Re-fence an interrupted release/probe only through a persisted exact-byte intent.
+                $known=false;
+                foreach (file($journal,FILE_IGNORE_NEW_LINES) as $line) {
+                    $record=json_decode($line,true,64,JSON_THROW_ON_ERROR);
+                    if (($record['phase']??null)==='replace-intent' && ($record['path']??null)===self::PUBLIC.'/.htaccess'
+                        && ($record['beforeSha256']??null)===hash('sha256',$gate)
+                        && ($record['afterSha256']??null)===hash('sha256',$current)
+                        && ($current===$normal || str_contains($current,'# a777-native-maintenance'))) $known=true;
+                }
+                self::need($known); $h['replace'](self::PUBLIC.'/.htaccess',$current,$gate,0644,$journal);
+            }
+            self::verifyRelocationPublic($runtime.'/public',$publicRoot,$gate,$h,$journal,false);
+            self::need(file_get_contents($work.'/old-docroot/.htaccess')===$gate);
             // Provider proof of the already-revoked operator, never create/regrant it.
             if ($operator===null) {
                 foreach ($records as $record) if (isset($record['operator']['user'])) $operator=$record['operator']['user'];
@@ -173,7 +198,7 @@ final class CpanelNativeRecovery
             self::need(is_string($operator) && preg_match('/\Aarchite4_nd_[a-f0-9]{16}\z/',$operator)===1);
             self::need(\CpanelMaintenanceApi::operator('get_privileges_on_database',['user'=>$operator,'database'=>'archite4_dev_rel1'])===[]);
             $h['cron'](); $h['workers']();
-            if ($state!==3) foreach (['/','/index.php','/api/v1/readiness','/build-info.json'] as $uri) {
+            foreach (['/','/index.php','/api/v1/readiness','/build-info.json'] as $uri) {
                 $observed=$h['http']($uri); self::need($observed['status']===503 && ($observed['headers']['x-a777-deployment-lease']??null)===$lease);
             }
             $fencePath=$work.'/fence.json'; $h['privateFile']($fencePath); $fence=json_decode(file_get_contents($fencePath),true,64,JSON_THROW_ON_ERROR);
@@ -202,19 +227,28 @@ final class CpanelNativeRecovery
             $h['append']($journal,['phase'=>'recovery-schema-audit','targetDatabase'=>$targetDatabase,'schemaHashes'=>$schemaHashes,'schemaAuditPassed'=>true]);
             $result['schemaAuditPassed']=true;
             $h['ready']($pdo,$runtime,$new);
-            $moves=[[self::RUNTIME,$work.'/old-runtime'],[$candidate,self::RUNTIME],[self::PUBLIC,$work.'/old-docroot'],[$public,self::PUBLIC]];
-            foreach ($moves as $i=>[$from,$to]) if ($i>=$state) $h['rename']($from,$to,$journal);
-            $h['proveGate']($lease,$gate,$work);
-            self::need((require self::RUNTIME.'/config/runtime.php')===$new);
-            $h['ready']($pdo,self::RUNTIME,$new); $h['webProbe']($work,$lease,self::OLD,$journal);
-            $normal=file_get_contents(self::RUNTIME.'/public/.htaccess'); self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));
+            $domains=CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains());
+            $h['append']($journal,['phase'=>'private-runtime-domain-roots','roots'=>$domains]);
+            CpanelPrivateRuntimeRelocation::relocate($relocationApproval,$domains,$h,$journal);
+            $runtime=$private;
+            self::verifyRelocationPublic($runtime.'/public',self::PUBLIC,$gate,$h,$journal,true);
+            $h['provePrivateGate']($lease,$gate,$work);
+            self::need((require $runtime.'/config/runtime.php')===$new);
+            $h['ready']($pdo,$runtime,$new); $h['privateWebProbe']($work,$lease,self::OLD,$journal);
+            $normal=file_get_contents($runtime.'/public/.htaccess'); self::need(is_string($normal) && $normal!=='' && !str_contains($normal,'a777-native-maintenance'));
             $h['append']($journal,['phase'=>'recovery-maintenance-release-intent','sha256'=>hash('sha256',$normal)]);
             $h['replace'](self::PUBLIC.'/.htaccess',$gate,$normal,0644,$journal);
             $h['httpReady']($h['http']('/api/v1/readiness')); $h['httpBuild']($h['http']('/build-info.json'),self::OLD);
             self::auditApis($h['http']);
             $result['apiAuditPassed']=true;
             $h['append']($journal,['phase'=>'recovery-api-audit','apiAuditPassed'=>true]);
-            self::need((new MigrationRunner($pdo,self::RUNTIME.'/database/migrations'))->status()->isCurrent() && hash_file('sha256',$work.'/source.axbackup')===self::BACKUP);
+            self::need((new MigrationRunner($pdo,$runtime.'/database/migrations'))->status()->isCurrent() && hash_file('sha256',$work.'/source.axbackup')===self::BACKUP);
+            CpanelPrivateRuntimeRelocation::prove(CpanelPrivateRuntimeRelocation::documentRoots(\CpanelMaintenanceApi::domains()));
+            self::compareInventory($expected,self::runtimeInventory($runtime));
+            self::need($h['inventory']($artifact)===$expected
+                && file_get_contents($runtime.'/config/runtime.php')===CpanelNativeDeployment::rewriteStorage((string)file_get_contents($work.'/original-runtime.php'),$new['FILE_STORAGE_PATH'])
+                && hash_file('sha256',$work.'/old-runtime/config/runtime.php')===self::PIN);
+            self::verifyRelocationPublic($runtime.'/public',self::PUBLIC,$normal,$h,$journal,false);
             $h['httpReady']($h['http']('/api/v1/readiness'));
             $result+=['oldReleaseSHA'=>self::OLD,'approvedRecoveryGitSHA'=>$expectedApprovedRecoveryGitSHA,'planSha256'=>$expectedOldPlanSHA256,'deploymentId'=>self::ID];
             foreach (['backupId','archiveSha256','artifactTreeSha256','artifactManifestSha256','buildSha256'] as $key) $result[$key]=$r[$key];
@@ -230,7 +264,11 @@ final class CpanelNativeRecovery
             $result['status']='recovery_required'; $result['maintenanceRetained']=true;
             $result['failureCode']='recovery_evidence_or_operation_refused';
             if (isset($h['replace']) && is_string($gate) && is_file(self::PUBLIC.'/.htaccess')) {
-                try { $current=file_get_contents(self::PUBLIC.'/.htaccess'); if ($current!==$gate && ($current===$normal || str_contains($current,'# a777-native-maintenance'))) $h['replace'](self::PUBLIC.'/.htaccess',$current,$gate,0644,$journal); } catch (Throwable) { $result['maintenanceStateUnknown']=true; }
+                try {
+                    $current=file_get_contents(self::PUBLIC.'/.htaccess');
+                    if ($current!==$gate && ($current===$normal || str_contains($current,'# a777-native-maintenance'))) $h['replace'](self::PUBLIC.'/.htaccess',$current,$gate,0644,$journal);
+                    self::need(file_get_contents(self::PUBLIC.'/.htaccess')===$gate);
+                } catch (Throwable) { $result['maintenanceStateUnknown']=true; }
             }
         } finally { if (is_resource($lock)) { flock($lock,LOCK_UN); fclose($lock); } umask($mask); }
         return $result;
@@ -311,6 +349,50 @@ final class CpanelNativeRecovery
         } ksort($out,SORT_STRING); return $out;
     }
     private static function storageHashes(string $root): array { $out=self::runtimeInventory($root); ksort($out,SORT_STRING); return $out; }
+    /** Validate the entire static inventory before touching a single known legacy shim. */
+    private static function verifyRelocationPublic(string $source,string $target,string $gate,array $h,string $journal,bool $update): void
+    {
+        $sourceFiles=self::runtimeInventory($source); $actual=self::runtimeInventory($target);
+        unset($sourceFiles['.htaccess'],$actual['.htaccess']);
+        $pending=[]; $records=[];
+        foreach (file($journal,FILE_IGNORE_NEW_LINES) as $line) $records[]=json_decode($line,true,64,JSON_THROW_ON_ERROR);
+        foreach ($actual as $name=>$info) if (!isset($sourceFiles[$name])) {
+            self::need(preg_match('/\A(.+\.(?:php[0-9]*|phtml|phar))\.native-[a-f0-9]{16}\z/i',$name,$m)===1 && isset($sourceFiles[$m[1]]));
+            $path=$target.'/'.$name; $old=CpanelNativeDeployment::publicShim($m[1]); $new=CpanelPrivateRuntimeRelocation::shim($m[1]);
+            $owned=false;
+            foreach ($records as $record) if (($record['phase']??null)==='replace-intent' && ($record['path']??null)===$target.'/'.$m[1]
+                && ($record['temporary']??null)===$path && ($record['beforeSha256']??null)===hash('sha256',$old)
+                && ($record['afterSha256']??null)===hash('sha256',$new)) $owned=true;
+            $h['canonical']($path); $s=lstat($path);
+            self::need($owned && function_exists('posix_geteuid') && $s['uid']===posix_geteuid() && $s['nlink']===1
+                && ($s['mode']&07777)===0644 && file_get_contents($path)===$new);
+            $pending[]=$path; unset($actual[$name]);
+        }
+        self::need(array_keys($sourceFiles)===array_keys($actual) && file_get_contents($target.'/.htaccess')===$gate);
+        $changes=[];
+        foreach ($sourceFiles as $name=>$info) {
+            $h['canonical']($target.'/'.$name);
+            if (preg_match('/\.(?:php[0-9]*|phtml|phar)\z/i',$name)) {
+                $old=CpanelNativeDeployment::publicShim($name); $new=CpanelPrivateRuntimeRelocation::shim($name);
+                $bytes=file_get_contents($target.'/'.$name);
+                self::need($bytes===$old || $bytes===$new);
+                if ($bytes===$old) $changes[$name]=[$old,$new];
+            } else self::need($actual[$name]===$info);
+        }
+        // Cleanup only exact persisted owned temporaries after the complete public inventory check.
+        foreach ($pending as $path) {
+            $h['append']($journal,['phase'=>'recovery-shim-temporary-remove-intent','path'=>$path]);
+            self::need(unlink($path)); clearstatcache(true,$path); self::need(!file_exists($path) && !is_link($path));
+        }
+        if (!$update) return;
+        foreach ($changes as $name=>[$old,$new]) $h['replace']($target.'/'.$name,$old,$new,0644,$journal);
+        $after=self::runtimeInventory($target); unset($after['.htaccess']);
+        foreach ($sourceFiles as $name=>$info) {
+            if (preg_match('/\.(?:php[0-9]*|phtml|phar)\z/i',$name)) self::need(file_get_contents($target.'/'.$name)===CpanelPrivateRuntimeRelocation::shim($name));
+            else self::need($after[$name]===$info);
+        }
+        self::need(array_keys($sourceFiles)===array_keys($after) && file_get_contents($target.'/.htaccess')===$gate);
+    }
     private static function verifyPublic(string $source,string $target,string $gate,array $h,string $journal,bool $completeOwnedPartial=false): void
     {
         $expected=[];
