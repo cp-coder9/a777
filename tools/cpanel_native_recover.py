@@ -108,7 +108,7 @@ def recovery_diagnostics(client, recovery, previous):
             continue
         data = json.loads(private_read(client, p.DEPLOY_ROOT + '/' + name))
         require(isinstance(data, dict) and set(data) == {'file', 'reasonCode', 'line'})
-        require(data['file'] in ('CpanelNativeRecovery.php', 'CpanelNativeDeploymentRecovery.php'))
+        require(data['file'] in ('CpanelNativeRecovery.php', 'CpanelNativeDeploymentRecovery.php', 'CpanelNativeDeployment.php', 'cpanel_git_deploy.php'))
         require(data['reasonCode'] in DIAGNOSTIC_CODES)
         require(type(data['line']) is int and 1 <= data['line'] <= 100000)
         found.append({k: data[k] for k in ('file', 'reasonCode', 'line')})
