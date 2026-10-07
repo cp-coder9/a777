@@ -303,6 +303,8 @@ def native_recover(client, source, expected, attempts=360, pause=5):
                 allowed = {'status', 'curlErrorCode', 'proofPresent'} if name == 'web-probe-check.json' else {'transport', 'status', 'peerVerified', 'curlErrorCode'}
                 require(isinstance(data, dict) and set(data) == allowed)
                 require(type(data['status']) is int and 0 <= data['status'] <= 599 and type(data['curlErrorCode']) is int)
+                if name == 'runtime-origin-check.json':
+                    require(data['transport'] == 'account-origin-http' and type(data['peerVerified']) is bool)
                 report[name] = data
         metadata = recovery_metadata(client, expected, plan_sha, old_sha, release, prior, previous)
         if metadata is not None:
