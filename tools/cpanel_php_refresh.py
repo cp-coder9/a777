@@ -44,6 +44,7 @@ class RefreshClient(CpanelClient):
         self.provider_error_code = None
 
     def _uapi(self, module, function, params=None, body=None, headers=None):
+        self.last_operation = module + '/' + function
         self.provider_status = None
         self.provider_error_code = None
         payload = self._request_json('POST' if body is not None else 'GET',
@@ -177,6 +178,7 @@ def refresh(client, get=public_get):
     except Exception as error:
         report['errorCode'] = error.code if isinstance(error, Refusal) else 'transport_or_account_contract_failed'
         report['providerStatus'] = getattr(client, 'provider_status', None)
+        report['providerOperation'] = getattr(client, 'last_operation', None)
         report['providerErrorCode'] = getattr(client, 'provider_error_code', None)
     return report
 
