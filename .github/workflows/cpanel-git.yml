@@ -16,6 +16,7 @@ on:
           - restore-rehearsal
           - native-deploy
           - native-status
+          - native-recover
       secure_runtime_config_permissions:
         description: Explicit permission-only repair of the owned runtime config
         type: boolean
@@ -95,8 +96,9 @@ jobs:
           php tools/tests/CpanelNativeSchemaCapabilities_test.php
           php tools/tests/CpanelMaintenanceApi_test.php
           php tools/tests/CpanelNativeDeployment_files_native.php
+          php tools/tests/CpanelNativeRecovery_test.php
       - name: Verify real locked production artifact without hosting credentials
-        if: ${{ inputs.mode != 'native-status' }}
+        if: ${{ inputs.mode != 'native-status' && inputs.mode != 'native-recover' }}
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
@@ -138,6 +140,11 @@ jobs:
           if [[ "$RETRY_SAFE_NATIVE_DEPLOY" == true ]]; then
             [[ "$MODE" == native-deploy ]] || exit 1
             args+=(--retry-safe-native-deploy)
+          fi
+          if [[ "$MODE" == native-recover ]]; then
+            [[ "${GITHUB_REF}" == refs/heads/master ]] || exit 1
+            [[ "$SECURE_RUNTIME_CONFIG_PERMISSIONS" != true && "$RETRY_INITIAL_REHEARSAL" != true && "$ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL" != true && "$RETRY_SAFE_NATIVE_DEPLOY" != true && -z "$EXPECTED_RUNTIME_CONFIG_SHA256" ]] || exit 1
+            args+=(--expected-commit "$EXPECTED_COMMIT")
           fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report

@@ -1,0 +1,5 @@
+{
+  "mode": "native-recover",
+  "pointerPath": "/home/archite4/.a777-deploy/recovery-plan-pointer.json",
+  "receiptFormat": "a777-cpanel-native-recover-v1"
+}

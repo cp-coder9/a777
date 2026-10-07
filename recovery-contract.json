@@ -1,0 +1,19 @@
+{
+  "mode": "native-recover",
+  "component": "tools/CpanelNativeRecovery.php",
+  "entry": "Architex\\Deployment\\CpanelNativeRecovery::run(privatePlan, privateReceipt, expectedApprovedRecoveryGitSHA, expectedOldPlanSHA256)",
+  "oldReleaseSHA": "6f21a24c6fc7bca06b14d4d48d352d12135a2f9f",
+  "deploymentId": "7eee8a25050fadb3d36b74c40f485061",
+  "work": "/home/archite4/.a777-deploy/deployment-7eee8a25050fadb3d36b74c40f485061",
+  "archiveSha256": "5b9e44eb47a24c7f0d47d11609e8c53564d54971379fe8d91fd7da5bb71ed87e",
+  "expectedOldPlanSHA256": "REQUIRED_FULL_VALUE_FROM_ACTUAL_OLD_PLAN",
+  "expectedApprovedRecoveryGitSHA": "REQUIRED_NEW_APPROVED_CLEAN_COMMIT",
+  "receiptShape": "flat existing native-deploy result, not runner envelope",
+  "requiredReceiptFields": ["status", "lastCompletedStage", "failureStage", "sourceMigrationCount", "sourceDatabaseDdlTouched", "operatorPrivilegesRevoked", "operatorStateUnknown", "maintenanceRetained", "commit", "deploymentId", "archiveSha256", "planSha256", "artifactManifestSha256", "artifactTreeSha256", "buildSha256"],
+  "sourceMigrationsReplayed": false,
+  "operatorProvisioning": false,
+  "protectedTokenRetained": true,
+  "hostExecutionPerformed": false,
+  "acceptance": "recovered_and_deployed only after real provider/grant/PDO/config/promotion/web-pool/readiness/build readbacks",
+  "refusals": ["foreign public files including unknown candidate markers", "incomplete public publication", "non-prefix rename state", "different app or vendor bytes"]
+}

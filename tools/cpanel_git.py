@@ -89,7 +89,7 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal", "native-deploy", "native-status"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal", "native-deploy", "native-recover", "native-status"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--public-key", type=Path)
     parser.add_argument("--expected-key-fingerprint")
@@ -125,6 +125,11 @@ def main():
                 if args.retry_initial_rehearsal or args.secure_runtime_config_permissions or args.allow_existing_public_source_for_rehearsal:
                     raise CpanelError("Read-only status inputs required.")
                 report = native_status(client)
+            elif args.mode == "native-recover":
+                from cpanel_native_recover import native_recover
+                if args.retry_initial_rehearsal or args.secure_runtime_config_permissions or args.allow_existing_public_source_for_rehearsal or args.expected_runtime_config_sha256:
+                    raise CpanelError('Recovery accepts no source staging inputs.')
+                report = native_recover(client, Path(__file__).resolve().parent.parent, args.expected_commit)
             elif args.mode == "native-deploy":
                 from cpanel_native_stage import native_deploy
                 output = os.environ.get('RUNNER_TEMP')
@@ -180,7 +185,7 @@ def main():
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete', 'native_deploy_complete', 'native_status_complete')) else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete', 'native_deploy_complete', 'native_recover_complete', 'native_status_complete')) else 1
 
 
 if __name__ == "__main__":
