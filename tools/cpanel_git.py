@@ -178,7 +178,7 @@ def main():
         report['failure_locations'] = [
             {'file': Path(frame.filename).name, 'function': frame.name, 'line': frame.lineno}
             for frame in traceback.extract_tb(error.__traceback__)
-            if Path(frame.filename).name in ('cpanel_git.py', 'cpanel_git_prepare.py', 'cpanel_client.py')
+            if Path(frame.filename).name in ('cpanel_git.py', 'cpanel_git_prepare.py', 'cpanel_client.py', 'cpanel_native_stage.py', 'cpanel_native_recover.py')
         ]
         report['failure_type'] = type(error).__name__ if type(error).__name__ in ('CpanelError', 'TypeError', 'KeyError', 'ValueError', 'OSError') else 'operation_error'
     text = json.dumps(report, indent=2, sort_keys=True) + "\n"
