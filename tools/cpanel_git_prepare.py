@@ -575,7 +575,9 @@ def deployment_inventory_guard(client):
                     if (receipt.get('format') == 'a777-cpanel-native-deploy-v1'
                             and receipt.get('deploymentId') == data['deploymentId']
                             and name == 'native-consumed-' + receipt.get('planSha256', '') + '.jsonl'
-                            and receipt.get('phase') == 'complete' and receipt.get('deployed') is True):
+                            and receipt.get('commit') == data['commit']
+                            and ((receipt.get('phase') == 'complete' and receipt.get('deployed') is True)
+                                 or __import__('cpanel_native_stage').safe_failed_native(receipt))):
                         matches.append(receipt)
             if len(matches) != 1:
                 raise CpanelError('Native consumed plan completed binding refused.')

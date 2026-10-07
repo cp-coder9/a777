@@ -17,6 +17,10 @@ from cpanel_client import CpanelError
 import cpanel_git_prepare as p
 
 
+FAILURE_STAGES = ('plan', 'source-grants-snapshot', 'apache-maintenance', 'operator-provision', 'frozen-backup', 'managed-restore', 'candidate-migrations', 'private-storage', 'source-ddl', 'promotion', 'restore-grants', 'web-pool', 'final-http')
+COMPLETED_STAGES = ('staged', 'fenced', 'backedup', 'restored', 'candidatevalidated', 'sourceDDL', 'promoted', 'deployed')
+FAILURE_CODES = frozenset(['actual_config', 'additional_php_workers', 'apache_readback', 'app_key', 'archive_immutable', 'archive_source_isolation', 'artifact_digest', 'artifact_private', 'artifact_special', 'atomic_rename_same_filesystem', 'build_http', 'build_identity', 'candidate_config_directory', 'candidate_copy', 'candidate_create', 'candidate_dirs', 'candidate_readback', 'candidate_verifier', 'clean_git', 'config_backup', 'config_backup_readback', 'config_only_storage', 'cron_inventory', 'cron_inventory_unknown', 'cron_nonzero', 'direct_runtime_denied', 'drain', 'eight_pending_migrations', 'fence_still_empty', 'file_durability', 'file_exists', 'file_open', 'file_readback', 'final_config', 'final_current', 'fresh_current', 'gate_owner', 'gate_remove', 'gate_remove_readback', 'gate_rollback_owner', 'gate_rollback_ownership', 'gate_symlink', 'grants_readback_shape', 'http_curl', 'http_scope', 'http_transport', 'identity_config', 'identity_pdo', 'identity_pin', 'journal_directory', 'journal_directory_durability', 'native_activation_busy', 'normal_htaccess', 'operator_final_state', 'original_grants', 'original_grants_readback', 'plan_binding', 'plan_pins', 'private_artifact', 'probe_absence', 'probe_cleanup', 'process_inventory_unknown', 'production_provenance', 'promoted_config', 'public_candidate', 'public_copy_readback', 'public_directory', 'public_shim_path', 'readiness_component', 'readiness_http', 'readiness_status', 'release_verifier', 'rename_dir', 'rename_dir_sync', 'rename_failed', 'rename_readback', 'rename_scope', 'replace_identity', 'replace_readback', 'replace_rename', 'restore_privileges', 'restore_privileges_readback', 'restore_report', 'restore_storage', 'restored_grants_readback', 'revocation_readback', 'source_eight_applied', 'source_pending_unchanged', 'source_pin', 'source_transaction', 'storage_copy', 'storage_create', 'storage_directory', 'storage_hash', 'storage_literal_arrow', 'storage_literal_expression', 'storage_literal_unique', 'storage_literal_value', 'storage_root_create', 'target_eight_applied', 'target_pending', 'transactional_source', 'web_pool_identity', 'web_pool_probe', 'web_pool_readback', 'work_create', 'native_operation_refused'])
+
 def require(condition):
     if not condition:
         raise CpanelError('Native deployment contract refused.')
@@ -130,12 +134,68 @@ def completed_rehearsal(client, old, original):
     return plan_sha
 
 
-def save_plan(client, plan):
+def safe_failed_native(receipt):
+    return (isinstance(receipt, dict) and receipt.get('phase') == 'failed'
+            and receipt.get('lastCompletedStage') in COMPLETED_STAGES[:5]
+            and receipt.get('operatorPrivilegesRevoked') is True
+            and all(receipt.get(k) is False for k in ('deployed','sourceDatabaseDdlTouched',
+                'sourceMutationDdlStarted','maintenanceActive','maintenanceRetained',
+                'sourcePrivilegesRevoked','sourcePrivilegeStateUnknown','operatorStateUnknown')))
+
+
+def native_task_state(client, expected):
+    rows = client._uapi('VersionControlDeployment', 'retrieve', {})
+    require(isinstance(rows, list) and all(isinstance(r, dict) for r in rows))
+    matches = [r for r in rows if r.get('repository_root') == p.ROOT
+               and isinstance(r.get('repository_state'), dict)
+               and r['repository_state'].get('identifier') == expected]
+    require(len(matches) == 1)
+    row = matches[0]
+    terminal = [k for k in ('succeeded','failed','canceled')
+                if re.fullmatch(r'[0-9]+(?:\.[0-9]+)?', str((row.get('timestamps') or {}).get(k, '')))]
+    require(len(terminal) == 1)
+    require(isinstance(row.get('task_id'), str) and re.fullmatch(r'[A-Za-z0-9/-]{1,128}',row['task_id']))
+    return {'commit': expected, 'status': terminal[0], 'task_id': row['task_id']}
+
+
+def native_status(client):
+    p.authorize(client)
+    p.owned_mode(client, p.DEPLOY_ROOT, '0700', True)
+    p.owned_mode(client, p.PLAN, '0600')
+    original = p.read(client, p.PLAN)
+    old = json.loads(original)
+    require(isinstance(old, dict) and old.get('mode') == 'native-deploy'
+            and old.get('account') == 'archite4' and old.get('repository') == p.ROOT)
+    expected = commit(old.get('expectedCommit'))
+    plan_sha = digest(original.encode('ascii'))
+    receipt = native_receipt(client, expected, plan_sha, set())
+    require(receipt is not None)
+    task = native_task_state(client, expected)
+    return {'mode':'native-status','status':'native_status_complete','runtime_deployed':False,
+            'mutations_enabled':False,'commit':expected,'planSha256':plan_sha,
+            'receipt':receipt,'independentNativeDeployment':task}
+
+
+def safe_retry_plan(client, old, original, expected):
+    require(old.get('mode') == 'native-deploy' and commit(old.get('expectedCommit')) != commit(expected))
+    report = native_status(client)
+    require(report['commit'] == old['expectedCommit'] and report['planSha256'] == digest(original.encode('ascii')))
+    require(safe_failed_native(report['receipt']) and report['independentNativeDeployment']['status'] == 'failed')
+    require(not p.exists(client, p.TOKEN))
+    return report['planSha256']
+
+
+def save_plan(client, plan, retry_safe_native_deploy=False):
     p.deployment_inventory_guard(client)
     if p.exists(client, p.PLAN):
         p.owned_mode(client, p.PLAN, '0600')
         original = p.read(client, p.PLAN)
-        old_sha = completed_rehearsal(client, json.loads(original), original)
+        old = json.loads(original)
+        if old.get('mode') == 'native-deploy':
+            require(retry_safe_native_deploy is True)
+            old_sha = safe_retry_plan(client, old, original, plan['expectedCommit'])
+        else:
+            old_sha = completed_rehearsal(client, old, original)
         archive = p.DEPLOY_ROOT + '/plan-roll-' + old_sha + '.json'
         require(not p.exists(client, archive))
         intent = encoded({'format': 'a777-preflight-plan-roll-intent-v1', 'originalBytesBase64': base64.b64encode(original.encode('ascii')).decode(), 'originalSha256': old_sha}) + '\n'
@@ -160,7 +220,7 @@ def native_receipt(client, expected, plan_sha, previous):
         require(data.get('format') == 'a777-cpanel-native-deploy-v1' and data.get('commit') == expected and data.get('planSha256') == plan_sha and data.get('mode') == 'native-deploy')
         require(data.get('phase') in ('complete', 'failed', 'recovery_required'))
         safe = {k: data[k] for k in ('format', 'mode', 'commit', 'planSha256', 'phase')}
-        for k in ('deployed', 'readinessPassed', 'maintenanceActive', 'sourcePrivilegesRevoked', 'sourcePrivilegeStateUnknown', 'operatorPrivilegesRevoked', 'operatorStateUnknown', 'artifactVerified', 'sourceDatabaseDdlTouched', 'maintenanceRetained'):
+        for k in ('deployed', 'readinessPassed', 'maintenanceActive', 'sourcePrivilegesRevoked', 'sourcePrivilegeStateUnknown', 'operatorPrivilegesRevoked', 'operatorStateUnknown', 'artifactVerified', 'sourceDatabaseDdlTouched', 'sourceMutationDdlStarted', 'sourceGrantMutationStarted', 'maintenanceRetained'):
             if k in data:
                 require(type(data[k]) is bool)
                 safe[k] = data[k]
@@ -168,6 +228,16 @@ def native_receipt(client, expected, plan_sha, previous):
             if k in data:
                 require(isinstance(data[k], str) and re.fullmatch(r'[a-f0-9]{64}', data[k]))
                 safe[k] = data[k]
+        for key, allowed in (('failureStage', FAILURE_STAGES), ('lastCompletedStage', COMPLETED_STAGES), ('failureCode', FAILURE_CODES), ('failureType', ('PDOException','JsonException','RuntimeException','operation_refused'))):
+            if key in data:
+                require(data[key] in allowed or (key == 'lastCompletedStage' and data[key] is None))
+                safe[key] = data[key]
+        if 'failureLine' in data:
+            require(data['failureLine'] is None or (type(data['failureLine']) is int and 1 <= data['failureLine'] <= 100000))
+            safe['failureLine'] = data['failureLine']
+        if 'deploymentId' in data:
+            require(isinstance(data['deploymentId'], str) and re.fullmatch(r'[a-f0-9]{32}', data['deploymentId']))
+            safe['deploymentId'] = data['deploymentId']
         if 'sourceMigrationCount' in data:
             require(type(data['sourceMigrationCount']) is int and 0 <= data['sourceMigrationCount'] <= 100000)
             safe['sourceMigrationCount'] = data['sourceMigrationCount']
@@ -183,7 +253,7 @@ def native_receipt(client, expected, plan_sha, previous):
     return found[0] if found else None
 
 
-def native_deploy(client, source, output, expected, config_sha, attempts=360, pause=5):
+def native_deploy(client, source, output, expected, config_sha, attempts=360, pause=5, retry_safe_native_deploy=False, readonly_source_preflight=None):
     report = {'mode': 'native-deploy', 'status': 'failed', 'runtime_deployed': False,
               'tokenAbsenceVerified': False, 'tokenRetainedForRecovery': False}
     state, previous, plan_sha = {}, set(), None
@@ -195,6 +265,23 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
         commit(expected)
         require(isinstance(config_sha, str) and re.fullmatch(r'[a-f0-9]{64}', config_sha))
         require(config_sha == '5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8')
+        require(type(retry_safe_native_deploy) is bool)
+        if retry_safe_native_deploy:
+            p.authorize(client)
+            p.owned_mode(client, p.PLAN, '0600')
+            original = p.read(client, p.PLAN)
+            safe_retry_plan(client, json.loads(original), original, expected)
+            stage = 'independent_readonly_source_preflight'
+            require(callable(readonly_source_preflight))
+            proof = readonly_source_preflight(client, expected, config_sha)
+            require(isinstance(proof, dict) and proof.get('commit') == expected
+                    and proof.get('runtimeConfigSha256') == config_sha
+                    and proof.get('sourceDatabase') == 'archite4_dev_rel1'
+                    and proof.get('readOnly') is True and proof.get('sourceDatabaseDdlTouched') is False
+                    and type(proof.get('pendingMigrationCount')) is int and proof['pendingMigrationCount'] == 8)
+            report['TaskNoEffectsProof'] = {'originalSourceConfigSha256': config_sha,
+                'sourceDatabase': 'archite4_dev_rel1', 'pendingMigrationCount': 8,
+                'independentReadOnlyControllerPreflight': True}
         stage = 'production_build'
         release, artifact = build(source, output, expected)
         archive = Path(output) / ('incoming-' + expected + '-' + secrets.token_hex(8) + '.zip')
@@ -247,7 +334,7 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
                 'artifactManifestSha256': artifact['artifactManifestSha256'],
                 'buildSha256': artifact['buildSha256']}
         stage = 'operator_plan'
-        plan_sha = save_plan(client, plan)
+        plan_sha = save_plan(client, plan, retry_safe_native_deploy=retry_safe_native_deploy)
         previous = {r.get('name') for r in p.entries(client, p.DEPLOY_ROOT)}
         stage = 'token_staging'
         p.provision_token(client, state)
@@ -307,8 +394,8 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
                 or receipt.get('operatorStateUnknown') is not False
                 or receipt.get('operatorPrivilegesRevoked') is not True
                 or receipt.get('maintenanceActive') is not False
-                or receipt.get('maintenanceRetained') is True
-                or (receipt.get('phase') != 'complete' and receipt.get('sourceDatabaseDdlTouched') is not False))
+                or receipt.get('maintenanceRetained') is not False
+                or (receipt.get('phase') != 'complete' and (receipt.get('sourceDatabaseDdlTouched') is not False or receipt.get('sourceMutationDdlStarted') is not False)))
             if retain:
                 report['tokenRetainedForRecovery'] = True
                 report['recovery'] = 'manual_authenticated_recovery_required'

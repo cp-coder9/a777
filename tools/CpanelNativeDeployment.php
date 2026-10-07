@@ -245,6 +245,9 @@ final class CpanelNativeDeployment
                 try { self::replaceOwned(self::DOCROOT.'/.htaccess',(string)file_get_contents(self::DOCROOT.'/.htaccess'),$gateBytes,0644,$journal); $gate=true; } catch (Throwable) {}
             }
             $result['status']=$ddl?'recovery_required':'failed'; $result['failureStage']=$stage;
+            $result['failureCode']=self::safeFailureCode($error);
+            $result['failureType']= $error instanceof \PDOException ? 'PDOException' : ($error instanceof \JsonException ? 'JsonException' : ($error instanceof RuntimeException ? 'RuntimeException' : 'operation_refused'));
+            $result['failureLine']= $error->getFile()===__FILE__ ? $error->getLine() : null;
             $result['maintenanceRetained']=$gate;
             // No filesystem rollback is ever represented as a database rollback.
             if (isset($operator) && !$result['operatorPrivilegesRevoked']) {
@@ -495,7 +498,10 @@ final class CpanelNativeDeployment
 
     private static ?Throwable $lastFailure=null;
     public static function lastFailure(): ?Throwable { return self::$lastFailure; }
-    private static function need(bool $ok,string $gate): void { if (!$ok) throw new RuntimeException($gate); }
+    private const FAILURE_GATES=['actual_config','additional_php_workers','apache_readback','app_key','archive_immutable','archive_source_isolation','artifact_digest','artifact_private','artifact_special','atomic_rename_same_filesystem','build_http','build_identity','candidate_config_directory','candidate_copy','candidate_create','candidate_dirs','candidate_readback','candidate_verifier','clean_git','config_backup','config_backup_readback','config_only_storage','cron_inventory','cron_inventory_unknown','cron_nonzero','direct_runtime_denied','drain','eight_pending_migrations','fence_still_empty','file_durability','file_exists','file_open','file_readback','final_config','final_current','fresh_current','gate_owner','gate_remove','gate_remove_readback','gate_rollback_owner','gate_rollback_ownership','gate_symlink','grants_readback_shape','http_curl','http_scope','http_transport','identity_config','identity_pdo','identity_pin','journal_directory','journal_directory_durability','native_activation_busy','normal_htaccess','operator_final_state','original_grants','original_grants_readback','plan_binding','plan_pins','private_artifact','probe_absence','probe_cleanup','process_inventory_unknown','production_provenance','promoted_config','public_candidate','public_copy_readback','public_directory','public_shim_path','readiness_component','readiness_http','readiness_status','release_verifier','rename_dir','rename_dir_sync','rename_failed','rename_readback','rename_scope','replace_identity','replace_readback','replace_rename','restore_privileges','restore_privileges_readback','restore_report','restore_storage','restored_grants_readback','revocation_readback','source_eight_applied','source_pending_unchanged','source_pin','source_transaction','storage_copy','storage_create','storage_directory','storage_hash','storage_literal_arrow','storage_literal_expression','storage_literal_unique','storage_literal_value','storage_root_create','target_eight_applied','target_pending','transactional_source','web_pool_identity','web_pool_probe','web_pool_readback','work_create'];
+    private static ?\WeakMap $gateFailures=null;
+    public static function safeFailureCode(Throwable $error): string { return self::$gateFailures[$error] ?? 'native_operation_refused'; }
+    private static function need(bool $ok,string $gate): void { if (!$ok) { $error=new RuntimeException($gate); self::$gateFailures ??= new \WeakMap(); self::$gateFailures[$error]=in_array($gate,self::FAILURE_GATES,true)?$gate:'native_operation_refused'; throw $error; } }
     private static function completed(array &$result,string $journal,string $stage): void
     { $result['lastCompletedStage']=$stage; $result['status']=$stage; self::append($journal,['phase'=>$stage]+$result); }
     private static function treeDigest(array $files): string { return hash('sha256',json_encode($files,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)); }

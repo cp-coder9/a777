@@ -15,6 +15,7 @@ on:
           - native-preflight
           - restore-rehearsal
           - native-deploy
+          - native-status
       secure_runtime_config_permissions:
         description: Explicit permission-only repair of the owned runtime config
         type: boolean
@@ -30,6 +31,11 @@ on:
         required: false
       allow_existing_public_source_for_rehearsal:
         description: Read only existing pinned public source for private encrypted recovery; never deployment authority
+        type: boolean
+        default: false
+        required: false
+      retry_safe_native_deploy:
+        description: Explicit new-commit retry after trusted terminal pre-DDL failure only
         type: boolean
         default: false
         required: false
@@ -84,10 +90,12 @@ jobs:
           install -d -m 0700 "$A777_NATIVE_FIXTURE_ROOT"
           php tools/tests/CpanelNativeDeployment_test.php
           php tools/tests/CpanelNativeReceipt_test.php
+          php tools/tests/CpanelNativeDiagnostics_test.php
           php tools/tests/CpanelPdoPermissionDenial_test.php
           php tools/tests/CpanelMaintenanceApi_test.php
           php tools/tests/CpanelNativeDeployment_files_native.php
       - name: Verify real locked production artifact without hosting credentials
+        if: ${{ inputs.mode != 'native-status' }}
         env:
           EXPECTED_COMMIT: ${{ github.sha }}
         run: |
@@ -95,6 +103,7 @@ jobs:
       - name: Execute explicitly selected mode (native-deploy requires production authorization)
         env:
           MODE: ${{ inputs.mode }}
+          RETRY_SAFE_NATIVE_DEPLOY: ${{ inputs.retry_safe_native_deploy }}
           ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL: ${{ inputs.allow_existing_public_source_for_rehearsal }}
           RETRY_INITIAL_REHEARSAL: ${{ inputs.retry_initial_rehearsal }}
           SECURE_RUNTIME_CONFIG_PERMISSIONS: ${{ inputs.secure_runtime_config_permissions }}
@@ -124,6 +133,10 @@ jobs:
           if [[ "$ALLOW_EXISTING_PUBLIC_SOURCE_FOR_REHEARSAL" == true ]]; then
             [[ "$MODE" == restore-rehearsal && "$EXPECTED_RUNTIME_CONFIG_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1
             args+=(--allow-existing-public-source-for-rehearsal)
+          fi
+          if [[ "$RETRY_SAFE_NATIVE_DEPLOY" == true ]]; then
+            [[ "$MODE" == native-deploy ]] || exit 1
+            args+=(--retry-safe-native-deploy)
           fi
           python tools/cpanel_git.py "${args[@]}"
       - name: Retain safe capability and repository report
