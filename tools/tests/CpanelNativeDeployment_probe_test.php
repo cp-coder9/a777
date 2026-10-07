@@ -6,6 +6,20 @@ $dir=sys_get_temp_dir().'/native-probe-test-'.bin2hex(random_bytes(8));
 mkdir($dir.'/public',0700,true);
 try {
     $invoke=static fn(string $method,...$args)=>(new ReflectionMethod(Deploy::class,$method))->invoke(null,...$args);
+    $maintenance=['status'=>503,'curlErrorCode'=>0,'body'=>'Deployment maintenance','headers'=>['x-a777-deployment-lease'=>'fixture-lease']];
+    $retry=static fn(array $r,int $n,bool $proof=false,bool $preflight=false,bool $bound=true)=>$invoke('webProbeMaintenanceRetry',$r,'fixture-lease',$n,$proof,$preflight,$bound);
+    $attempts=0;
+    foreach ([$maintenance,['status'=>200,'curlErrorCode'=>0]] as $r) { ++$attempts; if (!$retry($r,$attempts)) break; }
+    if ($attempts!==2) throw new RuntimeException('maintenance to success attempts');
+    foreach ([[true,false,true],[false,true,true],[false,false,false]] as [$proof,$preflight,$bound]) if ($retry($maintenance,1,$proof,$preflight,$bound)) throw new RuntimeException('proof/auth/gate change retried');
+    foreach (['status'=>403,'curlErrorCode'=>7,'body'=>'Deployment maintenance\n','headers'=>['x-a777-deployment-lease'=>'wrong']] as $key=>$bad) { $r=$maintenance; $r[$key]=$bad; if ($retry($r,1)) throw new RuntimeException('unknown response retried'); }
+    $unknown=$maintenance; $unknown['headers']['www-authenticate']='challenge';
+    if ($retry($unknown,1)) throw new RuntimeException('unknown/auth header retried');
+    $unknown=$maintenance; $unknown['headers']['cache-control']='public';
+    if ($retry($unknown,1)) throw new RuntimeException('changed cache header retried');
+    $attempts=1; while ($retry($maintenance,$attempts)) ++$attempts;
+    if ($attempts!==12 || $retry($maintenance,0)) throw new RuntimeException('maintenance retry bound');
+    echo "PASS observed maintenance retry policy: 2 attempts, strict stop cases, exact 12-attempt exhaustion (synthetic only)\n";
     $name='native-probe-'.str_repeat('a',48).'.php'; $secret=str_repeat('b',64);
     $options=$invoke('webProbeLoopbackOptions',$name,$secret);
     foreach ([CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,CURLOPT_RESOLVE=>['php.architex.co.za:80:169.239.218.73'],CURLOPT_INTERFACE=>'169.239.218.73',CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45] as $key=>$expected) {
