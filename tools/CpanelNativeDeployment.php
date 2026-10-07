@@ -675,7 +675,7 @@ final class CpanelNativeDeployment
                 try { if (!in_array(self::runtimeOriginHttp($ip),[403,404],true)) $originDenied=false; }
                 catch (RuntimeException $failure) {
                     self::need($failure->getMessage()==='runtime_origin_transport','runtime_origin_refused');
-                    $originDenied=false; // Unproved HTTPS transport; require independent loopback denial.
+                    $originDenied=false; // Unproved HTTPS transport; require independent account-origin denial.
                 }
             }
             self::need($ips!==[],'direct_runtime_origin_unavailable');
@@ -697,11 +697,36 @@ final class CpanelNativeDeployment
             }
         }
     }
+    private const ACCOUNT_ORIGIN_IP='169.239.218.73';
+    private static function accountOriginPeers(mixed $local,mixed $peer): bool
+    {
+        return $local===self::ACCOUNT_ORIGIN_IP && $peer===self::ACCOUNT_ORIGIN_IP;
+    }
+    private static function accountOriginPreflight(): void
+    {
+        // Authenticate the existing fixed account/home; never expand UAPI allowlists.
+        \CpanelMaintenanceApi::inventory('list_databases');
+        self::need(\CpanelMaintenanceApi::ORIGIN==='https://cp73.domains.co.za:2083','account_origin_provider');
+        foreach (['cp73.domains.co.za','php.architex.co.za'] as $host) {
+            $records=dns_get_record($host,DNS_A);
+            self::need(is_array($records) && $records!==[],'account_origin_dns');
+            foreach ($records as $record) self::need(($record['ip']??null)===self::ACCOUNT_ORIGIN_IP,'account_origin_dns_pin');
+        }
+        // Send zero HTTP bytes; DNS alone does not establish local interface ownership.
+        $socket=@stream_socket_client('tcp://'.self::ACCOUNT_ORIGIN_IP.':80',$errno,$error,5,STREAM_CLIENT_CONNECT);
+        self::need(is_resource($socket),'account_origin_self_route');
+        try {
+            $local=stream_socket_get_name($socket,false); $peer=stream_socket_get_name($socket,true);
+            $pattern='/\A'.preg_quote(self::ACCOUNT_ORIGIN_IP,'/').':[1-9][0-9]{0,4}\z/D';
+            self::need(is_string($local) && preg_match($pattern,$local)===1
+                && $peer===self::ACCOUNT_ORIGIN_IP.':80','account_origin_self_route');
+        } finally { fclose($socket); }
+    }
     private static function runtimeLoopbackOptions(): array
     {
-        // No caller-controlled URL, host, port, address or headers; HTTP is local only.
+        // Fixed authenticated hosting-account IP; preflight requires a same-machine self-route.
         return [CURLOPT_URL=>'http://architex.co.za:80/.a777-runtime-active/config/runtime.php',
-            CURLOPT_RESOLVE=>['architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,
+            CURLOPT_RESOLVE=>['architex.co.za:80:169.239.218.73'],CURLOPT_INTERFACE=>self::ACCOUNT_ORIGIN_IP,CURLOPT_FOLLOWLOCATION=>false,
             CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',
             CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,
             CURLOPT_HTTPGET=>true,CURLOPT_HTTPHEADER=>[],CURLOPT_NETRC=>CURL_NETRC_IGNORED,
@@ -709,12 +734,13 @@ final class CpanelNativeDeployment
     }
     private static function runtimeLoopbackDenied(array $check): bool
     {
-        return ($check['transport']??null)==='loopback-http'
+        return ($check['transport']??null)==='account-origin-http'
             && ($check['peerVerified']??null)===true && ($check['curlErrorCode']??null)===0
             && in_array($check['status']??null,[403,404],true);
     }
     private static function runtimeLoopbackHttp(): array
     {
+        self::accountOriginPreflight();
         $curl=curl_init(); self::need($curl!==false,'runtime_loopback_curl'); $received=0;
         try {
             $options=self::runtimeLoopbackOptions();
@@ -723,8 +749,8 @@ final class CpanelNativeDeployment
             };
             self::need(curl_setopt_array($curl,$options),'runtime_loopback_options');
             $ok=curl_exec($curl); $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
-            return ['transport'=>'loopback-http','status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),
-                'peerVerified'=>is_string($peer) && $peer==='127.0.0.1',
+            return ['transport'=>'account-origin-http','status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),
+                'peerVerified'=>self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer),
                 'curlErrorCode'=>$ok===false?max(1,curl_errno($curl)):curl_errno($curl)];
         } finally { curl_close($curl); }
     }
@@ -922,7 +948,7 @@ PHP;
     {
         self::need(preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1 && preg_match('/\A[a-f0-9]{64}\z/D',$secret)===1,'http_scope');
         return [CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,
-            CURLOPT_RESOLVE=>['php.architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,
+            CURLOPT_RESOLVE=>['php.architex.co.za:80:169.239.218.73'],CURLOPT_INTERFACE=>self::ACCOUNT_ORIGIN_IP,CURLOPT_FOLLOWLOCATION=>false,
             CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,
             CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,
             CURLOPT_HTTPGET=>true,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],
@@ -931,6 +957,7 @@ PHP;
     private static function webProbeLoopbackHttp(string $name,string $secret): array
     {
         $options=self::webProbeLoopbackOptions($name,$secret);
+        self::accountOriginPreflight();
         $curl=curl_init(); self::need($curl!==false,'http_curl'); $body=''; $received=0;
         try {
             $options[CURLOPT_WRITEFUNCTION]=static function($c,string $chunk) use (&$body,&$received): int {
@@ -940,8 +967,8 @@ PHP;
             $ok=curl_exec($curl)!==false; $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
             $error=curl_errno($curl);
             return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$ok?$body:'',
-                'headers'=>[],'curlErrorCode'=>($ok && $peer==='127.0.0.1')?$error:max(1,$error),
-                'peerVerified'=>$peer==='127.0.0.1'];
+                'headers'=>[],'curlErrorCode'=>($ok && self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer))?$error:max(1,$error),
+                'peerVerified'=>self::accountOriginPeers(curl_getinfo($curl,CURLINFO_LOCAL_IP),$peer)];
         } finally { curl_close($curl); }
     }
     private static function webProbeFallback(array $response,bool $proofPresent): bool
@@ -966,7 +993,7 @@ PHP;
             $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
             $transport='public-https'; clearstatcache(true,$proof);
             if (self::webProbeFallback($r,is_file($proof))) {
-                $transport='loopback-http'; $r=self::webProbeLoopbackHttp($name,$secret);
+                $transport='account-origin-http'; $r=self::webProbeLoopbackHttp($name,$secret);
             }
             clearstatcache(true,$proof);
             self::append($journal,['phase'=>'web-probe-transport','transport'=>$transport]);

@@ -8,7 +8,7 @@ try {
     $invoke=static fn(string $method,...$args)=>(new ReflectionMethod(Deploy::class,$method))->invoke(null,...$args);
     $name='native-probe-'.str_repeat('a',48).'.php'; $secret=str_repeat('b',64);
     $options=$invoke('webProbeLoopbackOptions',$name,$secret);
-    foreach ([CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,CURLOPT_RESOLVE=>['php.architex.co.za:80:127.0.0.1'],CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45] as $key=>$expected) {
+    foreach ([CURLOPT_URL=>'http://php.architex.co.za:80/'.$name,CURLOPT_RESOLVE=>['php.architex.co.za:80:169.239.218.73'],CURLOPT_INTERFACE=>'169.239.218.73',CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_NOPROXY=>'*',CURLOPT_NETRC=>CURL_NETRC_IGNORED,CURLOPT_HTTPHEADER=>['X-A777-Native-Probe: '.$secret],CURLOPT_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTP,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45] as $key=>$expected) {
         if (($options[$key]??null)!==$expected) throw new RuntimeException('loopback option scope');
     }
     foreach (['index.php',$name.'?x=1','../'.$name,'https://example.com/'.$name,'native-probe-'.str_repeat('a',47).'.php'] as $bad) {
@@ -17,32 +17,24 @@ try {
     try { $invoke('webProbeLoopbackOptions',$name,$secret."\r\nAuthorization: planted"); throw new LogicException('header injection accepted'); } catch (RuntimeException) {}
     if (!$invoke('webProbeFallback',['status'=>503],false) || $invoke('webProbeFallback',['status'=>503],true) || $invoke('webProbeFallback',['status'=>301],false)) throw new RuntimeException('fallback scope');
     if (!$invoke('webProbeIdentity',['probeId'=>$name],$name) || $invoke('webProbeIdentity',['probeId'=>'old'],$name) || $invoke('webProbeIdentity',[],$name)) throw new RuntimeException('stale proof accepted');
-    // Real curl, fixed port 80 and virtualhost. Never borrow an existing listener.
-    $listener=@stream_socket_server('tcp://127.0.0.1:80',$errno,$errstr);
-    if ($listener===false) { echo "UNAVAILABLE real loopback fixture: port 80 in use or inaccessible\n"; }
-    else {
-        fclose($listener);
-        file_put_contents($dir.'/router.php','<?php $status=(int)file_get_contents(__DIR__."/status"); if ($_SERVER["HTTP_HOST"]!=="php.architex.co.za" && $_SERVER["HTTP_HOST"]!=="php.architex.co.za:80") { http_response_code(400); exit; } if (($_SERVER["HTTP_X_A777_NATIVE_PROBE"]??"")!=='.var_export($secret,true).') { http_response_code(401); exit; } http_response_code($status); if ($status===301) header("Location: https://example.invalid/no-follow"); echo $status===200?str_repeat("x",(int)file_get_contents(__DIR__."/size")):"fixture";');
-        file_put_contents($dir.'/status','200'); file_put_contents($dir.'/size','2');
-        $server=proc_open([PHP_BINARY,'-S','127.0.0.1:80',$dir.'/router.php'],[['pipe','r'],['file',$dir.'/server.out','a'],['file',$dir.'/server.err','a']],$serverPipes);
-        if (!is_resource($server)) throw new RuntimeException('local fixture launch');
-        fclose($serverPipes[0]);
-        try {
-            $ready=false;
-            for ($attempt=0;$attempt<30;$attempt++) { $socket=@stream_socket_client('tcp://127.0.0.1:80',$errno,$errstr,0.1); if ($socket) { fclose($socket); $ready=true; break; } usleep(100000); }
-            if (!$ready) throw new RuntimeException('local fixture unavailable');
-            foreach ([200,301,401,503] as $status) {
-                file_put_contents($dir.'/status',(string)$status);
-                $r=$invoke('webProbeLoopbackHttp',$name,$secret);
-                if ($r['status']!==$status || $r['curlErrorCode']!==0 || !$r['peerVerified']) throw new RuntimeException('real curl status/peer');
-                echo 'PASS real loopback curl '.$status."\n";
-            }
-            file_put_contents($dir.'/status','200'); file_put_contents($dir.'/size','1048577');
-            if ($invoke('webProbeLoopbackHttp',$name,$secret)['curlErrorCode']===0) throw new RuntimeException('body bound bypass');
-            echo "PASS real loopback body bound\n";
-        } finally { proc_terminate($server); proc_close($server); }
+    // No substituted loopback listener establishes the pinned hosting-account self-route.
+    echo "UNAVAILABLE native account-origin HTTP fixture: requires authenticated hosting account and locally assigned 169.239.218.73:80; not proven on Windows\n";
+    foreach ([["169.239.218.73","169.239.218.73",true],["127.0.0.1","169.239.218.73",false],["169.239.218.73","127.0.0.1",false],["169.239.218.73","8.8.8.8",false],["8.8.8.8","169.239.218.73",false],[false,"169.239.218.73",false],["169.239.218.73:80","169.239.218.73",false]] as [$local,$peer,$expected]) {
+        if ($invoke('accountOriginPeers',$local,$peer)!==$expected) throw new RuntimeException('account-origin peer binding');
     }
-    echo "PASS fixed loopback options, header/path scope and stale proof binding\n";
+    $source=file_get_contents(dirname(__DIR__).'/CpanelNativeDeployment.php');
+    $preflightStart=strpos($source,'private static function accountOriginPreflight');
+    $preflightEnd=strpos($source,'private static function runtimeLoopbackOptions',$preflightStart);
+    $preflight=substr($source,$preflightStart,$preflightEnd-$preflightStart);
+    foreach (["CpanelMaintenanceApi::inventory('list_databases')",'dns_get_record($host,DNS_A)','stream_socket_get_name($socket,false)','stream_socket_get_name($socket,true)'] as $required) {
+        if (!str_contains($preflight,$required)) throw new RuntimeException('self-route preflight omitted');
+    }
+    foreach (['runtimeLoopbackHttp','webProbeLoopbackHttp'] as $method) {
+        $start=strpos($source,'private static function '.$method); $end=strpos($source,'finally { curl_close($curl); }',$start);
+        $body=substr($source,$start,$end-$start);
+        if (strpos($body,'self::accountOriginPreflight();')===false || strpos($body,'self::accountOriginPreflight();')>strpos($body,'curl_exec($curl)') || !str_contains($body,'CURLINFO_LOCAL_IP')) throw new RuntimeException('secret transport precedes self-route proof');
+    }
+    echo "PASS fixed account-origin options, self-route ordering, header/path scope and stale proof binding (synthetic contracts only)\n";
     foreach ([false,true,'fence'] as $terminate) {
         $proof=$dir.'/proof.json'; @unlink($proof);
         file_put_contents($dir.'/public/build-info.json','{"sourceCommit":"fixture","sourceDirty":false,"environment":"production"}');
