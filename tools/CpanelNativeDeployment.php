@@ -657,15 +657,56 @@ final class CpanelNativeDeployment
             $r=self::http($path); self::need($r['status']===503 && ($r['headers']['x-a777-deployment-lease']??null)===$lease,'apache_http_503_lease');
         }
         $r=self::http('/.a777-runtime-active/config/runtime.php','https://architex.co.za');
-        self::need(in_array($r['status'],[403,404],true),'direct_runtime_denied');
+        if (!in_array($r['status'],[403,404],true)) {
+            // Authenticate the exact account/home through the existing read-only API.
+            // Provider DNS is fixed, not an operator-supplied origin or arbitrary URL.
+            \CpanelMaintenanceApi::inventory('list_databases');
+            self::need(\CpanelMaintenanceApi::ORIGIN==='https://cp73.domains.co.za:2083','runtime_origin_provider');
+            $records=dns_get_record('cp73.domains.co.za',DNS_A|DNS_AAAA);
+            self::need(is_array($records) && $records!==[],'runtime_origin_dns');
+            $ips=[];
+            foreach ($records as $record) {
+                $ip=$record['ip']??$record['ipv6']??null;
+                self::need(is_string($ip),'runtime_origin_dns_shape');
+                self::runtimeOriginResolve($ip); $ips[$ip]=true;
+            }
+            foreach (array_keys($ips) as $ip) {
+                self::need(in_array(self::runtimeOriginHttp($ip),[403,404],true),'direct_runtime_origin_denied');
+            }
+            self::need($ips!==[],'direct_runtime_origin_unavailable');
+        }
+    }
+    private static function runtimeOriginResolve(string $ip): string
+    {
+        self::need(filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE)!==false,'runtime_origin_public_ip');
+        return 'architex.co.za:443:'.(str_contains($ip,':')?'['.$ip.']':$ip);
+    }
+    private static function runtimeOriginHttp(string $ip): int
+    {
+        $resolve=self::runtimeOriginResolve($ip);
+        $curl=curl_init('https://architex.co.za/.a777-runtime-active/config/runtime.php');
+        self::need($curl!==false,'runtime_origin_curl'); $received=0;
+        try {
+            curl_setopt_array($curl,[CURLOPT_RESOLVE=>[$resolve],CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,
+                CURLOPT_PROXY=>'',CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+                CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45,CURLOPT_HTTPHEADER=>[],
+                // Discard all private-route body bytes: never retain/log configuration.
+                CURLOPT_WRITEFUNCTION=>static function($c,string $chunk) use (&$received): int {
+                    $received+=strlen($chunk); return $received<=1048576?strlen($chunk):0;
+                }]);
+            self::need(curl_exec($curl)!==false,'runtime_origin_transport');
+            $peer=curl_getinfo($curl,CURLINFO_PRIMARY_IP);
+            self::need(is_string($peer) && inet_pton($peer)===inet_pton($ip),'runtime_origin_peer');
+            return (int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);
+        } finally { curl_close($curl); }
     }
     private static function http(string $path,string $origin=self::WEB,array $headers=[]): array
     {
         self::need(in_array($origin,[self::WEB,'https://architex.co.za'],true) && str_starts_with($path,'/') && !str_starts_with($path,'//'),'http_scope');
-        $curl=curl_init($origin.$path); self::need($curl!==false,'http_curl'); $body=''; $received=[];
+        $curl=curl_init($origin.$path); self::need($curl!==false,'http_curl'); $body=''; $received=[]; $receivedBytes=0;
         try {
             curl_setopt_array($curl,[CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,CURLOPT_PROXY=>'',CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45,CURLOPT_HTTPHEADER=>$headers,
-                CURLOPT_WRITEFUNCTION=>static function($c,string $b) use (&$body): int { if (strlen($body)+strlen($b)>1048576) return 0; $body.=$b; return strlen($b); },
+                CURLOPT_WRITEFUNCTION=>static function($c,string $b) use (&$body,&$receivedBytes,$path): int { $receivedBytes+=strlen($b); if ($receivedBytes>1048576) return 0; if ($path!=='/.a777-runtime-active/config/runtime.php') $body.=$b; return strlen($b); },
                 CURLOPT_HEADERFUNCTION=>static function($c,string $b) use (&$received): int { $p=explode(':',$b,2); if(count($p)===2) $received[strtolower(trim($p[0]))]=trim($p[1]); return strlen($b); }]);
             self::need(curl_exec($curl)!==false,'http_transport'); return ['status'=>(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE),'body'=>$body,'headers'=>$received];
         } finally { curl_close($curl); }

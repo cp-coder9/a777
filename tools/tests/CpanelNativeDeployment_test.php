@@ -23,4 +23,10 @@ refuses(fn()=>CpanelMaintenanceApi::decode('{"status":1,"data":null}',200),'erro
 $contract=json_decode(file_get_contents(dirname(__DIR__).'/native-deploy-contract.json'),true,32,JSON_THROW_ON_ERROR);
 check($contract['requiredPlanFields']['mode']==='native-deploy','contract mode');
 check(count($contract['stages'])===8 && end($contract['stages'])==='deployed','contract stages');
+$resolve=new ReflectionMethod(Deploy::class,'runtimeOriginResolve');
+check($resolve->invoke(null,'8.8.8.8')==='architex.co.za:443:8.8.8.8','fixed domain IPv4 resolve');
+check($resolve->invoke(null,'2606:4700:4700::1111')==='architex.co.za:443:[2606:4700:4700::1111]','fixed domain IPv6 resolve');
+foreach (['127.0.0.1','10.0.0.1','192.168.1.1','169.254.169.254','0.0.0.0','::1','fc00::1','fe80::1','::ffff:127.0.0.1','host.example','8.8.8.8:443','8.8.8.8,1.1.1.1',"8.8.8.8\n"] as $ip) {
+    refuses(fn()=>$resolve->invoke(null,$ip),'non-public or malformed origin refused');
+}
 echo "PASS $n assertions; literal/config and protocol fixtures only; no host/database calls\n";
