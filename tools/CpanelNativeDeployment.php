@@ -672,7 +672,11 @@ final class CpanelNativeDeployment
             }
             $originDenied=true;
             foreach (array_keys($ips) as $ip) {
-                if (!in_array(self::runtimeOriginHttp($ip),[403,404],true)) $originDenied=false;
+                try { if (!in_array(self::runtimeOriginHttp($ip),[403,404],true)) $originDenied=false; }
+                catch (RuntimeException $failure) {
+                    self::need($failure->getMessage()==='runtime_origin_transport','runtime_origin_refused');
+                    $originDenied=false; // Unproved HTTPS transport; require independent loopback denial.
+                }
             }
             self::need($ips!==[],'direct_runtime_origin_unavailable');
             if (!$originDenied) {
