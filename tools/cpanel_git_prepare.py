@@ -507,15 +507,29 @@ def deployment_inventory_guard(client):
             continue
         if isinstance(name, str) and re.fullmatch(r'restore-archite4_ar_[a-f0-9]{16}_test\.json', name):
             owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')
-            data = json.loads(read(client, DEPLOY_ROOT + '/' + name))
+            raw = read(client, DEPLOY_ROOT + '/' + name)
+            records = [json.loads(line) for line in raw.splitlines() if line.strip()]
+            if not records or len(records) > 32:
+                raise CpanelError('Retained provider journal refused.')
             allowed = {'account','target','source','user','binding','phase','create','grant','inventory','users','privileges'}
-            if (not isinstance(data, dict) or not set(data) <= allowed
-                    or data.get('account') != 'archite4' or data.get('source') != 'archite4_dev_rel1'
-                    or not isinstance(data.get('target'), str) or name != 'restore-' + data['target'] + '.json'
-                    or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['target'])
-                    or data.get('phase') not in ('intent','created','grant-intent','granted','verified')
-                    or not isinstance(data.get('binding'), dict) or data['binding'].get('source') != data['source']):
-                raise CpanelError('Retained provider target metadata refused.')
+            phases = ('intent','created','grant-intent','granted','verified')
+            previous_phase = -1
+            binding = None
+            for data in records:
+                if (not isinstance(data, dict) or not set(data) <= allowed
+                        or data.get('account') != 'archite4' or data.get('source') != 'archite4_dev_rel1'
+                        or not isinstance(data.get('target'), str) or name != 'restore-' + data['target'] + '.json'
+                        or not re.fullmatch(r'archite4_ar_[a-f0-9]{16}_test', data['target'])
+                        or data.get('phase') not in phases
+                        or not isinstance(data.get('binding'), dict) or data['binding'].get('source') != data['source']):
+                    raise CpanelError('Retained provider target metadata refused.')
+                identity = {k:data.get(k) for k in ('account','target','source','user','binding')}
+                if binding is not None and identity != binding:
+                    raise CpanelError('Retained provider journal identity changed.')
+                index = phases.index(data['phase'])
+                if index <= previous_phase or (len(records) > 1 and previous_phase == -1 and index != 0):
+                    raise CpanelError('Retained provider journal phase refused.')
+                previous_phase, binding = index, identity
             continue
         if isinstance(name, str) and re.fullmatch(r'rehearsal-intent-[a-f0-9]{64}\.json', name):
             owned_mode(client, DEPLOY_ROOT + '/' + name, '0600')

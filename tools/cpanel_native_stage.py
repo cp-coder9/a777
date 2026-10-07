@@ -190,21 +190,26 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
     issued = False
     authorized = False
     receipt = None
+    stage = 'input'
     try:
         commit(expected)
         require(isinstance(config_sha, str) and re.fullmatch(r'[a-f0-9]{64}', config_sha))
         require(config_sha == '5206e3a1f9447e6834fc3e2dd7cd254ce5dd47af33406c0c83085c4b4f28d0b8')
+        stage = 'production_build'
         release, artifact = build(source, output, expected)
         archive = Path(output) / ('incoming-' + expected + '-' + secrets.token_hex(8) + '.zip')
         archive_release(release, archive, expected)
+        stage = 'account_authentication'
         p.authorize(client)
         authorized = True
         require(p.inventory(client) is not None)
+        stage = 'repository_pull'
         pulled = p.clone(client, p.DEPLOY_KEY_PIN)
         report['remote_head'] = pulled.get('commit')
         require(pulled.get('status') == 'cloned_and_pulled' and pulled.get('commit') == expected)
         p.owned_mode(client, p.DEPLOY_ROOT, '0700', True)
         incoming = p.DEPLOY_ROOT + '/incoming'
+        stage = 'private_inventory'
         p.deployment_inventory_guard(client)
         if not p.exists(client, incoming):
             client.mkdir(incoming, '0700')
@@ -212,14 +217,17 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
         require(not p.exists(client, incoming + '/' + expected))
         remote_zip = incoming + '/' + archive.name
         require(not p.exists(client, remote_zip))
+        stage = 'artifact_upload'
         client.upload_file(archive, remote_zip)
         p.private_chmod(client, remote_zip)
+        stage = 'artifact_extraction'
         client.extract_archive(remote_zip)
         client._api2('fileop', {'op': 'chmod', 'sourcefiles': '.a777-deploy/incoming/' + expected,
                               'doubledecode': '0', 'metadata': '0700'})
         p.owned_mode(client, incoming + '/' + expected, '0700', True)
         # Exact manifest bytes read back through authenticated API. The reviewed native
         # hook must independently verify the full digest before executing any artifact PHP.
+        stage = 'artifact_manifest_readback'
         actual = p.read(client, incoming + '/' + expected + '/release-manifest.json').encode('ascii')
         require(digest(actual) == artifact['artifactManifestSha256'])
         client.trash(remote_zip)
@@ -238,13 +246,17 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
                 'artifactTreeSha256': artifact['artifactTreeSha256'],
                 'artifactManifestSha256': artifact['artifactManifestSha256'],
                 'buildSha256': artifact['buildSha256']}
+        stage = 'operator_plan'
         plan_sha = save_plan(client, plan)
         previous = {r.get('name') for r in p.entries(client, p.DEPLOY_ROOT)}
+        stage = 'token_staging'
         p.provision_token(client, state)
         issued = True  # Lost create response is potentially active, never assume no mutation.
+        stage = 'native_task_create'
         created = client._uapi('VersionControlDeployment', 'create', {'repository_root': p.ROOT})
         require(isinstance(created, dict) and created.get('repository_root') == p.ROOT and re.fullmatch(r'[0-9]+', str(created.get('deploy_id', ''))) and isinstance(created.get('task_id'), str) and re.fullmatch(r'[A-Za-z0-9/-]{1,128}', created['task_id']))
         report.update(task_id=created['task_id'], deploy_id=str(created['deploy_id']), deployment_status='queued')
+        stage = 'native_task_poll'
         for attempt in range(attempts):
             rows = client._uapi('VersionControlDeployment', 'retrieve', {})
             require(isinstance(rows, list) and all(isinstance(r, dict) for r in rows))
@@ -261,6 +273,7 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
                     break
             if attempt + 1 < attempts:
                 time.sleep(pause)
+        stage = 'deployment_receipt'
         receipt = native_receipt(client, expected, plan_sha, previous)
         require(receipt is not None)
         report['receipt'] = receipt
@@ -269,8 +282,15 @@ def native_deploy(client, source, output, expected, config_sha, attempts=360, pa
         require(receipt.get('maintenanceActive') is False and receipt.get('sourcePrivilegesRevoked') is False and receipt.get('sourceMigrationCount') == len(pending))
         require(all(receipt.get(k) == artifact[k] for k in ('artifactTreeSha256', 'artifactManifestSha256', 'buildSha256')))
         report.update(status='native_deploy_complete', runtime_deployed=True)
-    except Exception:
+    except Exception as error:
         report['error'] = 'native_deployment_refused_or_incomplete'
+        report['failureStage'] = stage
+        import traceback
+        frames = [frame for frame in traceback.extract_tb(error.__traceback__) if Path(frame.filename).name in ('cpanel_native_stage.py','cpanel_git_prepare.py','cpanel_client.py')]
+        if frames:
+            report['failureFile'] = Path(frames[-1].filename).name
+            report['failureLine'] = frames[-1].lineno
+        report['failureType'] = type(error).__name__ if type(error).__name__ in ('CpanelError','JSONDecodeError','ValueError','OSError') else 'operation_refused'
         if issued and plan_sha:
             try:
                 receipt = native_receipt(client, expected, plan_sha, previous)

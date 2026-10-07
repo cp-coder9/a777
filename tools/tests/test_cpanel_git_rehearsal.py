@@ -145,4 +145,15 @@ class RehearsalTests(unittest.TestCase):
         self.assertIn('explicit_plan_mode_required',text)
         self.assertNotIn("$plan['mode'] = 'preflight'",text)
 
+    def test_provider_append_only_restore_journal_is_validated_as_json_lines(self):
+        f=NativeFake(); g.preflight_plan(f,SHA)
+        target='archite4_ar_0123456789abcdef_test'
+        base=dict(account='archite4',target=target,source='archite4_dev_rel1',user='archite4_app',binding={'source':'archite4_dev_rel1'})
+        path=g.DEPLOY_ROOT+'/restore-'+target+'.json'
+        f.files[path]='\n'.join(json.dumps(dict(base,phase=phase)) for phase in ('intent','created','grant-intent','granted','verified'))+'\n'
+        f.modes[path]=600
+        g.deployment_inventory_guard(f)
+        f.files[path]+=json.dumps(dict(base,target='archite4_dev_rel1',phase='verified'))+'\n'
+        with self.assertRaises(CpanelError): g.deployment_inventory_guard(f)
+
 if __name__ == '__main__': unittest.main()
