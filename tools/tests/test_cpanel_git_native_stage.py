@@ -41,7 +41,8 @@ class NativeArtifactTests(unittest.TestCase):
             self.assertTrue(report['tokenRetainedForRecovery']); self.assertFalse(report['tokenAbsenceVerified'])
             self.assertFalse(report['runtime_deployed']); cleanup.assert_not_called()
             recovery.update(phase='failed', maintenanceActive=False, sourcePrivilegesRevoked=False, sourceDatabaseDdlTouched=False,
-                            sourcePrivilegeStateUnknown=False,operatorStateUnknown=False,operatorPrivilegesRevoked=True)
+                            sourcePrivilegeStateUnknown=False,operatorStateUnknown=False,operatorPrivilegesRevoked=True,
+                            maintenanceRetained=False,sourceMutationDdlStarted=False)
             report=n.native_deploy(client, root, root, SHA, PIN, attempts=1, pause=0)
             self.assertTrue(report['tokenAbsenceVerified']); self.assertFalse(report['runtime_deployed'])
             self.assertFalse(report['tokenRetainedForRecovery'])

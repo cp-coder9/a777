@@ -89,7 +89,7 @@ def inspect(client):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal", "native-deploy"], nargs="?", default="inspect")
+    parser.add_argument("mode", choices=["inspect", "prepare-key", "clone", "native-preflight", "restore-rehearsal", "native-deploy", "native-status"], nargs="?", default="inspect")
     parser.add_argument("--report", type=Path)
     parser.add_argument("--public-key", type=Path)
     parser.add_argument("--expected-key-fingerprint")
@@ -98,7 +98,10 @@ def main():
     parser.add_argument("--secure-runtime-config-permissions", action="store_true")
     parser.add_argument("--retry-initial-rehearsal", action="store_true")
     parser.add_argument("--allow-existing-public-source-for-rehearsal", action="store_true")
+    parser.add_argument("--retry-safe-native-deploy", action="store_true")
     args = parser.parse_args()
+    if args.retry_safe_native_deploy and args.mode != "native-deploy":
+        parser.error("Safe retry requires native-deploy.")
     if args.allow_existing_public_source_for_rehearsal and (args.mode != "restore-rehearsal" or not re.fullmatch(r"[a-f0-9]{64}", args.expected_runtime_config_sha256)):
         parser.error("Public source exception requires pinned restore-rehearsal.")
     try:
@@ -117,6 +120,11 @@ def main():
                 if not args.public_key:
                     raise CpanelError('Public key destination required.')
                 report = prepare_key(client, args.public_key, args.expected_key_fingerprint)
+            elif args.mode == "native-status":
+                from cpanel_native_stage import native_status
+                if args.retry_initial_rehearsal or args.secure_runtime_config_permissions or args.allow_existing_public_source_for_rehearsal:
+                    raise CpanelError("Read-only status inputs required.")
+                report = native_status(client)
             elif args.mode == "native-deploy":
                 from cpanel_native_stage import native_deploy
                 output = os.environ.get('RUNNER_TEMP')
@@ -124,7 +132,7 @@ def main():
                     raise CpanelError('Explicit native deploy inputs required.')
                 report = native_deploy(client, Path(__file__).resolve().parent.parent,
                                        Path(output) / 'a777-native-production', args.expected_commit,
-                                       args.expected_runtime_config_sha256)
+                                       args.expected_runtime_config_sha256, retry_safe_native_deploy=args.retry_safe_native_deploy)
             elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
                 report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal, allow_existing_public_source_for_rehearsal=args.allow_existing_public_source_for_rehearsal)
@@ -162,7 +170,7 @@ def main():
     if args.report:
         args.report.write_text(text, encoding="utf-8")
     print(text, end="")
-    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete', 'native_deploy_complete')) else 1
+    return 0 if (report.get("api_status", {}).get("VersionControl/retrieve") == "success" or report.get('status') in ('prepared', 'cloned_and_pulled', 'preflight_complete', 'restore_rehearsal_complete', 'native_deploy_complete', 'native_status_complete')) else 1
 
 
 if __name__ == "__main__":
