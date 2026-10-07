@@ -26,7 +26,7 @@ final class CpanelNativeRecovery
         $type=in_array(get_class($e),[RuntimeException::class,\JsonException::class,\TypeError::class,\Error::class,\PDOException::class],true)?get_class($e):'Throwable';
         $reason=in_array($e->getMessage(),['recovery_evidence_refused','native_recovery_contract_refused','native_deployment_refused'],true)?$e->getMessage():'unclassified';
         $out=['exceptionType'=>$type,'sourceFile'=>null,'sourceFunction'=>null,'sourceLine'=>null,'reason'=>$reason];
-        $owned=['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php','CpanelNativeDeployment.php','cpanel_git_deploy.php'];
+        $owned=['CpanelNativeRecovery.php','CpanelNativeDeploymentRecovery.php','CpanelNativeDeployment.php','CpanelPrivateRuntimeRelocation.php','cpanel_git_deploy.php'];
         $locations=[['file'=>$e->getFile(),'line'=>$e->getLine()]];
         foreach ($e->getTrace() as $frame) $locations[]=$frame;
         // A guard's throw line is less useful than the pinned caller's failed condition.
@@ -80,6 +80,8 @@ final class CpanelNativeRecovery
     /** Pure inventory comparator: exactly the old artifact plus two owned runtime controls. */
     public static function compareInventory(array $expected,array $actual): void
     {
+        // Only the fixed operational logger is mutable; no storage-tree exclusion.
+        unset($expected['storage/logs/application.jsonl'],$actual['storage/logs/application.jsonl']);
         unset($actual['config/runtime.php'],$actual['.htaccess']); ksort($expected,SORT_STRING); ksort($actual,SORT_STRING);
         self::need($expected===$actual);
     }
@@ -175,6 +177,7 @@ final class CpanelNativeRecovery
                 $h['canonical']($work.'/'.$name); $s=lstat($work.'/'.$name);
                 self::need($s['uid']===2657 && ($s['mode']&07777)===$mode);
             }
+            CpanelPrivateRuntimeRelocation::prepareLogPrivacy($runtime,$h,$journal);
             $h['privateTree']($runtime); $actual=self::runtimeInventory($runtime); self::compareInventory($expected,$actual);
             self::need(file_get_contents($runtime.'/config/runtime.php')===CpanelNativeDeployment::rewriteStorage((string)file_get_contents($work.'/original-runtime.php'),$new['FILE_STORAGE_PATH']));
             self::need((require $runtime.'/config/runtime.php')===$new && file_get_contents($runtime.'/.htaccess')==="Require all denied\n");
@@ -397,8 +400,9 @@ final class CpanelNativeRecovery
             if (preg_match('/\.(?:php[0-9]*|phtml|phar)\z/i',$name)) {
                 $old=CpanelNativeDeployment::publicShim($name); $new=CpanelPrivateRuntimeRelocation::shim($name);
                 $bytes=file_get_contents($target.'/'.$name);
-                self::need($bytes===$old || $bytes===$new);
-                if ($bytes===$old) $changes[$name]=[$old,$new];
+                $legacy=CpanelPrivateRuntimeRelocation::legacyShim($name);
+                self::need($bytes===$old || $bytes===$new || $bytes===$legacy);
+                if ($bytes!==$new) $changes[$name]=[$bytes,$new];
             } else self::need($actual[$name]===$info);
         }
         // Cleanup only exact persisted owned temporaries after the complete public inventory check.

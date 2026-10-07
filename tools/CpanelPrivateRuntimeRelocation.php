@@ -67,6 +67,64 @@ final class CpanelPrivateRuntimeRelocation
         }
         ksort($out,SORT_STRING); return $out;
     }
+    private const MUTABLE_LOG='storage/logs/application.jsonl';
+    /** Only the operational logger may drift; all directories and other files stay pinned. */
+    private static function compare(array $before,array $actual,string $journal,int $uid,?string $root=null): void
+    {
+        $present=isset($actual[self::MUTABLE_LOG]);
+        if ($present) self::need($actual[self::MUTABLE_LOG]['type']===0100000);
+        // JsonLogger::toFile does mkdir(0700, recursive): allow ONLY its two
+        // exact new scaffolding directories, never an arbitrary storage subtree.
+        foreach (['storage','storage/logs'] as $directory) if (!isset($before[$directory]) && isset($actual[$directory])) {
+            self::need($root!==null && $actual[$directory]['type']===0040000);
+            self::ancestry($root.'/'.$directory,$uid);
+            self::need((lstat($root.'/'.$directory)['mode']&07777)===0700);
+            unset($actual[$directory]);
+        }
+        unset($before[self::MUTABLE_LOG],$actual[self::MUTABLE_LOG]);
+        $changed=0;
+        foreach (array_unique(array_merge(array_keys($before),array_keys($actual))) as $name) {
+            if (($before[$name]??null)!==($actual[$name]??null)) ++$changed;
+        }
+        // Fixed-shape private diagnostics, never names, hashes, contents or journal data.
+        $dir=dirname($journal); self::ancestry($dir,$uid);
+        self::need((lstat($dir)['mode']&07777)===0700 && lstat($dir)['uid']===$uid);
+        $path=$dir.'/relocation-inventory-check.json';
+        clearstatcache(true,$path);
+        if (file_exists($path)||is_link($path)) {
+            $s=lstat($path); self::need(realpath($path)===$path && ($s['mode']&0170000)===0100000 && $s['uid']===$uid && $s['nlink']===1 && ($s['mode']&07777)===0600);
+        }
+        $tmp=$path.'.'.bin2hex(random_bytes(8)); $f=fopen($tmp,'xb'); self::need(is_resource($f));
+        try {
+            self::need(chmod($tmp,0600));
+            $bytes=json_encode(['expectedImmutableCount'=>count($before),'actualImmutableCount'=>count($actual),'mutableLogPresent'=>$present,'changedImmutableCount'=>$changed],JSON_THROW_ON_ERROR)."\n";
+            self::need(fwrite($f,$bytes)===strlen($bytes) && fflush($f));
+            if (function_exists('fsync')) self::need(fsync($f));
+        } finally { fclose($f); }
+        self::need(rename($tmp,$path));
+        self::need($changed===0);
+    }
+    public static function prepareLogPrivacy(string $root,array $h,string $journal): void
+    {
+        self::need(in_array($root,[self::SOURCE,self::DESTINATION],true) && PHP_OS_FAMILY==='Linux' && posix_geteuid()===2657);
+        self::repairLogPrivacy($root,2657,$h,$journal);
+    }
+    private static function repairLogPrivacy(string $root,int $uid,array $h,string $journal): void
+    {
+        $path=$root.'/'.self::MUTABLE_LOG;
+        clearstatcache(true,$path); if (!file_exists($path) && !is_link($path)) return;
+        $before=self::snapshot($root,$uid);
+        self::need($before[self::MUTABLE_LOG]['type']===0100000);
+        foreach ([$root,$root.'/storage',$root.'/storage/logs'] as $dir) {
+            self::ancestry($dir,$uid); $s=lstat($dir); self::need($s['uid']===$uid && ($s['mode']&07777)===0700);
+        }
+        if ((lstat($path)['mode']&07777)!==0600) {
+            $h['append']($journal,['phase'=>'private-runtime-mode-intent','path'=>$path,'mode'=>0600,'inode'=>$before[self::MUTABLE_LOG]['ino']]);
+            self::need(chmod($path,0600));
+            self::need(self::snapshot($root,$uid)===$before);
+            $h['append']($journal,['phase'=>'private-runtime-log-mode-repaired','inode'=>$before[self::MUTABLE_LOG]['ino'],'bytes'=>$before[self::MUTABLE_LOG]['bytes'],'sha256'=>$before[self::MUTABLE_LOG]['sha256']]);
+        }
+    }
     public static function prove(array $roots): void
     {
         self::outside(self::DESTINATION,$roots); self::ancestry(self::DESTINATION,2657);
@@ -112,14 +170,15 @@ final class CpanelPrivateRuntimeRelocation
         self::ancestry($parent,$uid); $s=lstat($parent);
         self::need($s['uid']===$uid && ($s['mode']&07777)===0700);
         foreach (new \FilesystemIterator($parent,\FilesystemIterator::SKIP_DOTS) as $entry) self::need($entry->getPathname()===$dest);
-        self::need(self::snapshot($src?$source:$dest,$uid)===$before);
+        self::compare($before,self::snapshot($src?$source:$dest,$uid),$journal,$uid,$src?$source:$dest);
         if ($src) {
             self::need(lstat($source)['dev']===$s['dev']);
             // Rename itself is atomic. Lost reply is reconciled through persisted inode+inventory.
             self::need(rename($source,$dest));
         }
-        clearstatcache(true); self::need(!file_exists($source) && !is_link($source) && self::snapshot($dest,$uid)===$before);
-        foreach ($before as $name=>$entry) {
+        clearstatcache(true); self::need(!file_exists($source) && !is_link($source));
+        $current=self::snapshot($dest,$uid); self::compare($before,$current,$journal,$uid,$dest);
+        foreach ($current as $name=>$entry) {
             $path=$dest.($name===''?'':'/'.$name); $mode=$entry['type']===0040000?0700:0600;
             clearstatcache(true,$path);
             if ((lstat($path)['mode']&07777)!==$mode) {
@@ -127,12 +186,17 @@ final class CpanelPrivateRuntimeRelocation
                 self::need(chmod($path,$mode));
             }
         }
-        self::controls($dest,$uid); self::need(self::snapshot($dest,$uid)===$before);
+        // chmod is permission-only: require the opened-handle byte/inode inventory unchanged.
+        self::need(self::snapshot($dest,$uid)===$current);
+        self::controls($dest,$uid); self::compare($before,self::snapshot($dest,$uid),$journal,$uid,$dest);
         $h['append']($journal,['phase'=>'private-runtime-relocated','destination'=>$dest,'inode'=>$before['']['ino'],'inventorySha256'=>hash('sha256',json_encode($before,JSON_THROW_ON_ERROR))]);
+    }
+    public static function legacyShim(string $name): string
+    {
+        return str_replace(self::SOURCE,self::DESTINATION,CpanelNativeDeployment::publicShim($name));
     }
     public static function shim(string $name): string
     {
-        $legacy=CpanelNativeDeployment::publicShim($name);
-        return str_replace(self::SOURCE,self::DESTINATION,$legacy);
+        return str_replace("declare(strict_types=1);\n","declare(strict_types=1);\numask(0077);\n",self::legacyShim($name));
     }
 }

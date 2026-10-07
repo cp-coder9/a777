@@ -10,6 +10,12 @@ R::approval($approve); check(true);
 foreach ([[],['privateRuntimeRelocation'=>1,'privateRuntimeDestination'=>R::DESTINATION],['privateRuntimeRelocation'=>'true','privateRuntimeDestination'=>R::DESTINATION],['privateRuntimeRelocation'=>false,'privateRuntimeDestination'=>R::DESTINATION],['privateRuntimeRelocation'=>true,'privateRuntimeDestination'=>R::SOURCE],['privateRuntimeRelocation'=>true,'privateRuntimeDestination'=>R::DESTINATION.'/']] as $bad) refuse(fn()=>R::approval($bad));
 check(str_contains(R::shim('index.php'),R::DESTINATION.'/public/index.php'));
 check(!str_contains(R::shim('index.php'),R::SOURCE));
+check(str_contains(R::shim('index.php'),"umask(0077);\nrequire "));
+$code=['code.php'=>['sha256'=>'fixed','bytes'=>5]];
+Recovery::compareInventory($code,$code+['storage/logs/application.jsonl'=>['sha256'=>'mutable','bytes'=>10]]); check(true);
+Recovery::compareInventory($code+['storage/logs/application.jsonl'=>['sha256'=>'old','bytes'=>1]],$code); check(true);
+refuse(fn()=>Recovery::compareInventory($code,$code+['storage/logs/other.jsonl'=>['sha256'=>'unknown','bytes'=>1]]));
+refuse(fn()=>Recovery::compareInventory($code,['code.php'=>['sha256'=>'changed','bytes'=>5]]));
 refuse(fn()=>R::shim('../index.php'));
 refuse(fn()=>R::documentRoots(['main_domain'=>[]]));
 $base=getenv('TMPDIR'); check(is_string($base) && is_dir($base));
@@ -50,6 +56,9 @@ try {
     check(file_get_contents($root.'/web/app.php')===R::shim('app.php'));
     check(file_get_contents($root.'/web/asset.txt')==='immutable static');
     check(file_get_contents($root.'/web/.htaccess')==='lease');
+    putFixture($root.'/web/index.php',R::legacyShim('index.php'));
+    $method->invoke(null,$root.'/runtime-public',$root.'/web','lease',$h,$j,true);
+    check(file_get_contents($root.'/web/index.php')===R::shim('index.php'));
     $method->invoke(null,$root.'/runtime-public',$root.'/web','lease',$h,$j,true);
     if (PHP_OS_FAMILY==='Linux' && function_exists('posix_geteuid')) {
         $uid=posix_geteuid(); $engine=new ReflectionMethod(R::class,'transition');
@@ -83,7 +92,42 @@ try {
         $j3=$root.'/foreign.jsonl'; putFixture($j3,''); refuse(fn()=>$engine->invoke(null,$src2,$dst2,$uid,[$root.'/public'],$h,$j3));
         mkdir($root.'/public/linked',0700); check(symlink($dst2.'/file',$root.'/public/linked/file'));
         refuse(fn()=>$engine->invoke(null,$root.'/public/linked',$root.'/private3/deployment',$uid,[$root.'/public'],$h,$j3));
-        print "PASS native POSIX uid=$uid atomic rename/inode/hash/mode/resume/foreign-path fixtures\n";
+        // Retry after a web request creates, appends, deletes, or recreates the ONE log.
+        mkdir($root.'/public/logretry',0700);
+        putFixture($root.'/public/logretry/code.php','immutable');
+        $ls=$root.'/public/logretry'; $ld=$root.'/logprivate/runtime'; $lj=$root.'/logretry.jsonl'; putFixture($lj,'');
+        $snap=(new ReflectionMethod(R::class,'snapshot'))->invoke(null,$ls,$uid);
+        $append($lj,['phase'=>'private-runtime-rename-intent','source'=>$ls,'destination'=>$ld,'inventory'=>$snap]);
+        mkdir($ls.'/storage',0700); mkdir($ls.'/storage/logs',0700);
+        putFixture($ls.'/storage/logs/application.jsonl','synthetic private log',0644);
+        $logIno=lstat($ls.'/storage/logs/application.jsonl')['ino']; $logHash=hash_file('sha256',$ls.'/storage/logs/application.jsonl');
+        $engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj);
+        check(lstat($ld.'/storage/logs/application.jsonl')['ino']===$logIno); check(hash_file('sha256',$ld.'/storage/logs/application.jsonl')===$logHash);
+        check((lstat($ld.'/storage/logs/application.jsonl')['mode']&07777)===0600);
+        file_put_contents($ld.'/storage/logs/application.jsonl',"\nappend",FILE_APPEND);
+        $engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj);
+        unlink($ld.'/storage/logs/application.jsonl'); $engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj);
+        putFixture($ld.'/storage/logs/application.jsonl','recreated',0644);
+        (new ReflectionMethod(R::class,'repairLogPrivacy'))->invoke(null,$ld,$uid,$h,$lj);
+        check((lstat($ld.'/storage/logs/application.jsonl')['mode']&07777)===0600);
+        $engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj);
+        // The immutable original intent itself may contain an earlier log.
+        $withLog=(new ReflectionMethod(R::class,'snapshot'))->invoke(null,$ld,$uid);
+        file_put_contents($ld.'/storage/logs/application.jsonl','changed again');
+        (new ReflectionMethod(R::class,'compare'))->invoke(null,$withLog,(new ReflectionMethod(R::class,'snapshot'))->invoke(null,$ld,$uid),$lj,$uid); check(true);
+        putFixture($ld.'/storage/logs/unknown.jsonl','not approved');
+        refuse(fn()=>$engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj));
+        $diag=json_decode(file_get_contents($root.'/relocation-inventory-check.json'),true,512,JSON_THROW_ON_ERROR);
+        check(array_keys($diag)===['expectedImmutableCount','actualImmutableCount','mutableLogPresent','changedImmutableCount']); check($diag['changedImmutableCount']===1 && $diag['mutableLogPresent']===true);
+        unlink($ld.'/storage/logs/unknown.jsonl'); putFixture($ld.'/code.php','mutated');
+        try { $engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj); check(false); } catch (RuntimeException $failure) {
+            $safe=Recovery::safeFailure($failure); check($safe['sourceFile']==='CpanelPrivateRuntimeRelocation.php');
+        }
+        putFixture($ld.'/code.php','immutable'); unlink($ld.'/storage/logs/application.jsonl');
+        check(symlink($ld.'/code.php',$ld.'/storage/logs/application.jsonl')); refuse(fn()=>$engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj));
+        unlink($ld.'/storage/logs/application.jsonl'); check(link($ld.'/code.php',$ld.'/storage/logs/application.jsonl')); refuse(fn()=>$engine->invoke(null,$ls,$ld,$uid,[$root.'/public'],$h,$lj));
+        unlink($ld.'/storage/logs/application.jsonl');
+        print "PASS native POSIX uid=$uid atomic rename/inode/hash/mode/resume/foreign-path/mutable-log fixtures\n";
     } else print "UNAVAILABLE native POSIX assertions on this platform\n";
 } finally { removeFixture($root); }
 print "PASS $n relocation and shim fixture assertions; no provider/database calls\n";
