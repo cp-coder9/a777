@@ -131,7 +131,7 @@ def native_recover(client, source, expected, attempts=360, pause=5):
             # is 0755. Recovery validates its canonical ownership and inventory
             # on-host; it is not a private recovery-output directory.
             mode = '0700' if directory else '0600'
-            if name == 'old-docroot' and directory:
+            if name in {'old-docroot', 'old-runtime'} and directory:
                 observed = str(row.get('nicemode', '')).lstrip('0')
                 require(observed in {'700', '750', '755'})
                 mode = '0' + observed
