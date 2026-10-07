@@ -1034,6 +1034,7 @@ if (extension_loaded('Zend OPcache')) {
     }
 }
 $diagnostic['probeStage']='bootstrap';
+umask(0077);
 $writeDiagnostic();
 PHP;
         return str_replace(['SECRET_LITERAL','GATE_LITERAL','DIAGNOSTIC_LITERAL'],[var_export($secret,true),var_export($gateHash,true),var_export($preflight,true)],$auth)."\n".self::webProbeCaptureCode($root,$proof,$prelude,$probeId);
