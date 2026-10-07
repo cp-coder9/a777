@@ -1052,8 +1052,16 @@ PHP;
     {
         self::need(preg_match('/\Anative-probe-[a-f0-9]{48}\.php\z/D',$name)===1
             && preg_match('/\A[a-f0-9]{64}\z/D',$secret)===1,'http_scope');
-        $conditions=$urlCapability?"RewriteCond %{REQUEST_METHOD} ^GET$\nRewriteCond %{QUERY_STRING} ^$\n":"RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\n";
-        return $conditions."RewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
+        // The caller attaches this one exact-URI exclusion directly to its catchall 503.
+        // Generated PHP independently enforces GET/no query/canonical file/current gate hash.
+        if ($urlCapability) return "RewriteCond %{REQUEST_URI} !^/".str_replace('.','\\.',$name)."$\n";
+        return "RewriteCond %{HTTP:X-A777-Native-Probe} ^$secret$\nRewriteRule ^".str_replace('.','\\.',$name)."$ - [END]\n";
+    }
+    private static function webProbeResponse(array $response,string $lease,bool $proofPresent): array
+    {
+        return ['maintenanceBody'=>($response['body']??null)==='Deployment maintenance',
+            'leaseMatched'=>($response['headers']['x-a777-deployment-lease']??null)===$lease,
+            'emptyBody'=>($response['body']??null)==='', 'proofPresent'=>$proofPresent];
     }
     private static function webProbeScriptMode(bool $urlCapability): int
     { return $urlCapability?0644:0600; }
@@ -1097,6 +1105,12 @@ PHP;
                 self::privateFile($checkPath);
                 self::replaceOwned($checkPath,(string)file_get_contents($checkPath),$checkBytes,0600,$journal);
             } else self::put($checkPath,$checkBytes,0600);
+            $responsePath=$work.'/web-probe-response.json';
+            $responseBytes=json_encode(self::webProbeResponse($r,$lease,is_file($proof)),JSON_THROW_ON_ERROR);
+            if (file_exists($responsePath) || is_link($responsePath)) {
+                self::privateFile($responsePath);
+                self::replaceOwned($responsePath,(string)file_get_contents($responsePath),$responseBytes,0600,$journal);
+            } else self::put($responsePath,$responseBytes,0600);
             self::need($r['curlErrorCode']===0,'http_transport'); self::need($r['status']===200,'web_pool_probe');
             $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&self::webProbeIdentity($p,$name)&&is_string($p['webSapi']??null)&&!in_array($p['webSapi'],['cli','phpdbg'],true),'web_pool_identity'); self::httpReady($p);
             self::httpBuild(['status'=>200,'body'=>json_encode($p['build'],JSON_THROW_ON_ERROR)],$commit);
