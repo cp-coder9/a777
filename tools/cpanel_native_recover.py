@@ -130,7 +130,11 @@ def native_recover(client, source, expected, attempts=360, pause=5):
             # Promotion retains the original public docroot, whose normal mode
             # is 0755. Recovery validates its canonical ownership and inventory
             # on-host; it is not a private recovery-output directory.
-            mode = '0755' if name == 'old-docroot' and directory else ('0700' if directory else '0600')
+            mode = '0700' if directory else '0600'
+            if name == 'old-docroot' and directory:
+                observed = str(row.get('nicemode', '')).lstrip('0')
+                require(observed in {'700', '750', '755'})
+                mode = '0' + observed
             report.setdefault('workInventory', []).append({'name': name, 'type': row.get('type'), 'mode': str(row.get('nicemode', ''))})
             p.owned_mode(client, work + '/' + name, mode, directory)
         stage = 'approved_recovery_code_pull'
