@@ -142,14 +142,37 @@ try {
     foreach ([['body'=>'Deployment maintenance','headers'=>['x-a777-deployment-lease'=>'fixture-lease']],['body'=>'','headers'=>[]],['body'=>'Deployment maintenance\n','headers'=>['x-a777-deployment-lease'=>'wrong']]] as $response) {
         foreach ([false,true] as $present) {
             $diagnostic=$invoke('webProbeResponse',$response,'fixture-lease',$present);
-            $expected=['maintenanceBody'=>$response['body']==='Deployment maintenance','leaseMatched'=>($response['headers']['x-a777-deployment-lease']??null)==='fixture-lease','emptyBody'=>$response['body']==='','proofPresent'=>$present];
-            if ($diagnostic!==$expected || count(array_filter($diagnostic,'is_bool'))!==4) throw new RuntimeException('response boolean whitelist');
+            $expected=['maintenanceBody'=>$response['body']==='Deployment maintenance','leaseMatched'=>($response['headers']['x-a777-deployment-lease']??null)==='fixture-lease','emptyBody'=>$response['body']==='','proofPresent'=>$present,'ruleMatched'=>false,'pathMatched'=>false];
+            if ($diagnostic!==$expected || count(array_filter($diagnostic,'is_bool'))!==6) throw new RuntimeException('response boolean whitelist');
         }
     }
-    foreach (["'/web-probe-response.json'",'self::webProbeResponse($r,$lease,is_file($proof))','self::put($responsePath,$responseBytes,0600)'] as $required) {
+    foreach (["'/web-probe-response.json'",'self::webProbeResponse($r,$lease,is_file($proof),$ruleSha)','self::put($responsePath,$responseBytes,0600)'] as $required) {
         if (!str_contains($source,$required)) throw new RuntimeException('private actual-response receipt missing');
     }
-    echo "PASS exact nonce catchall exclusion, ordinary/wrong-path denial and response boolean whitelist (synthetic contracts)\n";
+    $ruleSha=hash('sha256',$rule);
+    $positive="RewriteCond %{REQUEST_URI} ^/".str_replace('.','\\.',$name)."$\nRewriteRule ^ - [E=A777_PROBE_PATH_MATCH:1]\n";
+    $positivePattern=substr(strtok($positive,"\n"),strlen('RewriteCond %{REQUEST_URI} '));
+    foreach (['/'.$name=>true,'/'.$name.'?x=1'=>false,'/other/'.$name=>false,'/'.$name.'.extra'=>false,'/'=>false] as $uri=>$matches) {
+        if ((preg_match('~'.$positivePattern.'~D',$uri)===1)!==$matches) throw new RuntimeException('positive path evidence scope');
+    }
+    foreach ([$ruleSha,str_repeat('0',64),'',null,[]] as $header) {
+        foreach (['matched','wrong',null,[]] as $pathHeader) {
+            $response=['status'=>503,'body'=>'Deployment maintenance','headers'=>['x-a777-probe-rule'=>$header,'x-a777-probe-path'=>$pathHeader]];
+            $diagnostic=$invoke('webProbeResponse',$response,'fixture-lease',false,$ruleSha);
+            if ($diagnostic['ruleMatched']!==($header===$ruleSha) || $diagnostic['pathMatched']!==($pathHeader==='matched')
+                || array_keys($diagnostic)!==array_keys($expected) || count(array_filter($diagnostic,'is_bool'))!==6
+                || str_contains(json_encode($diagnostic),$ruleSha) || str_contains(json_encode($diagnostic),$name)
+                || str_contains(json_encode($diagnostic),$secret)) throw new RuntimeException('rule/path evidence redaction');
+        }
+    }
+    $evidenceMaintenance=$maintenance;
+    $evidenceMaintenance['headers']+=['x-a777-probe-rule'=>$ruleSha,'x-a777-probe-path'=>'matched'];
+    if (!$retry($evidenceMaintenance,1)) throw new RuntimeException('evidence changed existing retry policy');
+    foreach (['$ruleSha=hash(\'sha256\',$rule);','$pathEvidence.$rule.', 'Header always set X-A777-Probe-Rule', 'Header always set X-A777-Probe-Path matched env=A777_PROBE_PATH_MATCH'] as $required) {
+        if (!str_contains($source,$required)) throw new RuntimeException('temporary rule evidence missing');
+    }
+    if (strpos($source,'Header always set X-A777-Probe-Rule')>strpos($source,"$".'newCode=str_replace(')) throw new RuntimeException('header added after gate binding');
+    echo "PASS exact nonce catchall exclusion, positive path evidence, six-boolean redaction and unchanged retry policy (synthetic contracts)\n";
     foreach (['valid','uri','method','query','uri_query','filename','hash','unhealthy'] as $case) {
         $proof=$dir.'/proof.json'; $preflight=$dir.'/web-probe-preflight.json'; @unlink($proof); @unlink($preflight);
         file_put_contents($dir.'/.htaccess','fixed gate');

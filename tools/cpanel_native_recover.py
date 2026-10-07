@@ -309,7 +309,7 @@ def native_recover(client, source, expected, attempts=360, pause=5):
         response_path = work + '/web-probe-response.json'
         if p.exists(client, response_path):
             response_flags = json.loads(private_read(client, response_path))
-            require(isinstance(response_flags, dict) and set(response_flags) == {'maintenanceBody', 'leaseMatched', 'emptyBody', 'proofPresent'} and all(type(v) is bool for v in response_flags.values()))
+            require(isinstance(response_flags, dict) and set(response_flags) == {'maintenanceBody', 'leaseMatched', 'emptyBody', 'proofPresent', 'ruleMatched', 'pathMatched'} and all(type(v) is bool for v in response_flags.values()))
             report['webProbeResponse'] = response_flags
         preflight_path = work + '/web-probe-preflight.json'
         if p.exists(client, preflight_path):
