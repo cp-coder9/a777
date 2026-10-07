@@ -933,7 +933,12 @@ PHP;
         $primary=null;
         try {
             $r=self::http('/'.$name,self::WEB,['X-A777-Native-Probe: '.$secret],true);
-            self::put($work.'/web-probe-check.json',json_encode(['status'=>$r['status'],'curlErrorCode'=>$r['curlErrorCode'],'proofPresent'=>is_file($proof)],JSON_THROW_ON_ERROR),0600);
+            $checkPath=$work.'/web-probe-check.json';
+            $checkBytes=json_encode(['status'=>$r['status'],'curlErrorCode'=>$r['curlErrorCode'],'proofPresent'=>is_file($proof)],JSON_THROW_ON_ERROR);
+            if (file_exists($checkPath) || is_link($checkPath)) {
+                self::privateFile($checkPath);
+                self::replaceOwned($checkPath,(string)file_get_contents($checkPath),$checkBytes,0600,$journal);
+            } else self::put($checkPath,$checkBytes,0600);
             self::need($r['curlErrorCode']===0,'http_transport'); self::need($r['status']===200,'web_pool_probe');
             $p=json_decode($r['body'],true,32,JSON_THROW_ON_ERROR); self::need(is_array($p)&&($p['webSapi']??'cli')!=='cli','web_pool_identity'); self::httpReady($p);
             self::httpBuild(['status'=>200,'body'=>json_encode($p['build'],JSON_THROW_ON_ERROR)],$commit);
