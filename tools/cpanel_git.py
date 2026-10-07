@@ -130,9 +130,19 @@ def main():
                 output = os.environ.get('RUNNER_TEMP')
                 if not output or args.retry_initial_rehearsal or args.secure_runtime_config_permissions or args.allow_existing_public_source_for_rehearsal:
                     raise CpanelError('Explicit native deploy inputs required.')
-                report = native_deploy(client, Path(__file__).resolve().parent.parent,
+                source = Path(__file__).resolve().parent.parent
+                callback = None
+                if args.retry_safe_native_deploy:
+                    # Direct script execution puts tools/, not the checkout, on sys.path.
+                    import sys
+                    sys.path.insert(0, str(source))
+                    from tools.cpanel_native_preflight import readonly_source_preflight
+                    callback = readonly_source_preflight(source)
+                report = native_deploy(client, source,
                                        Path(output) / 'a777-native-production', args.expected_commit,
-                                       args.expected_runtime_config_sha256, retry_safe_native_deploy=args.retry_safe_native_deploy)
+                                       args.expected_runtime_config_sha256,
+                                       retry_safe_native_deploy=args.retry_safe_native_deploy,
+                                       readonly_source_preflight=callback)
             elif args.mode in ("native-preflight", "restore-rehearsal"):
                 from cpanel_git_prepare import native_preflight, DEPLOY_KEY_PIN
                 report = native_preflight(client, args.expected_commit, args.expected_key_fingerprint or DEPLOY_KEY_PIN, secure_runtime_config_permissions=args.secure_runtime_config_permissions, expected_runtime_config_sha256=args.expected_runtime_config_sha256, mode="restore-rehearsal" if args.mode == "restore-rehearsal" else "preflight", retry_initial_rehearsal=args.retry_initial_rehearsal, allow_existing_public_source_for_rehearsal=args.allow_existing_public_source_for_rehearsal)

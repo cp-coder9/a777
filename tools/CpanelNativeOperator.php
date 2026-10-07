@@ -55,9 +55,20 @@ final class CpanelNativeOperator
         $values['DB_USER']=$state['name']; $values['DB_PASSWORD']=$state['password'];
         $pdo=ConnectionFactory::create(AppConfig::fromEnvironment($values));
         self::need($pdo->query('SELECT DATABASE()')->fetchColumn()==='archite4_dev_rel1' && explode('@',(string)$pdo->query('SELECT CURRENT_USER()')->fetchColumn())[0]===$state['name']);
-        $capabilities=$pdo->query("SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA=DATABASE() AND GRANTEE=CONCAT(CHAR(39),SUBSTRING_INDEX(CURRENT_USER(),'@',1),CHAR(39),'@',CHAR(39),SUBSTRING_INDEX(CURRENT_USER(),'@',-1),CHAR(39))")->fetchAll(PDO::FETCH_COLUMN);
+        $rows=$pdo->query("SELECT TABLE_SCHEMA,PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE GRANTEE=CONCAT(CHAR(39),SUBSTRING_INDEX(CURRENT_USER(),'@',1),CHAR(39),'@',CHAR(39),SUBSTRING_INDEX(CURRENT_USER(),'@',-1),CHAR(39))")->fetchAll(PDO::FETCH_ASSOC);
+        $capabilities=self::schemaCapabilities($rows,'archite4_dev_rel1');
         foreach(['ALTER','ALTER ROUTINE','CREATE','CREATE ROUTINE','CREATE TEMPORARY TABLES','CREATE VIEW','DELETE','DROP','EVENT','EXECUTE','INDEX','INSERT','LOCK TABLES','REFERENCES','SELECT','SHOW VIEW','TRIGGER','UPDATE'] as $required) self::need(in_array($required,$capabilities,true));
         return $pdo;
+    }
+    public static function schemaCapabilities(array $rows,string $database): array
+    {
+        $escaped=str_replace(['\\','_','%'],['\\\\','\\_','\\%'],$database);
+        $capabilities=[];
+        foreach ($rows as $row) {
+            self::need(is_array($row) && is_string($row['TABLE_SCHEMA']??null) && is_string($row['PRIVILEGE_TYPE']??null));
+            if (in_array($row['TABLE_SCHEMA'],[$database,$escaped],true)) $capabilities[]=$row['PRIVILEGE_TYPE'];
+        }
+        return array_values(array_unique($capabilities));
     }
     private static function privileges(array $state): array
     {
