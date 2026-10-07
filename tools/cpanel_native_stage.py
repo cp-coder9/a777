@@ -240,6 +240,69 @@ def vhost_inventory(client):
     return validated_vhost_inventory(data)
 
 
+PROOF_STATUSES = frozenset({'ready', 'not_ready', 'unavailable', 'degraded', 'error'})
+PROOF_SAPIS = frozenset({'fpm-fcgi', 'cgi-fcgi', 'apache2handler', 'cli', 'phpdbg'})
+PRIVATE_RUNTIME_ROOTS = (
+    ('privateRuntimeParent', '/home/archite4/.a777-runtime-private'),
+    ('privateRuntime', '/home/archite4/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061'),
+)
+
+
+def web_proof_metadata(proof):
+    # Never forward source fields, nonce identity, build, body or unknown values.
+    require(isinstance(proof, dict))
+    status = proof.get('status')
+    require(type(status) is int and 100 <= status <= 599)
+    sapi = proof.get('webSapi')
+    sapi = sapi if isinstance(sapi, str) and sapi in PROOF_SAPIS else None
+    body = proof.get('body')
+    try:
+        decoded = json.loads(body) if isinstance(body, str) else None
+    except (ValueError, RecursionError):
+        decoded = None
+    data = decoded.get('data') if isinstance(decoded, dict) else None
+    components = data.get('components') if isinstance(data, dict) else None
+    def known(value):
+        return value if isinstance(value, str) and value in PROOF_STATUSES else None
+    statuses = {}
+    for component in ('database', 'migrations', 'jobs', 'mail'):
+        row = components.get(component) if isinstance(components, dict) else None
+        statuses[component] = known(row.get('status')) if isinstance(row, dict) else None
+    readiness = known(data.get('status')) if isinstance(data, dict) else None
+    # Capture already synthesizes data/components even when bootstrap emits text.
+    # Null-only sanitized data is NOT enough to identify the original error route.
+    classifier = ('no_data' if not isinstance(data, dict) else
+                  'sanitized_empty_data' if readiness is None and all(v is None for v in statuses.values()) else
+                  'readiness_data')
+    return {'status': status, 'webSapi': sapi, 'readinessStatus': readiness,
+            'components': statuses, 'hasData': isinstance(data, dict),
+            'hasComponents': isinstance(components, dict), 'bodyClassifier': classifier}
+
+
+def private_web_proofs(client, work):
+    from cpanel_native_recover import private_read
+    require(isinstance(work, str) and re.fullmatch(re.escape(p.DEPLOY_ROOT) + r'/deployment-[a-f0-9]{32}', work) is not None)
+    p.owned_mode(client, work, '0700', True)
+    proofs = []
+    for row in p.entries(client, work):
+        name = row.get('name', '')
+        if isinstance(name, str) and re.fullmatch(r'web-proof-[a-f0-9]{48}\.json', name):
+            proofs.append(web_proof_metadata(json.loads(private_read(client, work + '/' + name))))
+    return proofs
+
+
+def private_root_metadata(client):
+    roots = {}
+    for label, root in PRIVATE_RUNTIME_ROOTS:
+        try:
+            p.owned_mode(client, root, '0700', True)
+            roots[label] = {'status': 'observed', 'mode': '0700'}
+        except CpanelError:
+            roots[label] = {'status': 'unknown', 'mode': None}
+    return {'origin': 'providerFileman', 'canonical': 'unknown',
+            'nativePosixVerified': False, 'roots': roots}
+
+
 def native_status(client):
     p.authorize(client)
     p.owned_mode(client, p.DEPLOY_ROOT, '0700', True)
@@ -294,6 +357,8 @@ def native_status(client):
                 require(all(type(data[k]) is bool for k in flags) and data['probeStage'] in {'authorization', 'opcache', 'bootstrap'})
                 preflights.append(data)
         recovery_status['privateProbePreflights'] = preflights
+        recovery_status['privateWebProofs'] = private_web_proofs(client, work)
+        recovery_status['privateModes'] = private_root_metadata(client)
         recovery_status['recoveryDiagnostics'] = recovery_diagnostics(client, recovery, set())
         recovery_status['recoveryReceipt'] = recovery_metadata(client, recovery, pointer['planSha256'], plan_sha, expected, prior, set())
         recovery_status['independentRecoveryDeployment'] = native_task_state(client, recovery)
