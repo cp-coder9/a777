@@ -1,0 +1,1147 @@
+{
+  "synthetic": true,
+  "schema": "architex_taskm37aa281_0bf7a858_test",
+  "dbPort": 59946,
+  "httpOrigin": "http://127.0.0.1:59949",
+  "organisationId": "1061b7a3ea7b23d151794442dab6131e",
+  "disposableGuardVerified": true,
+  "datadirVerified": true,
+  "migrationCount": 69,
+  "pendingMigrations": 0,
+  "existingFixturesChanged": false,
+  "sourceMode": "candidate actual classes; appMode demo",
+  "dataSource": "native MariaDB owned disposable schema",
+  "normalProductionLogin": "NOT_PROVEN",
+  "nativeService": "PASS",
+  "http": "PASS",
+  "ui": "PASS",
+  "professionalEvidence": false,
+  "cpdAccreditation": false,
+  "candidatePaths": {
+    "Architex\\Platform\\Demo\\DemoSandboxService": "E:/a777/.worktrees/material3expressive/app/src/Platform/Demo/DemoSandboxService.php",
+    "Architex\\Platform\\Demo\\DemoRoleLensRegistry": "E:/a777/.worktrees/material3expressive/app/src/Platform/Demo/DemoRoleLensRegistry.php",
+    "Architex\\Platform\\Demo\\DemoSeedCatalog": "E:/a777/.worktrees/material3expressive/app/src/Platform/Demo/DemoSeedCatalog.php",
+    "Architex\\Platform\\Identity\\PasswordHasher": "E:/a777/.worktrees/material3expressive/app/src/Platform/Identity/PasswordHasher.php",
+    "Architex\\Platform\\Identity\\SessionService": "E:/a777/.worktrees/material3expressive/app/src/Platform/Identity/SessionService.php"
+  },
+  "lenses": {
+    "client": {
+      "status": "PASS",
+      "canonicalRole": "client",
+      "toolCategories": [
+        "projects",
+        "documents",
+        "finance",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "stellenbosch",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "c1e30b513be5d2e8e0c509db16fad16f",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 12,
+      "negativeStatus": 404,
+      "negativeScope": "foreign_organisation",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 12,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "project_manager": {
+      "status": "PASS",
+      "canonicalRole": "cpm",
+      "toolCategories": [
+        "projects",
+        "programme",
+        "documents",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "stellenbosch",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "c1e30b513be5d2e8e0c509db16fad16f",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 12,
+      "negativeStatus": 404,
+      "negativeScope": "foreign_organisation",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 12,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "architect": {
+      "status": "PASS",
+      "canonicalRole": "architect",
+      "toolCategories": [
+        "design",
+        "documents",
+        "compliance",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "architectural_technologist": {
+      "status": "PASS",
+      "canonicalRole": "architect",
+      "toolCategories": [
+        "design",
+        "documents",
+        "bim",
+        "compliance"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "candidate_architect": {
+      "status": "PASS",
+      "canonicalRole": "architect",
+      "toolCategories": [
+        "design",
+        "documents",
+        "learning",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "engineer_structural": {
+      "status": "PASS",
+      "canonicalRole": "engineer",
+      "toolCategories": [
+        "engineering",
+        "documents",
+        "compliance"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "engineer_civil": {
+      "status": "PASS",
+      "canonicalRole": "engineer",
+      "toolCategories": [
+        "engineering",
+        "documents",
+        "site"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "eb0ecd291714254ff6fa2519a20b4786"
+      ],
+      "visibleDetails200": 6,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 6,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "engineer_electrical": {
+      "status": "PASS",
+      "canonicalRole": "engineer",
+      "toolCategories": [
+        "engineering",
+        "documents",
+        "compliance"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "engineer_mechanical": {
+      "status": "PASS",
+      "canonicalRole": "engineer",
+      "toolCategories": [
+        "engineering",
+        "documents",
+        "energy"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e"
+      ],
+      "visibleDetails200": 8,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 8,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "engineer_fire": {
+      "status": "PASS",
+      "canonicalRole": "fire_engineer",
+      "toolCategories": [
+        "engineering",
+        "fire",
+        "compliance",
+        "documents"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 9,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 9,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "quantity_surveyor": {
+      "status": "PASS",
+      "canonicalRole": "quantity_surveyor",
+      "toolCategories": [
+        "finance",
+        "procurement",
+        "documents",
+        "projects"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 10,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 10,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "contractor": {
+      "status": "PASS",
+      "canonicalRole": "contractor",
+      "toolCategories": [
+        "site",
+        "quality",
+        "safety",
+        "commercial"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "seapoint",
+        "greenpoint",
+        "bokaap",
+        "lenasia"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D06",
+        "ATX-D09",
+        "ATX-D11"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 5,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 5,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "subcontractor": {
+      "status": "PASS",
+      "canonicalRole": "subcontractor",
+      "toolCategories": [
+        "site",
+        "quality",
+        "documents",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "seapoint",
+        "greenpoint",
+        "bokaap",
+        "lenasia"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D06",
+        "ATX-D09",
+        "ATX-D11"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 5,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 5,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "supplier": {
+      "status": "PASS",
+      "canonicalRole": "supplier",
+      "toolCategories": [
+        "procurement",
+        "products",
+        "documents",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "seapoint",
+        "fourways",
+        "springs",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D05",
+        "ATX-D08",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "eb0ecd291714254ff6fa2519a20b4786"
+      ],
+      "visibleDetails200": 5,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 5,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "energy_consultant": {
+      "status": "PASS",
+      "canonicalRole": "energy_professional",
+      "toolCategories": [
+        "energy",
+        "engineering",
+        "compliance",
+        "documents"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "fourways",
+        "rosebank",
+        "bokaap",
+        "stellenbosch",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D05",
+        "ATX-D07",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 7,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 7,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "town_planner": {
+      "status": "PASS",
+      "canonicalRole": "town_planner",
+      "toolCategories": [
+        "planning",
+        "submissions",
+        "compliance",
+        "documents"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "stellenbosch",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "c1e30b513be5d2e8e0c509db16fad16f",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 12,
+      "negativeStatus": 404,
+      "negativeScope": "foreign_organisation",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 12,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "environmental_consultant": {
+      "status": "PASS",
+      "canonicalRole": "bep",
+      "toolCategories": [
+        "environment",
+        "compliance",
+        "documents",
+        "projects"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "stellenbosch",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D10",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "c1e30b513be5d2e8e0c509db16fad16f"
+      ],
+      "visibleDetails200": 8,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 8,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "accessibility_consultant": {
+      "status": "PASS",
+      "canonicalRole": "bep",
+      "toolCategories": [
+        "accessibility",
+        "compliance",
+        "documents",
+        "design"
+      ],
+      "expectedProjectKeys": [
+        "sandton",
+        "seapoint",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "bokaap",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D09",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "c1e30b513be5d2e8e0c509db16fad16f",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 9,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 9,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "bep": {
+      "status": "PASS",
+      "canonicalRole": "bep",
+      "toolCategories": [
+        "engineering",
+        "compliance",
+        "documents",
+        "projects"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "fourways",
+        "rosebank",
+        "bokaap",
+        "stellenbosch",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D05",
+        "ATX-D07",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 7,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 7,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "freelancer": {
+      "status": "PASS",
+      "canonicalRole": "freelancer",
+      "toolCategories": [
+        "design",
+        "documents",
+        "tasks",
+        "communication"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "fourways",
+        "rosebank",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D05",
+        "ATX-D07",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "a3824014af53788954010f35f0772b3e"
+      ],
+      "visibleDetails200": 4,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 4,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "cpd_officer": {
+      "status": "PASS",
+      "canonicalRole": "firm_admin",
+      "toolCategories": [
+        "learning",
+        "reports",
+        "compliance"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "rosebank",
+        "bokaap",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D07",
+        "ATX-D09",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "a3824014af53788954010f35f0772b3e",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 4,
+      "negativeStatus": 404,
+      "negativeScope": "outside_lens",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 4,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    },
+    "admin": {
+      "status": "PASS",
+      "canonicalRole": "admin",
+      "toolCategories": [
+        "administration",
+        "reports",
+        "projects",
+        "compliance"
+      ],
+      "expectedProjectKeys": [
+        "parkview",
+        "sandton",
+        "seapoint",
+        "umhlanga_medical",
+        "fourways",
+        "greenpoint",
+        "rosebank",
+        "springs",
+        "bokaap",
+        "stellenbosch",
+        "lenasia",
+        "umhlanga_tower"
+      ],
+      "expectedProjectCodes": [
+        "ATX-D01",
+        "ATX-D02",
+        "ATX-D03",
+        "ATX-D04",
+        "ATX-D05",
+        "ATX-D06",
+        "ATX-D07",
+        "ATX-D08",
+        "ATX-D09",
+        "ATX-D10",
+        "ATX-D11",
+        "ATX-D12"
+      ],
+      "projectIds": [
+        "1ba22269725fb5eef33bb6f9ca277084",
+        "221164205ef0ac5fb2e4a4d34d5692a3",
+        "3174108a8d1496937db676e914554c14",
+        "53a618169591d9b9258c12625402b599",
+        "543f436e6e39d35612ac5dfb13ae8053",
+        "567038ae7e755b94b8d2310d8a7cd2e1",
+        "5871fc92e56e1c050d86ce8fd5d7f876",
+        "a3824014af53788954010f35f0772b3e",
+        "a6b5f4674f04ad7fa42ca140c365f407",
+        "c1e30b513be5d2e8e0c509db16fad16f",
+        "eb0ecd291714254ff6fa2519a20b4786",
+        "fb17aa796185e47a7d075a5077e7923b"
+      ],
+      "visibleDetails200": 12,
+      "negativeStatus": 404,
+      "negativeScope": "foreign_organisation",
+      "selectedRoleDbReadback": true,
+      "assignmentRowsDbReadback": 12,
+      "nativeService": "PASS",
+      "http": "PASS",
+      "ui": "PASS"
+    }
+  },
+  "unauthenticatedStatus": 401,
+  "missingCsrfStatus": 419,
+  "counts": {
+    "personas": 22,
+    "items": 54,
+    "projects": 12
+  },
+  "relianceLabels": [
+    "illustrative_demo_not_for_reliance",
+    "not_accredited_demo_record"
+  ],
+  "expectedLensKeys": [
+    "client",
+    "project_manager",
+    "architect",
+    "architectural_technologist",
+    "candidate_architect",
+    "engineer_structural",
+    "engineer_civil",
+    "engineer_electrical",
+    "engineer_mechanical",
+    "engineer_fire",
+    "quantity_surveyor",
+    "contractor",
+    "subcontractor",
+    "supplier",
+    "energy_consultant",
+    "town_planner",
+    "environmental_consultant",
+    "accessibility_consultant",
+    "bep",
+    "freelancer",
+    "cpd_officer",
+    "admin"
+  ],
+  "verifiedLensCount": 22,
+  "assignmentCount": 185,
+  "uiReloadSelectedRole": "admin",
+  "uiLensCount": 22,
+  "uiPageErrors": []
+}

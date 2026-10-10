@@ -1,0 +1,50 @@
+/* Scoped component geometry only. Native fonts, ink, surfaces, accent colours,
+   logos, visibility, shell layout and business handlers remain owned by each tool. */
+[data-architex-m3-embedded] :is(button, .btn, input[type="button"], input[type="submit"]) {
+  border-radius: 24px !important;
+  min-height: 40px;
+  padding-inline: 16px;
+  transition: border-radius 160ms ease, box-shadow 160ms ease;
+}
+[data-architex-m3-embedded] :is(button, .btn):not(:disabled):not([aria-disabled="true"]):active {
+  border-radius: 12px !important;
+}
+[data-architex-m3-embedded] :is(.chip, .badge, .status, .pill, .contract-chip) {
+  border-radius: 12px;
+  padding-inline: 10px;
+}
+[data-architex-m3-embedded] :is(.card, .panel, .mtg-card, .inspect-block, .scaffold-contract) {
+  border-radius: 20px;
+}
+[data-architex-m3-embedded] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]), select, textarea) {
+  border-radius: 12px;
+  min-height: 40px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+[data-architex-m3-embedded] :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+[data-architex-m3-embedded] :is(dialog, [role="dialog"], .modal-content) {
+  border-radius: 28px;
+  max-width: calc(100% - 32px);
+}
+/* Keep table semantics and every column; scroll the existing owned wrapper. */
+[data-architex-m3-embedded] :is(.table-wrap, .table-wrapper, .table-container, .table-scroll, .card:has(> table), .panel:has(> table), div:has(> table)) {
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  overscroll-behavior-x: contain;
+}
+[data-architex-m3-embedded] :is(th, td) { padding-block: 12px; }
+@media (max-width: 600px) {
+  [data-architex-m3-embedded] :is(.actions, .form-actions, .mtg-actions, .card-actions) { flex-wrap: wrap; gap: 8px; }
+  [data-architex-m3-embedded] :is(button, .btn) { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-architex-m3-embedded] :is(button, .btn, input, select, textarea, dialog, [role="dialog"]) {
+    transition: none !important;
+    animation: none !important;
+  }
+}

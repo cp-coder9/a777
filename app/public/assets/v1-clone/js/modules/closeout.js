@@ -70,7 +70,7 @@
         : '<tr><td colspan="4">No occupation-readiness evidence recorded.</td></tr>';
 
       main.innerHTML = `
-        <div class="closeout-workspace" data-closeout-workspace="${esc(TOOL)}">
+        <div class="closeout-workspace m3-commercial-workspace" data-closeout-workspace="${esc(TOOL)}">
           <div class="rfi-hero">
             <div><h1>FM Bridge — Close-out &amp; Handover</h1><p>Project: <strong>${esc(project)}</strong> · ${packs.length} handover pack(s) · ${completions.length} practical completion(s)</p></div>
             <button class="btn" data-closeout-create-pc>+ Assess practical completion</button>

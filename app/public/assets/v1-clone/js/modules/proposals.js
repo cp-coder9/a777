@@ -97,7 +97,7 @@
       const project=s.projects?.find(p=>p.id===s.selectedProjectId)?.name||'Selected project';
       const def=defById(definitions[0]?.id)||definitions[0]||null;
       main.innerHTML=`
-        <div class="proposals-workspace" data-proposals-tool="${TOOL}">
+        <div class="proposals-workspace m3-commercial-workspace" data-proposals-tool="${TOOL}">
           <div class="proposals-hero">
             <div><h1>Fee Proposal</h1><p>Project: <strong>${esc(project)}</strong> · ${proposals.length} proposal(s) · ${runs.length} issued fee basis</p></div>
             <button class="btn" type="button" data-proposals-refresh>Refresh</button>
@@ -242,7 +242,7 @@
         const main=root.document.querySelector('#main');
         if(main){
           const message=[403,404].includes(error.status)?'These records are not available with your current access.':'This workspace could not be loaded. Retry when the connection is available.';
-          main.innerHTML=`<div class="proposals-workspace" data-proposals-tool="${TOOL}"><h1>Fee Proposal</h1><section class="panel"><p data-proposals-status role="status">${message} No records loaded.</p><button class="btn ghost" type="button" data-proposals-refresh>Retry loading</button></section></div>`;
+          main.innerHTML=`<div class="proposals-workspace m3-commercial-workspace" data-proposals-tool="${TOOL}"><h1>Fee Proposal</h1><section class="panel"><p data-proposals-status role="status">${message} No records loaded.</p><button class="btn ghost" type="button" data-proposals-refresh>Retry loading</button></section></div>`;
           main.querySelector('[data-proposals-refresh]')?.addEventListener('click',()=>{void refresh();});
         }
         return false;

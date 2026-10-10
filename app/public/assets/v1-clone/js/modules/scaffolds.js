@@ -44,6 +44,7 @@
       if (disposed) return {applied:false,reason:'disposed'};
       const contract=api.registry[toolId],main=root.document.querySelector('#main'),shell=main?.querySelector('.scaffold-shell');
       if (!contract || !shell) return {applied:false,reason:'not-original-scaffold'};
+      shell.classList.add('m3-commercial-workspace');
       const s=slots(shell); if (!s.inputs || !s.outputs || !s.functional) return {applied:false,reason:'original-slots-missing'};
       activeId=toolId; activeShell=shell; lastScope=api.scopeKey(context.getState());
       showScope(s,context.getState()); bindOriginalActions(main,s,contract);

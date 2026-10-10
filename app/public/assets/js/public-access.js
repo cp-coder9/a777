@@ -39,7 +39,7 @@
   });
   let transitionTimer = null;
   let authMode = 'signin';
-  let signupNotices = null;
+  const signupNotices = new WeakMap();
   let landingTrigger = null;
   let pausedLandingAnimations = [];
 
@@ -118,10 +118,10 @@
       <section class="v8-signin-panel" data-mode="${authMode}">
         <div class="v8-signin-identity">
           ${brand()}
-          <div class="v8-access-badge">▣ ${register ? 'V8 secure enrolment' : 'V8 secure access'}</div>
+          <div class="v8-access-badge">▣ ${register ? 'V8 account registration' : 'V8 account access'}</div>
           <h1>${register ? 'Join Architex OS' : 'Welcome back'}</h1>
-          <p>${register ? 'Create your governed account, pick your role profile, and mount a workspace shaped around your part of the built environment.' : 'Resume your governed workspace with project context, evidence controls, and role permissions intact.'}</p>
-          <div class="v8-status-stack"><span><i></i> Identity boundary active</span><span><i></i> Audit trail ready</span><span><i></i> Workspace encrypted</span></div>
+          <p>${register ? 'Create your account and choose a role profile for your part of the built environment.' : 'Sign in to access your Architex workspace.'}</p>
+          <div class="v8-status-stack"><span><i></i> Sign in or create an account</span><span><i></i> Choose a role profile</span><span><i></i> Access your workspace</span></div>
         </div>
         <form class="v8-signin-form" id="v8AuthenticationForm">
           <div class="v8-form-head"><span class="v8-step">${register ? '01 / Enrol' : '01 / Authenticate'}</span><h2>${register ? 'Create your account' : 'Enter Architex OS'}</h2><p>${register ? 'Choose your role profile — professional registrations and supplier credentials mount the correct command centre.' : 'Use your organisation credentials to mount the V8 shell.'}</p></div>
@@ -136,10 +136,11 @@
           </div></div>
           <label>Email address<input name="email" aria-label="Email address" type="email" placeholder="name@example.com" autocomplete="email" required></label>
           <label>Password<input name="password" aria-label="Password" type="password" placeholder="••••••••" minlength="${register ? '12' : '1'}" autocomplete="${register ? 'new-password' : 'current-password'}" required></label>
-          <div class="v8-form-meta"><label><input type="checkbox" name="trustedDevice"> Keep this device trusted</label><button type="button">Recover access</button></div>
+          <div class="v8-form-meta"><label><input type="checkbox" name="trustedDevice"> Trusted device preference (not applied)</label><button type="button" disabled aria-describedby="v8RecoveryUnavailable">Recover access</button></div>
+          <p id="v8RecoveryUnavailable" class="v8-auth-note">Account recovery is not available here yet.</p>
           <button class="v8-enter-button" type="submit">${register ? 'Create account' : 'Enter workspace'} →</button>
           <p id="v8AuthenticationStatus" class="v8-auth-status" role="alert"></p>
-          <p class="v8-auth-note">◇ Protected by role-based access and immutable session logging.</p>
+          <p class="v8-auth-note">◇ Sign in with your account email and password.</p>
         </form>
       </section>
     </div>`;
@@ -158,12 +159,17 @@
     zone.setAttribute('aria-hidden', String(fields.length === 0));
   }
 
-  async function currentSignupNotices() {
-    if (signupNotices !== null) return signupNotices;
+  function isCurrentAuth(form) {
+    return root.dataset.accessState === 'auth' && authMount?.contains(form);
+  }
+
+  async function currentSignupNotices(form) {
+    if (signupNotices.has(form)) return signupNotices.get(form);
     const notices = await api.get('/legal-notices/signup');
     if (!Array.isArray(notices) || notices.length !== 4) throw new Error('Current legal notices are unavailable; registration is paused.');
-    signupNotices = Object.fromEntries(notices.map(notice => [notice.noticeType, notice.version]));
-    return signupNotices;
+    const versions = Object.fromEntries(notices.map(notice => [notice.noticeType, notice.version]));
+    if (isCurrentAuth(form)) signupNotices.set(form, versions);
+    return versions;
   }
 
   async function submitAuthentication(event) {
@@ -183,19 +189,24 @@
       }
       const profile = {};
       for (const [name, value] of values.entries()) if (name.startsWith('profile_') && String(value).trim() !== '') profile[name.slice(8)] = String(value).trim();
+      const acceptedNoticeVersions = await currentSignupNotices(form);
+      if (!isCurrentAuth(form)) return;
       const result = await api.post('/registrations', {
         email:values.get('email'), password:values.get('password'),
         organisationName:values.get('organisationName'), organisationSlug:values.get('organisationSlug'),
         fullName:values.get('fullName'), roleKey:values.get('roleKey'), profile,
-        acceptedNoticeVersions:await currentSignupNotices(),
+        acceptedNoticeVersions,
       });
+      if (!isCurrentAuth(form)) return;
       status.textContent = result.status === 'pending_email_verification' ? 'Registration received. Check your email to verify the account.' : 'Registration received.';
       form.reset();
     } catch (error) {
-      status.textContent = error.message;
+      if (isCurrentAuth(form)) status.textContent = error.message;
     } finally {
-      submit.disabled = false;
-      submit.textContent = authMode === 'register' ? 'Create account →' : 'Enter workspace →';
+      if (isCurrentAuth(form)) {
+        submit.disabled = false;
+        submit.textContent = authMode === 'register' ? 'Create account →' : 'Enter workspace →';
+      }
     }
   }
 
@@ -214,7 +225,12 @@
     });
     form?.elements.organisationSlug?.addEventListener('input', event => { event.target.dataset.userEdited = 'true'; event.target.value = slugify(event.target.value); });
     form?.elements.roleKey?.addEventListener('change', event => renderRoleFields(event.target.value));
-    if (authMode === 'register') currentSignupNotices().catch(error => { document.getElementById('v8AuthenticationStatus').textContent = error.message; });
+    if (authMode === 'register') {
+      const status = form.querySelector('#v8AuthenticationStatus');
+      currentSignupNotices(form).catch(error => {
+        if (isCurrentAuth(form)) status.textContent = error.message;
+      });
+    }
   }
 
   function showAuth(mode) {

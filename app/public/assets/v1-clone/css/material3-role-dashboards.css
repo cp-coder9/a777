@@ -1,0 +1,7 @@
+/* Scoped layout only: retain the original shell palette, typography and controls. */
+.role-dashboard { display:grid; gap:12px; padding:clamp(16px,3vw,32px); min-width:0; }
+.role-dashboard h1,.role-dashboard h2,.role-dashboard h3,.role-dashboard p { margin:0; overflow-wrap:anywhere; }
+.role-dashboard .btn { justify-self:start; max-width:100%; white-space:normal; min-height:44px; }
+.role-dashboard-group { display:flex; flex-wrap:wrap; gap:10px; padding:16px; border:1px solid var(--line); border-radius:16px; }
+.role-dashboard-group h3 { flex-basis:100%; }
+@media(max-width:600px) { .role-dashboard-group { flex-flow:column nowrap; } .role-dashboard-group h3 { flex-basis:auto; } .role-dashboard .btn { width:100%; } }

@@ -122,7 +122,49 @@
   .v8-signin{padding:70px 16px 20px}.v8-signin-panel{grid-template-columns:1fr;min-height:auto}.v8-signin-identity{display:none}.v8-signin-form{padding:38px 25px}.v8-signin-back{top:24px;left:18px}.v8-form-meta{align-items:flex-start;flex-direction:column}
 }
 
+/* Expressive access: retain the exact public palette and Inter/JetBrains families. */
+.v8-signin{padding:88px 40px 40px}
+.v8-signin-panel{border-radius:40px 40px 24px 40px;gap:8px;padding:8px}
+.v8-signin-identity{border-radius:32px 16px 32px 32px;padding:44px}
+.v8-signin-identity h1{font-size:clamp(38px,4vw,56px);line-height:1.08}
+.v8-access-badge{border-radius:999px;min-height:36px;margin-top:56px;padding:10px 14px}
+.v8-status-stack{gap:14px;padding-top:36px}
+.v8-signin-form{padding:40px 38px;gap:22px}
+.v8-signin-form h2{font-size:34px;line-height:1.15}
+.v8-signin-form>label,.v8-morph-zone label{font-size:12px;line-height:1.5}
+.v8-signin-form input:not([type=checkbox]),.v8-signin-form select{height:56px;border-radius:16px}
+.v8-mode-switch{border-radius:28px;padding:5px;gap:5px}
+.v8-mode-switch button{height:48px;border-radius:24px;font-family:inherit;font-size:14px}
+.v8-enter-button{border-radius:28px;min-height:56px;font-family:inherit;font-size:16px;transition:transform 180ms ease,border-radius 180ms ease}
+.v8-enter-button:hover:not(:disabled){border-radius:18px;transform:translateY(-2px)}
+.v8-enter-button:active:not(:disabled){transform:scale(.98)}
+.v8-signin-back{min-height:48px;padding:10px 16px;border-radius:24px;font-family:inherit;font-size:14px}
+.v8-form-meta{flex-wrap:wrap}
+.v8-form-meta label{font-size:13px;min-height:44px}
+.v8-form-meta button{min-height:44px;padding:8px 12px;border-radius:22px;font-family:inherit;font-size:13px}
+.v8-form-meta button:disabled{color:#58706f;cursor:not-allowed}
+.v8-signin input[type=checkbox]{width:20px;height:20px;flex-shrink:0;accent-color:#0a736b}
+.v8-auth-status:empty{min-height:0}
+.v8-auth-status:not(:empty){border:1px solid #c6d8d5;border-left:4px solid currentColor;border-radius:16px;padding:16px;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.v8-auth-note{font-size:12px;line-height:1.6}
+.v8-signin :is(button,a,input,select):focus-visible{outline:3px solid #168b82;outline-offset:4px}
+.v8-signin-back:focus-visible{outline-color:#8ed3ca}
+@media(max-width:760px){
+ .v8-signin{padding:76px 12px 24px;align-items:start}
+ .v8-signin-panel{border-radius:28px;padding:6px;gap:0}
+ .v8-signin-identity{display:flex;border-radius:22px;padding:24px}
+ .v8-signin-identity h1{font-size:36px;margin:18px 0 8px}
+ .v8-signin-identity>p{font-size:14px}
+ .v8-access-badge{margin-top:24px}
+ .v8-status-stack{display:none}
+ .v8-signin-form{padding:28px 18px;overflow:visible}
+ .v8-signin-form h2{font-size:28px}
+ .v8-signin-back{top:16px;left:12px}
+ .v8-form-meta{flex-direction:row;align-items:center}
+}
 @media (prefers-reduced-motion: reduce) {
+  .v8-signin *, .v8-signin *::before, .v8-signin *::after {animation:none!important;transition:none!important}
+  .v8-enter-button:hover:not(:disabled),.v8-enter-button:active:not(:disabled){transform:none}
   .public-landing-frame,
   .public-auth-mount {
     transition-duration: 1ms !important;

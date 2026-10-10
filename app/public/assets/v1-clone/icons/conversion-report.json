@@ -1,0 +1,1146 @@
+{
+ "source": "v1-clone",
+ "generated_from": "canonical icons/*.svg and icons/registry.json",
+ "role_model": {
+  "outline": "white body + ink outline",
+  "line": "ink detail stroke",
+  "fold": "single solid teal accent"
+ },
+ "icon_count": 188,
+ "role_totals": {
+  "outline": 227,
+  "line": 362,
+  "fold": 188
+ },
+ "per_icon": {
+  "action": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "action_centre": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "activityScreening": {
+   "outline": 2,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "admin_review": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "advisor": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "advisoryDisclaimer": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "approvals_queue": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "areaDimensions": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "attach": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "autoFill": {
+   "outline": 2,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "basicAssessment": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "bbbeeCompliance": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "billingRates": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "bimExport": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "bimQuantities": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "bimSpecForgeSync": {
+   "outline": 2,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "bim_ifc": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "binAllocation": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "bom": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "boqGenerator": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "brief": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "browserViewer": {
+   "outline": 5,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "budget": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "buildingType": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "calendar": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "checklist": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "clusters": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "collectionVehicleAccess": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "compliance_hub": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "contract": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "contract_admin": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "contractor_compliance": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "contracts": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "council_navigator": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "cpd_learning": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "crmPipeline": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "dashboard": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "detail": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "dispute_resolution": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "document": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "documents_drawings": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "drainageRequirement": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "drawing": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eiaWorkspace": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "eia_workspace": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "emprMonitor": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_cable": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_concrete": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_db": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_drain": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_duct": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_escape": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_fire": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_geo": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_heat": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_hotwater": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_hydrant": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_steel": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_storm": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_timber": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_units": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_water": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "eng_wind": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "engineering_hub": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "environmentalAuthorisation": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "environmental_heritage": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "expand": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "expenseClaim": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "export": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "exportPdfReport": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "feeTracker": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "fee_proposal": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "feedback": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "fileHandoff": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "finance": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "firmDashboard": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "fm_bridge": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "forecast": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "formApprovalWorkflow": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "formEditor": {
+   "outline": 2,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "formPdfExport": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "formSignature": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "formSystem": {
+   "outline": 4,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "formTemplateLibrary": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "forms": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "fullEia": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "god_mode": {
+   "outline": 2,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "greenBuilding": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "hostAgent": {
+   "outline": 2,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "iconography_registry": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "ifcModel": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "ifcUpload": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "inbox": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "incomeForecast": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "inspector": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "insurance_register": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "integration": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "issues_rfis": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "itp": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "knowledge": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "lockedUntilSignOff": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "mappingRules": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "market_insights": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "marketplace": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_agenda": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_camera": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_caption": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_day": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_hand": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_invite": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_mic": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_recording": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_review": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_share": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meeting_template": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "meetings": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "menu": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "messages": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "milestone": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "missingMunicipalField": {
+   "outline": 2,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "modelValidation": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "municipal": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "municipalRefuseCalculator": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "municipal_tracker": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "municipalityProfile": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "ncr_manager": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "nhbrc_enrolment": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "notification": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "payments_escrow": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "planning": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "practiceInvoice": {
+   "outline": 2,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "practiceManagement": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "practice_management": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "procurement": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "professionalSignOff": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "professional_directory": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "profitability": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "programme": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "progress": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "projectPassportSync": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "project_explorer": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "project_passport": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "projects": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "publicParticipation": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "quantityExtraction": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "quoteComparison": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "quoteSubmission": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "recordingConsent": {
+   "outline": 2,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "refuseStorageArea": {
+   "outline": 2,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "refuse_calculator": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "remoteDesktop": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "remoteSession": {
+   "outline": 2,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "remote_desktop": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "reports": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "resourceCapacity": {
+   "outline": 1,
+   "line": 5,
+   "fold": 1,
+   "line_only": false
+  },
+  "rfi": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "rfqAward": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "rfqMarketplace": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "rfqPackage": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "rfq_marketplace": {
+   "outline": 1,
+   "line": 2,
+   "fold": 1,
+   "line_only": false
+  },
+  "risk": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "safety": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "search": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "sessionBroker": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "sessionToken": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "settings": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "site_diary": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "site_instructions": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "snag_manager": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "specForgePush": {
+   "outline": 1,
+   "line": 6,
+   "fold": 1,
+   "line_only": false
+  },
+  "specification": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "standalone": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "supplierProfile": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "supplier_catalog": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "survey_geomatics": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "team": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "team_workspace": {
+   "outline": 3,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "timesheet": {
+   "outline": 2,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "timesheetCapture": {
+   "outline": 2,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "tools": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "trends": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "valuation": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "ventilationRequirement": {
+   "outline": 1,
+   "line": 4,
+   "fold": 1,
+   "line_only": false
+  },
+  "wasteVolume": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "wingman": {
+   "outline": 1,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  },
+  "wipReport": {
+   "outline": 1,
+   "line": 3,
+   "fold": 1,
+   "line_only": false
+  },
+  "workflow": {
+   "outline": 1,
+   "line": 1,
+   "fold": 1,
+   "line_only": false
+  },
+  "xa": {
+   "outline": 2,
+   "line": 0,
+   "fold": 1,
+   "line_only": false
+  }
+ },
+ "problems": []
+}

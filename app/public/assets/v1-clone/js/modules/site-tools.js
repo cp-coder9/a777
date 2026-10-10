@@ -22,8 +22,8 @@
       const values={coefficient:doc.getElementById('sw-c').value,intensity:doc.getElementById('sw-i').value,areaHa:doc.getElementById('sw-a').value};saving=true;
       return adapter.saveRational(values).then(record=>{engineeringDirty=false;notice('Rational Method run verified in Toolbox history. Not issued, reviewed or certified.');return {saved:true,reviewRequested:false,record};}).catch(error=>notice(error.message+' No success claimed.')).finally(()=>{saving=false;});
     };
-    const mounted=new Map();let generation=0;
-    context.subscribe?.(()=>{generation++;engineeringDirty=false;engineeringControls();for(const [frame,entry] of mounted){if(!frame.isConnected||frame.contentDocument!==entry.doc){mounted.delete(frame);continue;}entry.refresh();}});
+    const mounted=new Map(),pendingDialogs=new Set();let generation=0;
+    context.subscribe?.(()=>{generation++;for(const controller of pendingDialogs)controller.abort();engineeringDirty=false;engineeringControls();for(const [frame,entry] of mounted){if(!frame.isConnected||frame.contentDocument!==entry.doc){mounted.delete(frame);continue;}entry.refresh();}});
     const boundary='Internal records only — not statutory approval, safety certification or permission to work.';
     const unavailable='Not available from the connected service.';
     function prepareSource(id,html){
@@ -84,27 +84,31 @@
         const headings=['','Inspection Test Plans','Material Testing','Hold Points','Recent Lab Results','Linked Non-Conformance','Inspector Sign-Off'];
         const target=[...doc.querySelectorAll('h2')].find(h=>h.textContent.includes(headings[index]||'Inspection Test Plans'));target?.scrollIntoView({block:'start'});setStatus(button.textContent+': '+(index===1?'Internal inspection records. ':unavailable+' ')+boundary);
       });
+      const capture=()=>{const s=context.getState();return {token:generation,session:s.session,organisation:s.organisationId,project:s.selectedProjectId,memberships:JSON.stringify(s.session?.memberships)};};
+      const valid=scope=>{const s=context.getState();return scope.token===generation&&frame.isConnected&&frame.contentDocument===doc&&s.ready===true&&s.session===scope.session&&s.organisationId===scope.organisation&&s.selectedProjectId===scope.project&&JSON.stringify(s.session?.memberships)===scope.memberships;};
       const refresh=async()=>{
-        const token=generation;
+        const scope=capture();if(!valid(scope))return false;
         doc.querySelectorAll('[data-site-create]').forEach(button=>{button.disabled=context.getState().readOnly===true;button.title=button.disabled?'Read-only membership: inspection creation requires write permission.':'Create an internal draft inspection.';});
         doc.querySelectorAll('[data-site-project]').forEach(el=>el.textContent='Selected project');
         setStatus('Loading project records. '+boundary);
         doc.querySelectorAll('[data-site-records]').forEach(table=>{table.querySelectorAll('td').forEach(cell=>cell.textContent='—');});
-        try{const model=await adapter.load(id);if(frame.contentDocument!==doc||token!==generation)return false;
+        try{const model=await adapter.load(id);if(!valid(scope))return false;
           doc.querySelectorAll('[data-site-project]').forEach(el=>el.textContent=model.projectName);
           doc.querySelectorAll('[data-site-records]').forEach(table=>{const kind=table.dataset.siteRecords;if(Array.isArray(model[kind]))bindTable(table,model[kind],kind);else{const cell=table.querySelector('td');if(cell)cell.textContent=unavailable;}});
           setStatus('Project: '+model.projectName+'. '+boundary+' Unsupported registers are unavailable, not empty or compliant.');return true;
-        }catch(error){setStatus(error.message+' No records loaded. '+boundary);return false;}
+        }catch(error){if(valid(scope))setStatus(error.message+' No records loaded. '+boundary);return false;}
       };
+      const draftDialog=async(kind,options)=>{const controller=new root.AbortController();pendingDialogs.add(controller);try{return await root.V1CloneM3Dialog[kind]({...options,signal:controller.signal});}finally{pendingDialogs.delete(controller);}};
       doc.querySelectorAll('[data-site-create]').forEach(button=>button.onclick=async()=>{
         if(context.getState().readOnly===true)return setStatus('Read-only membership: you can review inspection records. '+boundary);
         // The original source has no editable form: collect explicit user input,
         // never manufacture a completed checklist or a professional sign-off.
-        const finding=win.prompt('Draft internal inspection finding (not certification):');if(!finding?.trim())return;
+        const scope=capture();
+        const current=()=>valid(scope)&&context.getState().readOnly!==true;
+        const finding=await draftDialog('prompt',{title:'Draft internal inspection',label:'Inspection finding',help:'Draft internal inspection finding (not certification). Not permission to work.',required:true,maxLength:10000,invoker:button});if(!finding?.trim()||!current())return;
         const inspectionType=id==='safety'?'safety':'quality';
-        if(!win.confirm('Save this as a draft '+inspectionType+' inspection for the selected project?'))return;
-        const token=generation;
-        button.disabled=true;try{await adapter.createInspection({inspectionType,findings:[finding.trim()],checklist:[],followUps:[],signOffRequired:true});if(token!==generation||frame.contentDocument!==doc)return;await refresh();setStatus('Draft inspection verified in project records. '+boundary);}catch(error){setStatus(error.message+' No success claimed.');}finally{button.disabled=context.getState().readOnly===true;}
+        if(!await draftDialog('confirm',{title:'Save draft inspection',message:'Save this as a draft '+inspectionType+' inspection for the selected project? Not certification or permission to work.',confirmLabel:'Save draft',cancelLabel:'Cancel',invoker:button})||!current())return;
+        button.disabled=true;try{await adapter.createInspection({inspectionType,findings:[finding.trim()],checklist:[],followUps:[],signOffRequired:true});if(!current())return;const refreshed=await refresh();if(current()&&refreshed)setStatus('Draft inspection verified in project records. '+boundary);}catch(error){if(current())setStatus(error.message+' No success claimed. Finding retained: '+finding.trim());}finally{if(current())button.disabled=false;}
       });
       if(id==='safety'){
         if(!root.V1CloneWorkPermits)await new Promise((resolve,reject)=>{const script=root.document.createElement('script');script.src='/assets/v1-clone/js/modules/work-permits.js';script.onload=resolve;script.onerror=()=>reject(Error('Internal work-permit UI could not load.'));root.document.head.append(script);});

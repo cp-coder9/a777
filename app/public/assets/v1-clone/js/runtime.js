@@ -231,7 +231,16 @@
       const original=global[name];if(typeof original!=='function')continue;
       global[name]=function(...args){const result=original.apply(this,args);shell?.reconcile();training?.reconcile();afterRender?.();if(name==='renderMain'&&depth===0)reconcile();return result;};
     }
-    global.renderAll=function(...args){depth++;try{return originalRender.apply(this,args);}finally{depth--;if(depth===0)reconcile();}};
+    global.renderAll=function(...args){
+      const lens=document.activeElement;
+      const restore=depth===0&&lens?.id==='productionRoleLens'&&lens.isConnected&&document.querySelector('#roleSwitch select')===lens;
+      const value=restore?lens.value:null;
+      depth++;try{return originalRender.apply(this,args);}finally{
+        depth--;if(depth===0){reconcile();const replacement=document.querySelector('#productionRoleLens');
+          if(restore&&!lens.isConnected&&replacement?.isConnected&&replacement.value===value&&document.activeElement===document.body)replacement.focus({preventScroll:true});
+        }
+      }
+    };
   }
   async function installProduction(context) {
     // Production metadata belongs in the adapter layer, never in immutable reference scripts.
@@ -294,15 +303,33 @@
       const html = originalDecode(encoded);
       const id = typeof state === 'object' ? state.tool : null;
       const controller = Object.values(global.V1CloneRuntime.controllers).find(item => item.supports?.(id));
-      return controller && typeof SOURCES === 'object' && SOURCES[id] === encoded ? controller.prepareSource(id, html) : html;
+      if (typeof SOURCES !== 'object' || SOURCES[id] !== encoded) return html;
+      const prepared = controller ? controller.prepareSource(id, html) : html;
+      // Parse inertly: literal </head> in script text is not an insertion point.
+      // This is the source assigned to the real frame before native mountFrame.
+      const doc = new global.DOMParser().parseFromString(prepared, 'text/html');
+      doc.body.setAttribute('data-architex-m3-embedded', '');
+      if (!doc.head.querySelector('link[data-architex-m3-theme]')) {
+        const link = doc.createElement('link');
+        link.rel = 'stylesheet';
+        link.setAttribute('data-architex-m3-theme', '');
+        link.href = new URL('/assets/v1-clone/css/material3-embedded-workspaces.css', global.location.origin).href;
+        doc.head.append(link);
+      }
+      const doctype = prepared.match(/^\s*(<!doctype[^>]*>)/i)?.[1] || '';
+      return doctype + '\n' + doc.documentElement.outerHTML;
     };
     global.adaptFrame = function (id, frame) {
       const result = originalAdapt(id, frame);
+      // The original skin appends a style at load time; keep component geometry
+      // last without changing that skin, its palette or its native handlers.
+      const theme = frame.contentDocument?.head.querySelector('link[data-architex-m3-theme]');
+      if (theme) frame.contentDocument.head.append(theme);
       mountedFrame?.dispose?.();
       const controller = Object.values(global.V1CloneRuntime.controllers).find(item => item.supports?.(id));
       const token = ++mountGeneration;
       frame.dataset.v1CloneAdapter = 'loading';
-      Promise.resolve(controller?.mountFrame(id, frame)).then(handle => {
+      Promise.resolve().then(() => controller?.mountFrame(id, frame)).then(handle => {
         if (token !== mountGeneration || !frame.isConnected) { handle?.dispose?.(); return; }
         mountedFrame = handle;
         frame.dataset.v1CloneAdapter = controller && handle !== false ? 'ready' : 'unavailable';

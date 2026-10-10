@@ -81,7 +81,7 @@
         bodyHtml = `<section class="panel"><h2>Project KPIs</h2><table class="table"><thead><tr><th>Metric</th><th>Value</th><th>Unit</th></tr></thead><tbody>${rows}</tbody></table></section>
           <p class="pill" data-gov-note>Project analytics only — not external market intelligence.</p>`;
       }
-      main.innerHTML = `<div class="gov-workspace" data-gov-tool="${esc(def.title)}">
+      main.innerHTML = `<div class="gov-workspace m3-commercial-workspace" data-gov-tool="${esc(def.title)}">
         <div class="rfi-hero"><div><h1>${esc(def.title)}</h1><p>Project: <strong>${esc(project)}</strong></p></div></div>
         <p class="pill" data-gov-status role="status">Internal records only.</p>
         ${bodyHtml}</div>`;
@@ -114,7 +114,7 @@
     function renderAvailability(def, message, retry) {
       if (disposed || !ownsRoute(routeFor(def))) return;
       const main = mainEl(); if (!main) return;
-      main.innerHTML = `<div class="gov-workspace" data-gov-tool="${esc(def.title)}"><h1>${esc(def.title)}</h1><section class="panel"><p data-gov-status role="status">${esc(message)}</p>${retry ? '<button class="btn ghost" type="button" data-gov-retry>Retry loading</button>' : ''}</section></div>`;
+      main.innerHTML = `<div class="gov-workspace m3-commercial-workspace" data-gov-tool="${esc(def.title)}"><h1>${esc(def.title)}</h1><section class="panel"><p data-gov-status role="status">${esc(message)}</p>${retry ? '<button class="btn ghost" type="button" data-gov-retry>Retry loading</button>' : ''}</section></div>`;
       main.querySelector?.('[data-gov-retry]')?.addEventListener('click', () => { void refresh(def); });
     }
     async function refresh(def) { if (disposed || !ownsRoute(routeFor(def))) return false;

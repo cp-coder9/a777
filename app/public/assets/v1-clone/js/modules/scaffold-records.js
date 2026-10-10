@@ -129,7 +129,7 @@
       const state = context.getState();
       if (state.mode === 'standalone' || !/^[a-f0-9]{32}$/i.test(state.selectedProjectId || '')) {
         main.innerHTML = `
-          <div class="records-workspace" data-records-tool="${esc(toolId)}" data-records-blocked="no-project">
+          <div class="records-workspace m3-commercial-workspace" data-records-tool="${esc(toolId)}" data-records-blocked="no-project">
             <header class="records-hero"><div>
               <h1>${esc(label(toolId.replace(/_/g, ' ')))}</h1>
               <p>No project selected</p>
@@ -152,7 +152,7 @@
         : 'Nothing saved yet.';
       const project = state.projects?.find(p => p.id === state.selectedProjectId)?.name || 'Selected project';
       main.innerHTML = `
-        <div class="records-workspace" data-records-tool="${esc(toolId)}">
+        <div class="records-workspace m3-commercial-workspace" data-records-tool="${esc(toolId)}">
           <header class="records-hero">
             <div>
               <h1>${esc(label(toolId.replace(/_/g, ' ')))}</h1>

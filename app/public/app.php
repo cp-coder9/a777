@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="/assets/css/meetings-workspace.css">
 <link rel="stylesheet" href="/assets/css/practice-workspace.css">
 <link rel="stylesheet" href="/assets/css/workspace-scope.css">
+<link rel="stylesheet" href="/assets/v1-clone/css/material3-embedded-workspaces.css">
 <link rel="icon" href="/assets/icons/community.svg">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#116b67">
@@ -47,7 +48,7 @@
     <button class="top-btn" onclick="openTool('wingman',state.mode)" aria-label="Open Wingman" id="wingmanTop"></button>
     <button class="top-btn" onclick="toggleInspector()" aria-label="Toggle contextual inspector" id="inspectToggle"></button>
   </header>
-  <main class="main" id="main"></main>
+  <main class="main" id="main" data-architex-m3-embedded></main>
   <aside class="inspector">
     <div class="inspect-head"><div><h3 id="inspectTitle"></h3><p id="inspectSub"></p></div><button class="inspect-close" onclick="toggleInspector()">×</button></div>
     <div class="inspect-tabs"><button class="inspect-tab active" onclick="setInspector('context',this)">Context</button><button class="inspect-tab" onclick="setInspector('wingman',this)">Wingman</button><button class="inspect-tab" onclick="setInspector('activity',this)">Activity</button></div>

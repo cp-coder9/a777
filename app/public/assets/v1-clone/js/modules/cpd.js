@@ -15,7 +15,7 @@
     }
     function shell(state){
       const role=state?.session?.userId?'Signed in':'Not signed in';
-      return '<section class="cpd-workspace" data-cpd-root>'+
+      return '<section class="cpd-workspace m3-commercial-workspace" data-cpd-root>'+
         '<div class="cpd-head"><h2>CPD Learning</h2><p class="cpd-scope">Organisation: '+escape(state?.organisationId||'Not selected')+' · '+escape(role)+'</p></div>'+
         '<p class="cpd-boundary" role="note">'+escape(boundary)+'</p>'+
         '<p class="cpd-status" data-cpd-status role="status">Loading CPD workspace…</p>'+

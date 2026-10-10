@@ -96,10 +96,15 @@
   function install({context}) {
     const adapter=global.V1CloneWingmanAdapter.create({context}), drafts=new Map(), mounts=new Set();
     let disposed=false;
-    function mountFrame(id,frame){
+    async function mountFrame(id,frame){
       if(id!=='wingman'||disposed)return;
+      // The shell's body poll can beat stylesheet-blocked tail scripts. The
+      // prepared source owns bootstrap; never recreate it through CSP-forbidden eval.
+      const document=frame.contentDocument;
+      if(document?.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
+      if(disposed||frame.isConnected===false||frame.contentDocument!==document)return false;
       const win=frame.contentWindow;
-      if(!win.__v1Wingman)win.eval('('+frameBootstrap.toString()+')()');
+      if(!win?.__v1Wingman)throw Error('Wingman frame was not prepared before srcdoc.');
       const view=win.__v1Wingman;let scope=adapter.scopeKey(),live=true,revision=0,commandPending=false,suggestions=[];
       view.scope(context.getState());view.restore(drafts.get(scope));
       const valid=ticket=>live&&!disposed&&ticket===revision&&scope===adapter.scopeKey();

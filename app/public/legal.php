@@ -98,13 +98,23 @@ $links = array_map(static fn (string $route): string => sprintf('<a%s href="%s">
   <title><?= htmlspecialchars($page[0], ENT_QUOTES) ?> — Architex</title>
   <style>
     :root{color-scheme:light;--ink:#102033;--muted:#62707d;--teal:#0a4540;--line:#dce5e6;--paper:#f4f7f7;--warning:#fff5d9}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}header{background:var(--teal);color:white;padding:26px clamp(22px,6vw,80px)}header a{color:white;text-decoration:none;font-weight:800;letter-spacing:.08em}.shell{display:grid;grid-template-columns:minmax(220px,290px) minmax(0,820px);gap:32px;max-width:1200px;margin:auto;padding:36px 22px 80px}nav{position:sticky;top:24px;align-self:start;background:white;border:1px solid var(--line);border-radius:18px;padding:14px}nav a{display:block;color:var(--muted);padding:9px 11px;border-radius:10px;text-decoration:none;font-size:14px}nav a[aria-current=page]{background:#e6f1ef;color:var(--teal);font-weight:750}main{background:white;border:1px solid var(--line);border-radius:22px;padding:clamp(24px,5vw,58px);box-shadow:0 20px 60px rgba(16,32,51,.06)}.kicker{color:#167e79;font-size:12px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}h1{font-size:clamp(36px,6vw,62px);line-height:1.02;letter-spacing:-.045em;margin:12px 0 16px}h2{font-size:21px;margin:38px 0 8px}p{color:var(--muted)}.draft{background:var(--warning);border:1px solid #e7cc80;border-radius:14px;padding:16px;margin:24px 0;color:#5f4b16}.boundary{border-left:4px solid #19b7b0;padding:12px 18px;margin:30px 0;background:#eff9f7}.meta{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:44px}@media(max-width:760px){.shell{display:block}.shell nav{position:static;margin-bottom:20px}main{padding:26px 21px}}
+    /* Expressive reading surfaces; original legal palette and family retained. */
+    header{padding-block:32px;border-radius:0 0 32px 32px}
+    nav{border-radius:28px;padding:10px}nav a{min-height:48px;display:flex;align-items:center;border-radius:24px;padding:12px 16px}
+    main{border-radius:36px 36px 20px 36px}main section{border:1px solid var(--line);border-radius:20px;padding:22px 24px;margin-top:16px}main section h2{margin:0 0 8px}main section p{margin:0}
+    .draft{border-radius:22px;padding:22px}.boundary{border-radius:0 20px 20px 0;padding:20px 24px}
+    a:focus-visible{outline:3px solid #167e79;outline-offset:4px}
+    .legal-skip{position:absolute;top:8px;left:22px;z-index:2;background:white;color:var(--teal);padding:12px 18px;border-radius:24px;transform:translateY(-160%)}.legal-skip:focus{transform:none}
+    @media(max-width:760px){.shell{padding:24px 14px 48px}main{border-radius:28px;padding:26px 20px}main section{padding:20px 16px}nav a{font-size:15px}h1{overflow-wrap:anywhere}}
+    @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
   </style>
 </head>
 <body>
+<a class="legal-skip" href="#legal-content">Skip to legal content</a>
 <header><a href="/">ARCHITEX</a></header>
 <div class="shell">
   <nav aria-label="Legal centre"><?= implode('', $links) ?></nav>
-  <main>
+  <main id="legal-content" tabindex="-1">
     <span class="kicker">Legal centre · Version 0.1-development</span>
     <h1><?= htmlspecialchars($page[0], ENT_QUOTES) ?></h1>
     <p><?= htmlspecialchars($page[1], ENT_QUOTES) ?></p>
