@@ -66,6 +66,16 @@ class RejectRedirects(urllib.request.HTTPRedirectHandler):
 
 
 class UrllibTransport:
+    MAX_JSON_RESPONSE_BYTES = 32 * 1024 * 1024
+
+    def _read_bounded(self, response) -> bytes:
+        # Do not trust Content-Length; cap the actual stream before JSON decoding.
+        body = response.read(self.MAX_JSON_RESPONSE_BYTES + 1)
+        if len(body) > self.MAX_JSON_RESPONSE_BYTES:
+            del body
+            raise CpanelError("cPanel response limit exceeded.") from None
+        return body
+
     def __init__(self, ca_file: str | None = None) -> None:
         self.context = ssl.create_default_context(cafile=ca_file)
 
@@ -84,14 +94,15 @@ class UrllibTransport:
                 return HttpResponse(
                     status=response.status,
                     headers=dict(response.headers.items()),
-                    body=response.read(),
+                    body=self._read_bounded(response),
                 )
         except urllib.error.HTTPError as error:
-            return HttpResponse(
-                status=error.code,
-                headers=dict(error.headers.items()) if error.headers else {},
-                body=error.read(),
-            )
+            with error:
+                return HttpResponse(
+                    status=error.code,
+                    headers=dict(error.headers.items()) if error.headers else {},
+                    body=self._read_bounded(error),
+                )
 
 
 def redact_text(value: str, secret_values: tuple[str, ...]) -> str:

@@ -11,7 +11,7 @@ class Contracts(unittest.TestCase):
             self.assertEqual(ui.parse_shim(ui.shim(name), name), ui.RUNTIME)
             for bad in (ui.shim(name) + b'<?php evil();', ui.shim(name).replace(b'0077', b'0000'),
                         ui.shim(name).replace(b'/public/', b'/public/../'),
-                        ui.shim(name).replace(b'7eee8', b'8eee8'), ui.shim(name).replace(b'require ', b'include ')):
+                        ui.shim(name).replace(b'7eee8', b'7EEE8'), ui.shim(name).replace(b'require ', b'include ')):
                 with self.assertRaises(ui.Refusal): ui.parse_shim(bad, name)
         with self.assertRaises(ui.Refusal): ui.parse_shim(ui.shim('index.php'), 'app.php')
 
@@ -562,8 +562,14 @@ class Contracts(unittest.TestCase):
                       ui.RUNTIME + '/release-manifest.json': json.dumps({'format':'architex-release-manifest-v1',
                           'version':'v1', 'files':{'src/a.php':{'sha256':expected, 'bytes':len(body)}}}).encode()})
         with patch.object(ui, 'read_bytes', side_effect=lambda c,p: files[p]):
-            report = ui.inspect(Client(), candidate)
+            client = Client()
+            report = ui.inspect(client, candidate)
             self.assertTrue(report['inspectionComplete'])
+            self.assertIsNone(client._inspection_bound_runtime)
+            self.assertFalse(client._inspection_active)
+            self.assertEqual(client._inspection_listings, {})
+            self.assertFalse(report['currentProducerProvenanceVerified'])
+            self.assertFalse(report['deploymentAuthorized'])
             self.assertFalse(report['nativeCanonicalVerified'])
             self.assertNotIn('PRIVATE-CONFIG', str(report))
             files[ui.RUNTIME + '/src/a.php'] = b'changed'
@@ -581,6 +587,10 @@ class Contracts(unittest.TestCase):
                 self.params = params
                 return {'content': '\u0000\u00ff\r\n'}
         c = Fake()
+        with self.assertRaises(ui.Refusal): ui.read_bytes(c, ui.RUNTIME+'/src/a.php')
+        c._inspection_bound_runtime = ui.parse_shim(ui.shim('index.php'), 'index.php')
+        with self.assertRaises(ui.Refusal): ui.read_bytes(c, ui.RUNTIME+'/src/a.php')
+        c._inspection_active = True
         self.assertEqual(ui.read_bytes(c, ui.RUNTIME+'/src/a.php'), b'\x00\xff\r\n')
         self.assertEqual(c.params['from_charset'], 'ISO-8859-1')
         for path in (ui.HOME+'/other/file', ui.RUNTIME+'/src/../config/runtime.php'):
