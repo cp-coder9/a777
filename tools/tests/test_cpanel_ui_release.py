@@ -11,9 +11,134 @@ class Contracts(unittest.TestCase):
             self.assertEqual(ui.parse_shim(ui.shim(name), name), ui.RUNTIME)
             for bad in (ui.shim(name) + b'<?php evil();', ui.shim(name).replace(b'0077', b'0000'),
                         ui.shim(name).replace(b'/public/', b'/public/../'),
-                        ui.shim(name).replace(b'7eee8', b'7EEE8'), ui.shim(name).replace(b'require ', b'include ')):
+                        ui.shim(name).replace(b'7eee8', b'7.eee'), ui.shim(name).replace(b'require ', b'include ')):
                 with self.assertRaises(ui.Refusal): ui.parse_shim(bad, name)
         with self.assertRaises(ui.Refusal): ui.parse_shim(ui.shim('index.php'), 'app.php')
+
+    def test_bounded_literal_runtime_component_read_only_discovery(self):
+        # Synthetic 36-byte OTHER component, not an observed account identifier.
+        component = 'current_runtime_' + 'x' * 20
+        runtime = ui.HOME + '/.a777-runtime-private/' + component
+        for name in ('index.php', 'app.php', 'legal.php'):
+            content = ui.shim(name).replace(ui.RUNTIME.encode(), runtime.encode())
+            self.assertEqual(ui.parse_shim(content, name), runtime)
+            self.assertEqual(ui.safe_path(runtime + '/config/runtime.php', runtime),
+                             runtime + '/config/runtime.php')
+            shape = ui.shim_shape(content, name)
+            self.assertEqual(shape['literalComponentLength'], 36)
+            self.assertEqual(shape['literalComponentType'], 'other')
+            self.assertTrue(shape['accountScopedStructureMatched'])
+            self.assertFalse(shape['historicalTemplateParity'])
+            self.assertFalse(shape['currentProducerProvenanceVerified'])
+
+    def test_literal_binding_policy_and_private_read_gates(self):
+        import json
+        from unittest.mock import patch
+        runtime = ui.HOME + '/.a777-runtime-private/current_runtime_' + 'x' * 20
+        candidate = {'commit': 'b' * 40, 'inventorySha256': 'c' * 64,
+                     'changes': [], 'files': {}}
+        metadata = {'format': 'architex-release-v1', 'sourceCommit': ui.BASELINE,
+                    'sourceDirty': False, 'environment': 'production', 'version': 'v1'}
+        files = {ui.DOCROOT + '/' + name: ui.shim(name).replace(ui.RUNTIME.encode(), runtime.encode())
+                 for name in ('index.php', 'app.php', 'legal.php')}
+        files.update({runtime + '/config/runtime.php': b'SYNTHETIC-PRIVATE-CONFIG',
+                      runtime + '/release.json': json.dumps(metadata).encode(),
+                      runtime + '/release-manifest.json': json.dumps({
+                          'format': 'architex-release-manifest-v1', 'version': 'v1',
+                          'files': {'src/a.php': {'sha256': 'a' * 64, 'bytes': 1}}}).encode()})
+        inventory = self.hash_inventory()
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, module, function, params): return inventory
+        reads = []
+        def reader(client, path):
+            reads.append(path)
+            ui.safe_path(path, client._inspection_bound_runtime)
+            if path.startswith(runtime + '/'):
+                self.assertEqual(reads[:3], [ui.DOCROOT + '/' + name
+                    for name in ('index.php', 'app.php', 'legal.php')])
+                self.assertEqual(client._inspection_bound_runtime, runtime)
+                self.assertTrue(client._inspection_active)
+            return files[path]
+        with patch.object(ui, 'read_bytes', side_effect=reader):
+            client = Client()
+            report = ui.inspect(client, candidate)
+        self.assertTrue(report['inspectionComplete'])
+        self.assertEqual(report['runtimeRootPolicy'], 'bounded_literal_read_only_discovery_v3')
+        self.assertEqual(report['boundShimCount'], 3)
+        for key in ('currentProducerProvenanceVerified', 'deploymentAuthorized',
+                    'nativeCanonicalVerified', 'nativeOwnershipVerified', 'writesPerformed', 'deployed'):
+            self.assertFalse(report[key])
+        self.assertNotIn('SYNTHETIC-PRIVATE-CONFIG', str(report))
+        self.assertIsNone(client._inspection_bound_runtime)
+        self.assertFalse(client._inspection_active)
+        self.assertEqual(reads.count(runtime + '/config/runtime.php'), 2)
+        # Every inventory group is checked, not just the target public root.
+        for group in ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains'):
+            bad = self.hash_inventory()
+            row = {'servername': 'private.example', 'documentroot': runtime + '/public'}
+            if group == 'main_domain': bad[group] = row
+            elif group == 'sub_domains': bad[group]['private.example'] = row
+            else: bad[group] = {'private.example': row}
+            inventory = bad
+            reads.clear()
+            with patch.object(ui, 'read_bytes', side_effect=reader):
+                result = ui.inspect(Client(), candidate)
+            self.assertFalse(result['inspectionComplete'])
+            self.assertFalse(any(path.startswith(runtime + '/') for path in reads))
+        inventory = self.hash_inventory()
+        for name in ('index.php', 'app.php', 'legal.php'):
+            original = files[ui.DOCROOT + '/' + name]
+            files[ui.DOCROOT + '/' + name] = ui.shim(name)
+            reads.clear()
+            with patch.object(ui, 'read_bytes', side_effect=reader):
+                result = ui.inspect(Client(), candidate)
+            self.assertEqual(result['errorCode'], 'published_shim_roots_mismatch')
+            self.assertFalse(any(path.startswith(runtime + '/') for path in reads))
+            files[ui.DOCROOT + '/' + name] = original
+
+    def test_literal_component_bounds_and_malformed_envelopes(self):
+        parent = ui.HOME + '/.a777-runtime-private/'
+        for component in ('A', '-', '_', 'A_Z-09', 'x' * 128):
+            runtime = parent + component
+            content = ui.shim('index.php').replace(ui.RUNTIME.encode(), runtime.encode())
+            self.assertEqual(ui.parse_shim(content, 'index.php'), runtime)
+            self.assertEqual(ui.safe_path(runtime + '/src/a.php', runtime), runtime + '/src/a.php')
+        for component in ('', 'x' * 129, '.', '..', 'a.b', 'a/b', 'a\\b', 'a b',
+                          "a'b", 'a\x00b', 'a\nb', '\u00e9'):
+            runtime = parent + component
+            content = ui.shim('index.php').replace(ui.RUNTIME.encode(), runtime.encode())
+            with self.subTest(component=component):
+                with self.assertRaises(ui.Refusal): ui.parse_shim(content, 'index.php')
+                with self.assertRaises(ui.Refusal): ui.safe_path(runtime + '/src/a.php', runtime)
+        content = ui.shim('index.php').replace(ui.RUNTIME.encode(), (parent + 'current_runtime_X').encode())
+        for bad in (content + b'<?php evil();', content.replace(b"';\n", b"';\nevil();\n"),
+                    content.replace(b"require '", b'require "'), content.replace(b'\n', b'\r\n'),
+                    content.replace(b'/public/index.php', b'/public/app.php')):
+            with self.assertRaises(ui.Refusal): ui.parse_shim(bad, 'index.php')
+
+    def test_literal_runtime_reader_rejects_reported_links_and_unknown_types(self):
+        runtime = ui.HOME + '/.a777-runtime-private/current_runtime_' + 'x' * 20
+        target = runtime + '/config/runtime.php'
+        for bad_row in ({'type': 'link'}, {'type': 'dir', 'link': 'elsewhere'},
+                        {'type': 'dir', 'islink': True}, {'type': 'unknown'}, {}):
+            class Client:
+                _inspection_active = True
+                _inspection_bound_runtime = runtime
+                def list_files(self, parent):
+                    part = target[len(parent) + 1:].split('/')[0]
+                    row = {'name': part, 'type': 'dir' if '/' in target[len(parent) + 1:] else 'file'}
+                    if part == runtime.rsplit('/', 1)[1]:
+                        row = dict(bad_row, name=part)
+                    return [row]
+                def _uapi(self, *args):
+                    self.fail_private_content_read = True
+                    raise AssertionError('must reject before content read')
+            client = Client()
+            with self.assertRaises(ui.Refusal) as caught:
+                ui.read_bytes(client, target)
+            self.assertEqual(caught.exception.code, 'provider_link_or_type_unknown')
+            self.assertFalse(hasattr(client, 'fail_private_content_read'))
 
     def test_full_domain_inventory(self):
         row = {'domain': ui.DOMAIN, 'servername': ui.DOMAIN, 'documentroot': ui.DOCROOT, 'homedir': ui.HOME, 'user': 'archite4'}

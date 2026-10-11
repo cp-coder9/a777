@@ -64,7 +64,7 @@ class ShimShape(unittest.TestCase):
                 with self.assertRaises(ui.Refusal):
                     ui.parse_shim(content, name)
 
-    def test_literal_path_shape_is_diagnostic_only(self):
+    def test_literal_path_shape_classification_is_diagnostic_only(self):
         component = b'12345678-1234-1234-1234-123456789abc'
         source = ui.shim('index.php').replace(ui.RUNTIME.encode(),
             (ui.HOME + '/.a777-runtime-private/').encode() + component)
@@ -75,11 +75,14 @@ class ShimShape(unittest.TestCase):
         for flag in ('fixedPrivateParentPresent', 'expectedEntryMatched',
                      'rootInsideVerifiedAccount', 'producerWhitespaceEnvelopeMatched'):
             self.assertTrue(shape[flag])
-        self.assertEqual(shape['format'], 'unknown')
-        self.assertFalse(shape['accountScopedStructureMatched'])
+        self.assertEqual(shape['format'], 'private_relocation_exact')
+        self.assertTrue(shape['accountScopedStructureMatched'])
+        self.assertFalse(shape['historicalTemplateParity'])
+        self.assertFalse(shape['currentProducerProvenanceVerified'])
         self.assertNotIn(component.decode(), json.dumps(shape))
         self.assertNotIn(ui.HOME, json.dumps(shape))
-        with self.assertRaises(ui.Refusal): ui.parse_shim(source, 'index.php')
+        self.assertEqual(ui.parse_shim(source, 'index.php'),
+                         ui.HOME + '/.a777-runtime-private/' + component.decode())
         for bad in (source + b'noise', source.replace(b'\n', b'\r\n'),
                     source.replace(b'/public/index.php', b'/public/app.php'),
                     source.replace(component, b'..'),
@@ -133,8 +136,8 @@ class ShimShape(unittest.TestCase):
 
     def test_dynamic_grammar_rejects_unreviewed_paths(self):
         source = ui.shim('index.php')
-        for root in (ui.HOME + '/.a777-runtime-private/' + 'A' * 32,
-                     ui.HOME + '/.a777-runtime-private/' + 'a' * 33,
+        for root in (ui.HOME + '/.a777-runtime-private/' + 'A' * 129,
+                     ui.HOME + '/.a777-runtime-private/a.b',
                      '/home/other/.a777-runtime-private/' + 'a' * 32,
                      ui.HOME + '/public_html/' + 'a' * 32,
                      ui.RUNTIME + '/..', ui.RUNTIME + '/suffix'):
