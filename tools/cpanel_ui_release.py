@@ -186,13 +186,15 @@ def file_content_shape(data):
 
 
 def parse_shim(content, name):
-    # Whole reviewed template with an account-scoped root substitution only.
-    # This is structural discovery, NOT proof of the current producer's origin.
+    # Whole reviewed template with an account-scoped literal root substitution.
+    # Bounded ASCII is a lexical read-only policy, not an ID/producer/ownership
+    # contract. No UUID or hexadecimal semantics, native proof or write grant.
+    # All three entries and every authenticated docroot bind before private reads.
     need(name in ('index.php', 'app.php', 'legal.php'), 'entry_unknown')
     need(type(content) is bytes and len(content) <= SHIM_PARSE_LIMIT, 'published_shim_unknown')
     pattern = (rb"<\?php\ndeclare\(strict_types=1\);\numask\(0077\);\nrequire '" +
                re.escape((HOME + '/.a777-runtime-private/').encode('ascii')) +
-               rb"([0-9a-f]{32})/public/" + re.escape(name.encode('ascii')) + rb"';\n")
+               rb"([A-Za-z0-9_-]{1,128})/public/" + re.escape(name.encode('ascii')) + rb"';\n")
     match = re.fullmatch(pattern, content)
     need(match is not None, 'published_shim_unknown')
     return HOME + '/.a777-runtime-private/' + match[1].decode('ascii')
@@ -200,7 +202,7 @@ def parse_shim(content, name):
 
 def safe_path(path, runtime_root=None):
     need(runtime_root is None or (isinstance(runtime_root, str) and
-         re.fullmatch(re.escape(HOME + '/.a777-runtime-private/') + r'[0-9a-f]{32}', runtime_root)),
+         re.fullmatch(re.escape(HOME + '/.a777-runtime-private/') + r'[A-Za-z0-9_-]{1,128}', runtime_root)),
          'read_scope_refused')
     need(isinstance(path, str) and posixpath.normpath(path) == path and
          '\\' not in path and '\x00' not in path and
@@ -546,7 +548,7 @@ def inspect(client, candidate):
                  for root in report['documentRoots']), 'runtime_inside_document_root')
         client._inspection_bound_runtime = runtime
         report['shimStage'] = 'all_entries_bound'
-        report.update(runtimeRootBindingVerified=True, runtimeRootPolicy='account_scoped_structural_discovery_v2',
+        report.update(runtimeRootBindingVerified=True, runtimeRootPolicy='bounded_literal_read_only_discovery_v3',
                       boundShimCount=3, activeRuntimeSha256=digest(runtime.encode('ascii')))
         report['configSha256'] = digest(read_bytes(client, runtime + '/config/runtime.php'))
         metadata = json.loads(read_bytes(client, runtime + '/release.json'))
