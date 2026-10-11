@@ -213,7 +213,10 @@ class Contracts(unittest.TestCase):
                 'addon_domains': None, secret: {'domains': [secret]}}
         shape = ui.domain_shape(data)
         self.assertEqual(set(shape), {'topLevelType', 'groups', 'mainFieldPresence',
-                                     'maxDepth', 'typeCounts', 'traversalBounded'})
+                                     'maxDepth', 'typeCounts', 'traversalBounded',
+                                     'topLevelKeyCount', 'topLevelKeyCountBounded',
+                                     'requiredGroupsCount', 'additionalTopLevelTypeCounts',
+                                     'groupRowTypeCounts'})
         self.assertEqual(set(shape['groups']),
                          {'main_domain', 'sub_domains', 'addon_domains', 'parked_domains'})
         self.assertEqual(set(shape['mainFieldPresence']),
@@ -233,6 +236,24 @@ class Contracts(unittest.TestCase):
         for value, expected in (([], 'list'), (None, 'other'), (secret, 'other'), (7, 'other')):
             self.assertEqual(ui.domain_shape(value)['topLevelType'], expected)
 
+    def test_domain_shape_predicate_counts_never_export_extra_keys(self):
+        import json
+        secret = 'SECRET-provider-key-value'
+        data = self.hash_inventory()
+        data[secret] = [secret]
+        data['parked_domains'] = [secret, {}, []]
+        shape = ui.domain_shape(data)
+        self.assertEqual(shape['topLevelKeyCount'], 5)
+        self.assertEqual(shape['requiredGroupsCount'], 4)
+        self.assertEqual(shape['additionalTopLevelTypeCounts'], {'dict': 0, 'list': 1, 'other': 0})
+        self.assertEqual(shape['groupRowTypeCounts']['parked_domains'], {'dict': 1, 'list': 1, 'other': 1})
+        self.assertEqual(shape['groupRowTypeCounts']['main_domain'], {'dict': 1, 'list': 0, 'other': 0})
+        self.assertNotIn(secret, json.dumps(shape))
+        data['parked_domains'] = [secret] * 20001
+        shape = ui.domain_shape(data)
+        self.assertEqual(shape['groupRowTypeCounts']['parked_domains']['other'], 20000)
+        self.assertTrue(shape['groups']['parked_domains']['countBounded'])
+
     def test_domain_shape_bounded_depth_counts_and_cycles(self):
         shape = ui.domain_shape({'sub_domains': [None] * 20001})
         self.assertEqual(shape['groups']['sub_domains']['count'], 20000)
@@ -244,6 +265,37 @@ class Contracts(unittest.TestCase):
         self.assertEqual(shape['maxDepth'], 8)
         self.assertTrue(shape['traversalBounded'])
         self.assertEqual(shape['typeCounts']['dict'], 9)
+
+    def test_inventory_refusal_pins_first_fixed_predicate_before_files(self):
+        from unittest.mock import patch
+        from copy import deepcopy
+        base = self.hash_inventory()
+        cases = [(None, 'domain_inventory_keys'),
+                 (dict(base, opaque_metadata=[]), 'domain_inventory_keys'),
+                 (dict(base, main_domain=[]), 'domain_inventory_main'),
+                 (dict(base, sub_domains=None), 'domain_inventory_group'),
+                 (dict(base, parked_domains=['private-alias']), 'domain_inventory_row'),
+                 (dict(base, sub_domains=[{}] * 20000, addon_domains=[{}]), 'domain_inventory_total')]
+        for data, predicate in cases:
+            class Client:
+                def account_home(self): return ui.HOME
+                def _uapi(self, *args): return data
+            with self.subTest(predicate=predicate), patch.object(ui, 'read_bytes') as reader:
+                report = ui.inspect(Client(), {})
+                self.assertEqual(report['errorCode'], 'domain_inventory_unknown')
+                self.assertEqual(report.get('domainInventoryPredicate'), predicate)
+                self.assertFalse(report['inspectionComplete'])
+                reader.assert_not_called()
+        # A row-type fault must not preempt an earlier semantic row refusal.
+        data = deepcopy(base)
+        data['main_domain']['servername'] = None
+        data['parked_domains'] = ['private-alias']
+        class SemanticClient:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args): return data
+        report = ui.inspect(SemanticClient(), {})
+        self.assertEqual(report['errorCode'], 'domain_identity_unknown')
+        self.assertNotIn('domainInventoryPredicate', report)
 
     def test_failed_inventory_keeps_shape_and_old_refusal_before_files(self):
         import json

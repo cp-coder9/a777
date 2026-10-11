@@ -59,13 +59,14 @@ class InspectionClient(CpanelClient):
 
 
 class Refusal(Exception):
-    def __init__(self, code):
+    def __init__(self, code, *, predicate=None):
         self.code = code
+        self.predicate = predicate
 
 
-def need(value, code):
+def need(value, code, *, predicate=None):
     if not value:
-        raise Refusal(code)
+        raise Refusal(code, predicate=predicate)
 
 
 def digest(value):
@@ -163,8 +164,33 @@ def domain_shape(data):
                 break
             visit(child, depth + 1)
 
+    groups = ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')
+    additional = {'dict': 0, 'list': 0, 'other': 0}
+    row_counts = {}
+    if type(data) is dict:
+        for index, (name, value) in enumerate(data.items()):
+            if index == limit:
+                break
+            if name not in groups:
+                additional[kind(value)] += 1
+    for name in groups:
+        tally = {'dict': 0, 'list': 0, 'other': 0}
+        value = data.get(name) if type(data) is dict else None
+        entries = ([value] if name == 'main_domain' and type(data) is dict and name in data
+                   else value.values() if type(value) is dict
+                   else value if type(value) is list else ())
+        for index, row in enumerate(entries):
+            if index == limit:
+                break
+            tally[kind(row)] += 1
+        row_counts[name] = tally
     visit(data, 0)
     return {'topLevelType': kind(data),
+            'topLevelKeyCount': min(len(data), limit) if type(data) is dict else 0,
+            'topLevelKeyCountBounded': type(data) is dict and len(data) > limit,
+            'requiredGroupsCount': sum(name in data for name in groups) if type(data) is dict else 0,
+            'additionalTopLevelTypeCounts': additional,
+            'groupRowTypeCounts': row_counts,
             'groups': {name: group(name) for name in
                        ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')},
             'mainFieldPresence': {name: type(main) is dict and name in main for name in
@@ -194,23 +220,26 @@ def domain_roots(data, *, authenticated_home=None, metadata=None):
     target and no provider field is interpreted as native ownership proof.
     """
     groups = ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')
-    need(type(data) is dict and set(data) == set(groups) and
-         type(data['main_domain']) is dict, 'domain_inventory_unknown')
+    need(type(data) is dict and set(data) == set(groups), 'domain_inventory_unknown',
+         predicate='domain_inventory_keys')
+    need(type(data['main_domain']) is dict, 'domain_inventory_unknown',
+         predicate='domain_inventory_main')
     need(authenticated_home is None or authenticated_home == HOME, 'domain_account_unknown')
     rows: list[tuple[str, Any, Any]] = [('main_domain', None, data['main_domain'])]
     for category in groups[1:]:
         value: Any = data[category]
-        need(type(value) in (dict, list) and len(value) <= 20000, 'domain_inventory_unknown')
+        need(type(value) in (dict, list) and len(value) <= 20000, 'domain_inventory_unknown',
+             predicate='domain_inventory_group')
         if type(value) is dict:
             need(all(isinstance(key, str) for key in value), 'domain_identity_unknown')
         entries = value.items() if type(value) is dict else ((None, row) for row in value)
         rows.extend((category, key, row) for key, row in entries)
-    need(len(rows) <= 20000, 'domain_inventory_unknown')
+    need(len(rows) <= 20000, 'domain_inventory_unknown', predicate='domain_inventory_total')
     roots, targets, identities = [], [], set()
     missing_user = missing_home = 0
     name_owners, wildcard_aliases = {}, []
     for row_index, (category, key, row) in enumerate(rows):
-        need(type(row) is dict, 'domain_inventory_unknown')
+        need(type(row) is dict, 'domain_inventory_unknown', predicate='domain_inventory_row')
         domain = row.get('servername', row.get('domain'))
         identifier = row.get('domain', domain)
         for name in (domain, identifier):
@@ -371,6 +400,10 @@ def inspect(client, candidate):
     except Exception as error:
         report['inspectionComplete'] = False
         report['errorCode'] = error.code if type(error) is Refusal else 'provider_or_contract_failed'
+        if type(error) is Refusal and error.predicate in {
+                'domain_inventory_keys', 'domain_inventory_main', 'domain_inventory_group',
+                'domain_inventory_total', 'domain_inventory_row'}:
+            report['domainInventoryPredicate'] = error.predicate
     return report
 
 
