@@ -469,13 +469,73 @@ def manifest(data):
     return files
 
 
+def isolated_git(root, *args):
+    """Local Git only: deny inherited configuration and credential environment.
+
+    The private HOME and empty template/hooks directories also prevent clone
+    from installing executable hooks. Source attributes remain authoritative.
+    """
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='a777-git-sandbox-') as directory:
+        empty = Path(directory) / 'empty'
+        empty.mkdir()
+        safe = {'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR'}
+        environment = {key: value for key, value in os.environ.items() if key.upper() in safe}
+        environment.update(HOME=directory, USERPROFILE=directory,
+                           XDG_CONFIG_HOME=directory, GIT_CONFIG_NOSYSTEM='1',
+                           GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull,
+                           GIT_TERMINAL_PROMPT='0')
+        command = ['git', '-c', 'core.hooksPath=' + str(empty),
+            '-c', 'init.templateDir=' + str(empty), '-c', 'core.attributesFile=' + os.devnull,
+            '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false',
+            '-C', str(root)]
+        # Repository-local filter drivers are not inherited globals, but status
+        # can still invoke their clean/process commands. Discover keys without
+        # evaluating attributes or executing drivers, then shadow every driver.
+        configured = subprocess.run(command + ['config', '--name-only', '--get-regexp',
+            r'^filter\..*\.(clean|smudge|process|required)$'],
+            capture_output=True, env=environment)
+        need(configured.returncode in (0, 1), 'candidate_git_unknown')
+        drivers = {key.rsplit('.', 1)[0] for key in configured.stdout.decode().splitlines()}
+        for driver in sorted(drivers):
+            for setting in ('clean', 'smudge', 'process'):
+                command += ['-c', driver + '.' + setting + '=']
+            command += ['-c', driver + '.required=false']
+        return subprocess.run(command + list(args), capture_output=True, env=environment)
+
+
 def git(root, *args):
-    result = subprocess.run(['git', '-C', str(root), *args], capture_output=True)
+    result = isolated_git(root, *args)
     need(result.returncode == 0, 'candidate_git_unknown')
     return result.stdout
 
 
-def source_inventory(root):
+def windows_baseline_inventory(root, names):
+    """Hash actual clean Git checkout bytes, not normalized source or remote bytes."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix='a777-windows-baseline-') as directory:
+        checkout = Path(directory) / 'checkout'
+        result = isolated_git(Path(root).resolve(), 'clone', '--no-local', '--no-checkout',
+                              str(Path(root).resolve()), str(checkout))
+        need(result.returncode == 0, 'baseline_checkout_failed')
+        git(checkout, 'config', 'core.autocrlf', 'true')
+        git(checkout, 'config', 'core.eol', 'crlf')
+        git(checkout, 'checkout', '--detach', BASELINE)
+        need(git(checkout, 'rev-parse', 'HEAD').decode().strip() == BASELINE,
+             'baseline_checkout_commit_unknown')
+        need(not git(checkout, 'status', '--porcelain', '--untracked-files=all').strip(),
+             'baseline_checkout_dirty')
+        result = {}
+        for name in names:
+            path = checkout / name
+            need(not path.is_symlink(), 'baseline_checkout_symlink_refused')
+            if path.is_file():
+                body = path.read_bytes()
+                result[name] = {'baselineSha256': digest(body), 'baselineBytes': len(body)}
+        return result
+
+
+def source_inventory(root, baseline_line_endings='git'):
     need(not git(root, 'status', '--porcelain', '--untracked-files=all').strip(), 'candidate_checkout_dirty')
     git(root, 'rev-parse', '--verify', BASELINE + '^{commit}')
     commit = git(root, 'rev-parse', 'HEAD').decode().strip()
@@ -497,12 +557,21 @@ def source_inventory(root):
         inventory[name] = {'sha256': digest(content), 'bytes': len(content),
                            'baselineSha256': digest(old) if old is not None else None,
                            'baselineBytes': len(old) if old is not None else None}
+    need(baseline_line_endings in ('git', 'windows'), 'baseline_profile_unknown')
+    if baseline_line_endings == 'windows':
+        checked_out = windows_baseline_inventory(root, relevant)
+        for name, row in inventory.items():
+            if row['baselineSha256'] is not None:
+                need(name in checked_out, 'baseline_checkout_inventory_incomplete')
+                row.update(checked_out[name])
     # Include removals and prohibit all backend/bootstrap/Composer changes.
     immutable = ['app/src', 'app/database', 'app/cron', 'app/bin', 'app/config', 'app/bootstrap.php', 'composer.json', 'composer.lock']
     need(not git(root, 'diff', '--name-only', BASELINE, 'HEAD', '--', *immutable).strip(), 'backend_source_changed')
     changes = git(root, 'diff', '--name-only', BASELINE, 'HEAD', '--', 'app/public', 'app/views').decode().splitlines()
     need(all(n.startswith('app/public/') or n == 'app/views/v1-clone.php' for n in changes), 'ui_scope_changed')
     return {'commit': commit, 'files': inventory, 'changes': changes,
+            'baselineSourceProfile': baseline_line_endings,
+            'baselineSourceCommit': BASELINE,
             'inventorySha256': digest(json.dumps(inventory, sort_keys=True, separators=(',', ':')).encode())}
 
 
@@ -541,7 +610,10 @@ def inspect(client, candidate):
               'backupVerified': False, 'migrationLedgerVerified': False,
               'inspectionComplete': False, 'errorCode': None,
               'currentProducerProvenanceVerified': False,
-              'deploymentAuthorized': False}
+              'deploymentAuthorized': False,
+              'baselineSourceProfile': candidate.get('baselineSourceProfile', 'git'),
+              'baselineSourceCommit': candidate.get('baselineSourceCommit', BASELINE),
+              'sourceCopyProfileOnly': True}
     try:
         need(client.account_home() == HOME, 'account_identity_unknown')
         domain_metadata = {}
@@ -601,7 +673,8 @@ def inspect(client, candidate):
                 # inspection does not assert remote absence or overwrite safety.
                 continue
             need(relative in files, 'live_inventory_incomplete')
-            if files[relative]['sha256'] != expected:
+            if (files[relative]['sha256'] != expected or
+                    files[relative]['bytes'] != source.get('baselineBytes', files[relative]['bytes'])):
                 report['firstBaselineDifference'] = baseline_difference(relative, source, files[relative])
                 need(False, 'live_manifest_baseline_mismatch')
             actual = read_bytes(client, runtime + '/' + relative)
@@ -638,10 +711,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('mode', choices=['inspect'])
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--baseline-line-endings', choices=('git', 'windows'), default='git',
+                        help='Explicit source producer profile; never normalizes remote bytes.')
     args = parser.parse_args()
     os.umask(0o077)
     try:
-        candidate = source_inventory(Path(__file__).resolve().parents[1])
+        candidate = source_inventory(Path(__file__).resolve().parents[1], args.baseline_line_endings)
         need(os.environ.get('A777_CPANEL_HOST') == 'cp73.domains.co.za' and
              os.environ.get('A777_CPANEL_PORT') == '2083' and
              os.environ.get('A777_CPANEL_USER') == 'archite4' and
