@@ -78,6 +78,73 @@ def shim(name):
     return ("<?php\ndeclare(strict_types=1);\numask(0077);\nrequire '" + RUNTIME + '/public/' + name + "';\n").encode()
 
 
+def shim_shape(content, name):
+    """Observe bytes only; no evaluation, normalization or new accepted form.
+
+    Source chain: PrivateRuntimeRelocation::shim -> legacyShim ->
+    NativeDeployment::publicShim. Both replacements preserve every other byte.
+    Unknown source literals never leave this function.
+    """
+    expected = shim(name)
+    legacy = expected.replace(b'umask(0077);\n', b'')
+    old_root = HOME + '/public_html/.a777-runtime-active'
+    native = legacy.replace(RUNTIME.encode('ascii'), old_root.encode('ascii'))
+    forms = {expected: 'private_relocation_exact', legacy: 'private_legacy_exact',
+             native: 'native_active_exact'}
+    crlf = content.count(b'\r\n')
+    lf = content.count(b'\n')
+    bare_cr = content.count(b'\r') - crlf
+    return {'byteCount': len(content), 'sha256': digest(content),
+            'crlfCount': crlf, 'lfCount': lf, 'bareCrCount': bare_cr,
+            'finalNewline': content.endswith(b'\n'),
+            'bomPresent': content.startswith(b'\xef\xbb\xbf'),
+            'lineEndings': ('mixed' if bare_cr or (crlf and lf != crlf) else
+                            'crlf' if crlf else 'lf' if lf else 'none'),
+            'headerMatched': content.startswith(b'<?php\ndeclare(strict_types=1);\n'),
+            'phpOpenCount': content.count(b'<?php'),
+            'declareCount': content.count(b'declare(strict_types=1);'),
+            'umaskCount': content.count(b'umask(0077);'),
+            'literalRequireCount': len(re.findall(rb"require '[^'\r\n]*';", content)),
+            'knownPrivateRootPresent': RUNTIME.encode('ascii') in content,
+            'oldActiveRootPresent': old_root.encode('ascii') in content,
+            'format': forms.get(content, 'unknown'),
+            'exactProducerMatched': content == expected}
+
+
+def file_content_shape(data):
+    """Fixed encoding flags, never provider values/keys or file content.
+
+    get_file_content returns a JSON string, not a base64 payload. Schema/example:
+    https://api.docs.cpanel.net/specifications/cpanel.openapi/manage-files/get_file_content
+    Its example uses from_char/to_char (and nullable from_charset/to_charset).
+    The request
+    explicitly converts ISO-8859-1 to UTF-8; encoding the decoded JSON string
+    as Latin-1 reverses that conversion without newline/BOM normalization.
+    """
+    is_dict = type(data) is dict
+    content = data.get('content') if is_dict else None
+    reversible = False
+    if type(content) is str:
+        try:
+            content.encode('latin-1')
+            reversible = True
+        except UnicodeError:
+            pass
+    return {'dataType': 'dict' if is_dict else 'other',
+            'contentPresent': is_dict and 'content' in data,
+            'contentType': 'str' if type(content) is str else 'other',
+            'latin1Reversible': reversible,
+            'fromCharPresent': is_dict and 'from_char' in data,
+            'toCharPresent': is_dict and 'to_char' in data,
+            'fromCharMatchesRequest': is_dict and data.get('from_char') == 'ISO-8859-1',
+            'toCharMatchesRequest': is_dict and data.get('to_char') == 'UTF-8',
+            'fromCharsetPresent': is_dict and 'from_charset' in data,
+            'toCharsetPresent': is_dict and 'to_charset' in data,
+            'fromCharsetMatchesRequest': is_dict and data.get('from_charset') == 'ISO-8859-1',
+            'toCharsetMatchesRequest': is_dict and data.get('to_charset') == 'UTF-8',
+            'contract': 'json_string_latin1_to_utf8_no_base64'}
+
+
 def parse_shim(content, name):
     # Entire source equals the reviewed CpanelPrivateRuntimeRelocation::shim
     # producer. No regex suffix extraction, PHP execution or arbitrary include.
@@ -111,6 +178,10 @@ def read_bytes(client, path):
         'dir': posixpath.dirname(path), 'file': posixpath.basename(path),
         'from_charset': 'ISO-8859-1', 'to_charset': 'UTF-8',
         'update_html_document_encoding': '0'})
+    # Retain only a fixed shape for an allowlisted public entry. No provider
+    # response (including path/filename/unknown fields) is retained or exported.
+    if path in {DOCROOT + '/' + name for name in ('index.php', 'app.php', 'legal.php')}:
+        client._inspection_shim_encoding = file_content_shape(data)
     need(isinstance(data, dict) and isinstance(data.get('content'), str), 'file_content_unknown')
     try:
         return data['content'].encode('latin-1')
@@ -395,7 +466,21 @@ def inspect(client, candidate):
             authenticated_home=HOME, metadata=domain_metadata)
         report['domainAccountMetadata'] = domain_metadata
         for name in ('index.php', 'app.php', 'legal.php'):
-            parse_shim(read_bytes(client, DOCROOT + '/' + name), name)
+            report['shimEntry'] = name
+            report['shimStage'] = 'fileman_read'
+            client._inspection_shim_encoding = None
+            report.pop('shimShape', None)
+            report.pop('shimEncoding', None)
+            try:
+                content = read_bytes(client, DOCROOT + '/' + name)
+            finally:
+                encoding = getattr(client, '_inspection_shim_encoding', None)
+                if encoding is not None:
+                    report['shimEncoding'] = encoding
+            report['shimShape'] = shim_shape(content, name)
+            report['shimStage'] = 'producer_binding'
+            parse_shim(content, name)
+        report['shimStage'] = 'all_entries_bound'
         report['shimBoundRuntime'] = RUNTIME
         report['configSha256'] = digest(read_bytes(client, RUNTIME + '/config/runtime.php'))
         metadata = json.loads(read_bytes(client, RUNTIME + '/release.json'))
