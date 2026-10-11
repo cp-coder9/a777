@@ -7,6 +7,7 @@ conversion is reversed in memory so binary files are not hashed as JSON text.
 Provider metadata is NOT native canonical-path, ownership or link proof.
 """
 import argparse
+from fnmatch import fnmatchcase
 import hashlib
 import json
 import os
@@ -14,6 +15,7 @@ from pathlib import Path
 import posixpath
 import re
 import subprocess
+from typing import Any
 from cpanel_client import CpanelClient, CpanelConfig
 
 HOME = '/home/archite4'
@@ -115,26 +117,94 @@ def read_bytes(client, path):
         raise Refusal('file_encoding_unknown') from None
 
 
-def domain_roots(data):
-    need(isinstance(data, dict) and isinstance(data.get('main_domain'), dict), 'domain_inventory_unknown')
-    rows = [data['main_domain']]
-    for category in ('sub_domains', 'addon_domains', 'parked_domains'):
-        need(isinstance(data.get(category), list), 'domain_inventory_unknown')
-        rows.extend(data[category])
-    roots, targets = [], []
-    for row in rows:
-        need(isinstance(row, dict), 'domain_inventory_unknown')
+def domain_roots(data, *, authenticated_home=None, metadata=None):
+    """Complete account inventory, not native-stage's target-only filter.
+
+    https://api.docs.cpanel.net/openapi/cpanel/operation/domains_data/
+    format=hash returns objects by domain type; userdata fields may be absent.
+    Missing categories do NOT establish emptiness, so all four remain required.
+    Only one-level domain maps and legacy row lists are accepted, never recursive
+    searching that could silently skip an opaque entry. Missing user/home is
+    unknown metadata, bound only by the prior authenticated Variables read.
+
+    The documented addon example has domain=exampledomain.com and
+    servername=subdomain.example.com: the addon identifier (and hash key when
+    present) is distinct from its canonical vhost. Both are literal hosts and
+    both participate in cross-row identity/alias collision checks. Only the
+    addon group permits this distinction; main/sub/parked identifiers remain
+    canonical-consistent. Absent domain uses servername, never a guessed key.
+    Target binding requires an explicit servername=DOMAIN, a consistent domain
+    and map key, a non-parked producer group and exactly DOCROOT. Every row's
+    root/account is validated, including unrelated addons; no alias binds a
+    target and no provider field is interpreted as native ownership proof.
+    """
+    groups = ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')
+    need(type(data) is dict and set(data) == set(groups) and
+         type(data['main_domain']) is dict, 'domain_inventory_unknown')
+    need(authenticated_home is None or authenticated_home == HOME, 'domain_account_unknown')
+    rows: list[tuple[str, Any, Any]] = [('main_domain', None, data['main_domain'])]
+    for category in groups[1:]:
+        value: Any = data[category]
+        need(type(value) in (dict, list) and len(value) <= 20000, 'domain_inventory_unknown')
+        if type(value) is dict:
+            need(all(isinstance(key, str) for key in value), 'domain_identity_unknown')
+        entries = value.items() if type(value) is dict else ((None, row) for row in value)
+        rows.extend((category, key, row) for key, row in entries)
+    need(len(rows) <= 20000, 'domain_inventory_unknown')
+    roots, targets, identities = [], [], set()
+    missing_user = missing_home = 0
+    name_owners, wildcard_aliases = {}, []
+    for row_index, (category, key, row) in enumerate(rows):
+        need(type(row) is dict, 'domain_inventory_unknown')
+        domain = row.get('servername', row.get('domain'))
+        identifier = row.get('domain', domain)
+        for name in (domain, identifier):
+            need(isinstance(name, str) and len(name) <= 253 and
+                 re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', name) and
+                 all(label and len(label) <= 63 and not label.startswith('-') and
+                     not label.endswith('-') for label in name.split('.')),
+                 'domain_identity_unknown')
+        need((key is None or key == identifier) and
+             (category == 'addon_domains' or identifier == domain), 'domain_identity_unknown')
+        row_identities = {domain, identifier}
+        need(not identities.intersection(row_identities), 'domain_identity_unknown')
+        identities.update(row_identities)
+        need(identifier != DOMAIN or domain == DOMAIN, 'domain_identity_unknown')
+        # Same-row addon identifier/servername aliases are intentional; names
+        # belonging to any other inventory row must never collide.
+        aliases = row.get('serveralias', '')
+        need(isinstance(aliases, str), 'domain_identity_unknown')
+        for name in row_identities | {alias.lower() for alias in aliases.split()}:
+            if any(char in name for char in '*?['):
+                wildcard_aliases.append((row_index, name))
+            else:
+                need(name_owners.get(name, row_index) == row_index, 'domain_identity_unknown')
+                name_owners[name] = row_index
+        if domain != DOMAIN:
+            need(not any(fnmatchcase(DOMAIN, alias.lower()) for alias in aliases.split()),
+                 'domain_identity_unknown')
         root = row.get('documentroot')
         need(isinstance(root, str) and root.startswith(HOME + '/') and
              posixpath.normpath(root) == root and '\\' not in root and '\x00' not in root,
              'domain_root_unknown')
-        need(row.get('homedir') == HOME and row.get('user') == 'archite4', 'domain_account_unknown')
+        for field, expected in (('homedir', HOME), ('user', 'archite4')):
+            need(row[field] == expected if field in row else authenticated_home == HOME,
+                 'domain_account_unknown')
+        missing_user += 'user' not in row
+        missing_home += 'homedir' not in row
         need(not (RUNTIME == root or RUNTIME.startswith(root + '/') or root.startswith(RUNTIME + '/')),
              'private_root_overlaps_documentroot')
         roots.append(root)
-        if row.get('domain') == DOMAIN:
+        if domain == DOMAIN:
+            need(row.get('servername') == DOMAIN and identifier == DOMAIN and
+                 category in ('main_domain', 'sub_domains', 'addon_domains'), 'domain_identity_unknown')
             targets.append(root)
+    for owner, pattern in wildcard_aliases:
+        need(not any(other != owner and fnmatchcase(name, pattern)
+                     for name, other in name_owners.items()), 'domain_identity_unknown')
     need(targets == [DOCROOT], 'serving_root_unknown')
+    if metadata is not None:
+        metadata.update(rowCount=len(rows), missingUserCount=missing_user, missingHomeCount=missing_home)
     return sorted(set(roots))
 
 
@@ -193,7 +263,11 @@ def inspect(client, candidate):
               'inspectionComplete': False, 'errorCode': None}
     try:
         need(client.account_home() == HOME, 'account_identity_unknown')
-        report['documentRoots'] = domain_roots(client._uapi('DomainInfo', 'domains_data', {'format': 'hash'}))
+        domain_metadata = {}
+        report['documentRoots'] = domain_roots(client._uapi('DomainInfo', 'domains_data',
+            {'format': 'hash', 'hide_temporary_domains': '0'}),
+            authenticated_home=HOME, metadata=domain_metadata)
+        report['domainAccountMetadata'] = domain_metadata
         for name in ('index.php', 'app.php', 'legal.php'):
             parse_shim(read_bytes(client, DOCROOT + '/' + name), name)
         report['shimBoundRuntime'] = RUNTIME

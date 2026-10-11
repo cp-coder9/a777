@@ -16,14 +16,193 @@ class Contracts(unittest.TestCase):
         with self.assertRaises(ui.Refusal): ui.parse_shim(ui.shim('index.php'), 'app.php')
 
     def test_full_domain_inventory(self):
-        row = {'domain': ui.DOMAIN, 'documentroot': ui.DOCROOT, 'homedir': ui.HOME, 'user': 'archite4'}
-        data = {'main_domain': dict(row, domain='architex.co.za', documentroot=ui.HOME+'/public_html'),
+        row = {'domain': ui.DOMAIN, 'servername': ui.DOMAIN, 'documentroot': ui.DOCROOT, 'homedir': ui.HOME, 'user': 'archite4'}
+        data = {'main_domain': dict(row, domain='architex.co.za', servername='architex.co.za', documentroot=ui.HOME+'/public_html'),
                 'sub_domains': [row], 'addon_domains': [], 'parked_domains': []}
         self.assertEqual(len(ui.domain_roots(data)), 2)
         for root in (ui.RUNTIME, ui.HOME, ui.RUNTIME+'/public', ui.HOME+'/x/../public_html'):
             bad = dict(data, addon_domains=[dict(row, domain='other.test', documentroot=root)])
             with self.assertRaises(ui.Refusal): ui.domain_roots(bad)
         with self.assertRaises(ui.Refusal): ui.domain_roots(dict(data, parked_domains=None))
+
+    @staticmethod
+    def hash_inventory():
+        # Synthetic fixture shaped by official format=hash and the existing
+        # native-stage servername producer; NOT a captured hosting response.
+        return {'main_domain': {'servername': 'architex.co.za',
+                    'documentroot': ui.HOME + '/public_html'},
+                'sub_domains': {ui.DOMAIN: {'servername': ui.DOMAIN,
+                    'documentroot': ui.DOCROOT, 'user': 'archite4'}},
+                'addon_domains': {'other.example': {'servername': 'other.example',
+                    'documentroot': ui.HOME + '/other'}}, 'parked_domains': {}}
+
+    def test_documented_hash_retains_every_root_and_unknown_metadata(self):
+        data = self.hash_inventory()
+        metadata = {}
+        self.assertEqual(ui.domain_roots(data, authenticated_home=ui.HOME, metadata=metadata),
+                         sorted([ui.HOME+'/public_html', ui.DOCROOT, ui.HOME+'/other']))
+        self.assertEqual(metadata, {'rowCount': 3, 'missingUserCount': 2, 'missingHomeCount': 3})
+        with self.assertRaises(ui.Refusal): ui.domain_roots(data)
+        with self.assertRaises(ui.Refusal): ui.domain_roots(data, authenticated_home='/home/other')
+
+    @classmethod
+    def documented_addon_inventory(cls):
+        # Official domains_data example: addon domain is NOT its servername.
+        # Account/root adapted locally; synthetic, not a hosting response.
+        data = cls.hash_inventory()
+        data['addon_domains'] = {'exampledomain.com': {
+            'domain': 'exampledomain.com', 'servername': 'subdomain.example.com',
+            'serveralias': 'exampledomain.com www.exampledomain.com www.subdomain.example.com',
+            'documentroot': ui.HOME + '/public_html/subdomain', 'type': 'addon_domain'}}
+        return data
+
+    def test_documented_addon_identity_retains_root_and_metadata(self):
+        for as_list in (False, True):
+            data = self.documented_addon_inventory()
+            with self.subTest(as_list=as_list):
+                if as_list:
+                    data['addon_domains'] = list(data['addon_domains'].values())
+                metadata = {}
+                self.assertEqual(ui.domain_roots(data, authenticated_home=ui.HOME, metadata=metadata),
+                    sorted([ui.HOME + '/public_html', ui.DOCROOT, ui.HOME + '/public_html/subdomain']))
+                self.assertEqual(metadata, {'rowCount': 3, 'missingUserCount': 2, 'missingHomeCount': 3})
+
+    def test_target_requires_explicit_consistent_canonical_identity(self):
+        from copy import deepcopy
+        cases = []
+        bad = self.hash_inventory()
+        del bad['sub_domains'][ui.DOMAIN]['servername']
+        bad['sub_domains'][ui.DOMAIN]['domain'] = ui.DOMAIN
+        cases.append(bad)
+        bad = self.hash_inventory()
+        target = bad['sub_domains'].pop(ui.DOMAIN)
+        bad['addon_domains'] = {'foreign.example': dict(target, domain='foreign.example')}
+        cases.append(bad)
+        bad = self.hash_inventory()
+        bad['parked_domains'] = bad['sub_domains']; bad['sub_domains'] = {}
+        cases.append(bad)
+        for bad in cases:
+            with self.subTest(case=deepcopy(bad)), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+
+    def test_addon_aliases_cannot_claim_other_rows(self):
+        from copy import deepcopy
+        base = self.documented_addon_inventory()
+        cases = []
+        for alias in ('architex.co.za', 'ARCHITEX.CO.ZA', '*.co.za'):
+            bad = deepcopy(base)
+            bad['addon_domains']['exampledomain.com']['serveralias'] = alias
+            cases.append(bad)
+        bad = deepcopy(base)
+        bad['main_domain']['serveralias'] = 'exampledomain.com'
+        cases.append(bad)
+        bad = deepcopy(base)
+        bad['main_domain']['serveralias'] = 'shared.example'
+        bad['addon_domains']['exampledomain.com']['serveralias'] = 'shared.example'
+        cases.append(bad)
+        for bad in cases:
+            with self.subTest(case=bad), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+
+    def test_documented_addon_fail_closed_and_all_roots_checked(self):
+        from copy import deepcopy
+        base = self.documented_addon_inventory()
+        mutations = [('domain', 'bad..example'), ('domain', None), ('domain', '*.example'),
+            ('servername', 'bad..example'), ('servername', 'EXAMPLE.com'), ('servername', None),
+            ('documentroot', '/home/foreign/public_html'), ('documentroot', ui.HOME),
+            ('documentroot', ui.RUNTIME), ('documentroot', ui.RUNTIME + '/public'),
+            ('documentroot', ui.HOME + '/.a777-runtime-private'),
+            ('homedir', '/home/foreign'), ('user', 'foreign'),
+            ('domain', ui.DOMAIN), ('servername', ui.DOMAIN),
+            ('domain', 'architex.co.za'), ('servername', 'architex.co.za')]
+        for field, value in mutations:
+            bad = deepcopy(base)
+            row = bad['addon_domains']['exampledomain.com']
+            row[field] = value
+            # Identity mutations use the matching map key to exercise the
+            # actual collision/hostname contract, not merely a key mismatch.
+            if field == 'domain' and isinstance(value, str):
+                bad['addon_domains'] = {value: row}
+            with self.subTest(field=field, value=value), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+        for key in ('subdomain.example.com', 'wrong.example', 7, None):
+            bad = deepcopy(base)
+            row = bad['addon_domains'].pop('exampledomain.com')
+            bad['addon_domains'][key] = row
+            with self.subTest(key=key), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+        for group in ('main_domain', 'sub_domains'):
+            bad = deepcopy(base)
+            row = bad['addon_domains'].pop('exampledomain.com')
+            if group == 'main_domain':
+                bad[group] = row
+            else:
+                bad[group]['exampledomain.com'] = row
+            with self.subTest(group=group), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+        with self.assertRaises(ui.Refusal):
+            ui.domain_roots(base)
+        with self.assertRaises(ui.Refusal):
+            ui.domain_roots(base, authenticated_home='/home/foreign')
+
+    def test_hash_inventory_fail_closed(self):
+        from copy import deepcopy
+        base = self.hash_inventory()
+        cases = []
+        for group in ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains'):
+            bad = deepcopy(base); del bad[group]; cases.append(bad)
+            bad = deepcopy(base); bad[group] = None; cases.append(bad)
+        for field, value in [('user', 'other'), ('homedir', '/home/other'),
+                             ('user', None), ('homedir', None),
+                             ('domain', 'conflicting.example'), ('servername', 'wrong.example'),
+                             ('documentroot', '/home/other/public_html'),
+                             ('documentroot', ui.RUNTIME), ('documentroot', ui.RUNTIME+'/public'),
+                             ('documentroot', ui.HOME), ('documentroot', ui.HOME+'/a/../b'),
+                             ('serveralias', ui.DOMAIN),
+                             ('serveralias', ui.DOMAIN.upper()),
+                             ('serveralias', '*.architex.co.za')]:
+            bad = deepcopy(base); bad['addon_domains']['other.example'][field] = value; cases.append(bad)
+        for value in ('opaque', [base['main_domain']], {'nested': base['main_domain']}, {}, 7):
+            bad = deepcopy(base); bad['addon_domains']['other.example'] = value; cases.append(bad)
+        bad = deepcopy(base); bad['unknown_domains'] = {}; cases.append(bad)
+        bad = deepcopy(base); bad['parked_domains'] = [dict(base['sub_domains'][ui.DOMAIN])]; cases.append(bad)
+        for bad in cases:
+            with self.subTest(case=bad), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+
+    def test_hash_inventory_bounds_and_list_compatibility(self):
+        data = self.hash_inventory()
+        data['sub_domains'] = list(data['sub_domains'].values())
+        data['addon_domains'] = list(data['addon_domains'].values())
+        self.assertEqual(len(ui.domain_roots(data, authenticated_home=ui.HOME)), 3)
+        for group, value in [('sub_domains', [data['sub_domains'][0]] * 20001),
+                             ('main_domain', {}), ('addon_domains', []),
+                             ('parked_domains', {'other.example': {
+                                 'servername': 'other.example',
+                                 'documentroot': ui.HOME+'/.a777-runtime-private'}})]:
+            bad = self.hash_inventory()
+            bad[group] = value
+            if group == 'addon_domains':
+                bad['sub_domains'] = []  # exact target cannot disappear
+            with self.subTest(group=group), self.assertRaises(ui.Refusal):
+                ui.domain_roots(bad, authenticated_home=ui.HOME)
+
+    def test_inspection_hash_account_binding_before_file_reads(self):
+        from unittest.mock import patch
+        data = self.hash_inventory()
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args): return data
+        with patch.object(ui, 'read_bytes', side_effect=ui.Refusal('stop_after_inventory')) as reader:
+            report = ui.inspect(Client(), {})
+            self.assertEqual(report['errorCode'], 'stop_after_inventory')
+            self.assertEqual(report['domainAccountMetadata']['missingHomeCount'], 3)
+            self.assertEqual(reader.call_count, 1)
+            data['addon_domains']['other.example']['user'] = 'foreign'
+            reader.reset_mock()
+            report = ui.inspect(Client(), {})
+            self.assertEqual(report['errorCode'], 'domain_account_unknown')
+            reader.assert_not_called()
 
     def test_manifest_rejects_secret_and_arbitrary_paths(self):
         good = {'format': 'architex-release-manifest-v1', 'version': 'v1', 'files':
@@ -137,7 +316,7 @@ class Contracts(unittest.TestCase):
         candidate = {'commit': 'b'*40, 'inventorySha256': 'c'*64,
                      'changes': ['app/public/theme.css', 'app/views/app.php'],
                      'files': {'app/src/a.php': {'sha256': expected, 'bytes': len(body), 'baselineSha256': expected}}}
-        row = {'domain': ui.DOMAIN, 'documentroot': ui.DOCROOT, 'homedir': ui.HOME, 'user': 'archite4'}
+        row = {'domain': ui.DOMAIN, 'servername': ui.DOMAIN, 'documentroot': ui.DOCROOT, 'homedir': ui.HOME, 'user': 'archite4'}
         class Client:
             def account_home(self): return ui.HOME
             def _uapi(self, module, function, params):
