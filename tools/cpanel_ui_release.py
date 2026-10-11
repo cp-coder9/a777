@@ -494,7 +494,9 @@ def source_inventory(root):
             old = git(root, 'show', BASELINE + ':' + name)
         except Refusal:
             old = None
-        inventory[name] = {'sha256': digest(content), 'bytes': len(content), 'baselineSha256': digest(old) if old is not None else None}
+        inventory[name] = {'sha256': digest(content), 'bytes': len(content),
+                           'baselineSha256': digest(old) if old is not None else None,
+                           'baselineBytes': len(old) if old is not None else None}
     # Include removals and prohibit all backend/bootstrap/Composer changes.
     immutable = ['app/src', 'app/database', 'app/cron', 'app/bin', 'app/config', 'app/bootstrap.php', 'composer.json', 'composer.lock']
     need(not git(root, 'diff', '--name-only', BASELINE, 'HEAD', '--', *immutable).strip(), 'backend_source_changed')
@@ -502,6 +504,30 @@ def source_inventory(root):
     need(all(n.startswith('app/public/') or n == 'app/views/v1-clone.php' for n in changes), 'ui_scope_changed')
     return {'commit': commit, 'files': inventory, 'changes': changes,
             'inventorySha256': digest(json.dumps(inventory, sort_keys=True, separators=(',', ':')).encode())}
+
+
+def baseline_difference(relative, source, row, actual=None):
+    """Content-free first-difference evidence; never export private/config paths."""
+    if not (re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*', relative) and
+            '..' not in relative.split('/') and
+            (relative.startswith(('public/', 'views/', 'src/', 'database/', 'cron/', 'bin/')) or
+             relative in ('bootstrap.php', 'composer.lock')) and
+            not any(part.startswith('.') and part != '.htaccess' or
+                    any(word in part.lower() for word in ('credential', 'secret', 'password', '.env'))
+                    for part in relative.split('/'))):
+        return {'stage': 'manifest_vs_baseline' if actual is None else 'actual_vs_baseline',
+                'pathReported': False, 'actualRead': actual is not None}
+    return {'stage': 'manifest_vs_baseline' if actual is None else 'actual_vs_baseline',
+            'pathReported': True, 'relativePath': relative,
+            'expectedSha256': source['baselineSha256'],
+            'expectedBytes': source.get('baselineBytes'),
+            'manifestSha256': row['sha256'], 'manifestBytes': row['bytes'],
+            'actualRead': actual is not None,
+            'actualSha256': digest(actual) if actual is not None else None,
+            'actualBytes': len(actual) if actual is not None else None,
+            'manifestMatchesExpected': row['sha256'] == source['baselineSha256'],
+            'actualMatchesManifest': (digest(actual) == row['sha256'] and len(actual) == row['bytes'])
+                if actual is not None else None}
 
 
 def inspect(client, candidate):
@@ -575,9 +601,13 @@ def inspect(client, candidate):
                 # inspection does not assert remote absence or overwrite safety.
                 continue
             need(relative in files, 'live_inventory_incomplete')
-            need(expected is not None and files[relative]['sha256'] == expected, 'live_manifest_baseline_mismatch')
+            if files[relative]['sha256'] != expected:
+                report['firstBaselineDifference'] = baseline_difference(relative, source, files[relative])
+                need(False, 'live_manifest_baseline_mismatch')
             actual = read_bytes(client, runtime + '/' + relative)
-            need(digest(actual) == expected and len(actual) == files[relative]['bytes'], 'live_bytes_baseline_mismatch')
+            if digest(actual) != expected or len(actual) != files[relative]['bytes']:
+                report['firstBaselineDifference'] = baseline_difference(relative, source, files[relative], actual)
+                need(False, 'live_bytes_baseline_mismatch')
             hashes[relative] = digest(actual)
             if relative.startswith('public/') and not relative.endswith('.php') and relative != 'public/.htaccess':
                 need(digest(read_bytes(client, DOCROOT + '/' + relative[7:])) == expected, 'published_static_baseline_mismatch')
