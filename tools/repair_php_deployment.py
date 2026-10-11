@@ -239,15 +239,20 @@ class DeploymentOrchestrator:
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
 
     def deploy(self) -> DeploymentResult:
+        stage = "verify_local_release"
         try:
-            self._verify_local_release()
-            self._verify_account_and_paths()
-            self._stage_archive()
-            self._write_private_runtime()
-            self._run_preflight()
-            self._cutover()
-            self._refresh_routing()
-            self._verify_live()
+            # Enumerated local stages; capture the failure before recovery runs.
+            for stage, action in (
+                ("verify_local_release", self._verify_local_release),
+                ("verify_account_and_paths", self._verify_account_and_paths),
+                ("stage_archive", self._stage_archive),
+                ("write_private_runtime", self._write_private_runtime),
+                ("preflight", self._run_preflight),
+                ("cutover", self._cutover),
+                ("refresh_routing", self._refresh_routing),
+                ("verify_live", self._verify_live),
+            ):
+                action()
         except Exception as error:
             rollback_error: Exception | None = None
             if self.completed_renames:
@@ -260,7 +265,7 @@ class DeploymentOrchestrator:
                 self._cleanup_temporary_files()
             except DeploymentFailure as caught:
                 cleanup_error = caught
-            detail = str(error)
+            detail = f"stage={stage} {error}"
             if rollback_error is not None:
                 detail += f" Rollback also failed: {rollback_error}"
                 detail += " Pending recovery renames: " + json.dumps(self.completed_renames)

@@ -186,12 +186,34 @@ class CpanelClient:
         body: bytes | None = None,
         headers: Mapping[str, str] | None = None,
     ) -> object:
-        payload = self._request_json("POST" if body is not None else "GET", f"/execute/{module}/{function}", params, body, headers)
+        # Diagnostic identities are literals, never request/provider values.
+        operations = {
+            ("Variables", "get_user_information"): "Variables/get_user_information",
+            ("Fileman", "list_files"): "Fileman/list_files",
+            ("Fileman", "upload_files"): "Fileman/upload_files",
+            ("Fileman", "get_file_content"): "Fileman/get_file_content",
+            ("Fileman", "save_file_content"): "Fileman/save_file_content",
+        }
+        operation = operations.get((module, function), "unknown")
+        try:
+            payload = self._request_json("POST" if body is not None else "GET", f"/execute/{module}/{function}", params, body, headers)
+        except CpanelError as error:
+            # Only retain our fixed transport categories and numeric HTTP status.
+            message = str(error)
+            safe_messages = {
+                "cPanel transport or JSON contract failed.",
+                "cPanel did not return a JSON object.",
+                "Deployment HTTP redirect refused.",
+            }
+            if message not in safe_messages and re.fullmatch(r"cPanel returned HTTP [0-9]{3}\.", message) is None:
+                message = "cPanel transport or JSON contract failed."
+            raise CpanelError(f"{message} operation={operation}") from None
         wrapped = payload.get("result")
         result = wrapped if isinstance(wrapped, dict) else payload
         if not isinstance(result, dict) or result.get("status") != 1:
-            detail = result.get("errors") if isinstance(result, dict) else "malformed result"
-            raise CpanelError("cPanel UAPI operation failed.")
+            status = result.get("status") if isinstance(result, dict) else None
+            safe_status = str(status) if type(status) is int else "unknown"
+            raise CpanelError(f"cPanel UAPI operation failed. operation={operation} uapiStatus={safe_status}") from None
         return result.get("data")
 
     def _api2(self, function: str, params: Mapping[str, str]) -> object:
