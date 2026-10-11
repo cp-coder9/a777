@@ -102,7 +102,6 @@ test('same-scope inspection failure restores action and retains finding',async t
 });
 for(const outcome of ['resolve','reject'])for(const lifecycle of ['scope','removed','replaced'])test('pending inspection '+outcome+' ignores stale '+lifecycle+' UI',async t=>{
  const page=await pageFor(t,'safety'),f=page.frameLocator('iframe');
- 
  await page.evaluate(outcome=>{context.write=()=>new Promise((resolve,reject)=>{window.settleWrite=()=>outcome==='resolve'?resolve({id:'a'.repeat(32)}):reject(Error('Deferred failure'));});},outcome);
  await f.locator('[data-site-create]').click();await page.getByRole('dialog',{name:'Draft internal inspection'}).getByLabel('Inspection finding',{exact:true}).fill('Retained finding');await page.getByRole('dialog').getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('dialog',{name:'Save draft inspection'}).getByRole('button',{name:'Save draft',exact:true}).click();
  await page.waitForFunction(()=>!!window.settleWrite);
