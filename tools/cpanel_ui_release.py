@@ -23,6 +23,8 @@ DOMAIN = 'php.architex.co.za'
 DOCROOT = HOME + '/public_html/' + DOMAIN
 RUNTIME = HOME + '/.a777-runtime-private/7eee8a25050fadb3d36b74c40f485061'
 BASELINE = '6f21a24c6fc7bca06b14d4d48d352d12135a2f9f'
+SHIM_OBSERVATION_LIMIT = 4096
+SHIM_PARSE_LIMIT = 1024
 
 
 class InspectionClient(CpanelClient):
@@ -85,6 +87,8 @@ def shim_shape(content, name):
     NativeDeployment::publicShim. Both replacements preserve every other byte.
     Unknown source literals never leave this function.
     """
+    if len(content) > SHIM_OBSERVATION_LIMIT:
+        return {'oversize': True}
     expected = shim(name)
     legacy = expected.replace(b'umask(0077);\n', b'')
     old_root = HOME + '/public_html/.a777-runtime-active'
@@ -94,6 +98,12 @@ def shim_shape(content, name):
     crlf = content.count(b'\r\n')
     lf = content.count(b'\n')
     bare_cr = content.count(b'\r') - crlf
+    try:
+        parse_shim(content, name)
+        forms[content] = 'private_relocation_exact'
+        structural_matched = True
+    except Refusal:
+        structural_matched = False
     return {'byteCount': len(content), 'sha256': digest(content),
             'crlfCount': crlf, 'lfCount': lf, 'bareCrCount': bare_cr,
             'finalNewline': content.endswith(b'\n'),
@@ -108,7 +118,9 @@ def shim_shape(content, name):
             'knownPrivateRootPresent': RUNTIME.encode('ascii') in content,
             'oldActiveRootPresent': old_root.encode('ascii') in content,
             'format': forms.get(content, 'unknown'),
-            'exactProducerMatched': content == expected}
+            'accountScopedStructureMatched': structural_matched,
+            'historicalTemplateParity': content in (expected, legacy, native),
+            'currentProducerProvenanceVerified': False}
 
 
 def file_content_shape(data):
@@ -123,6 +135,8 @@ def file_content_shape(data):
     """
     is_dict = type(data) is dict
     content = data.get('content') if is_dict else None
+    if type(content) is str and len(content) > SHIM_OBSERVATION_LIMIT:
+        return {'oversize': True}
     reversible = False
     if type(content) is str:
         try:
@@ -146,21 +160,31 @@ def file_content_shape(data):
 
 
 def parse_shim(content, name):
-    # Entire source equals the reviewed CpanelPrivateRuntimeRelocation::shim
-    # producer. No regex suffix extraction, PHP execution or arbitrary include.
-    need(content == shim(name), 'published_shim_unknown')
-    return RUNTIME
+    # Whole reviewed template with an account-scoped root substitution only.
+    # This is structural discovery, NOT proof of the current producer's origin.
+    need(name in ('index.php', 'app.php', 'legal.php'), 'entry_unknown')
+    need(type(content) is bytes and len(content) <= SHIM_PARSE_LIMIT, 'published_shim_unknown')
+    pattern = (rb"<\?php\ndeclare\(strict_types=1\);\numask\(0077\);\nrequire '" +
+               re.escape((HOME + '/.a777-runtime-private/').encode('ascii')) +
+               rb"([0-9a-f]{32})/public/" + re.escape(name.encode('ascii')) + rb"';\n")
+    match = re.fullmatch(pattern, content)
+    need(match is not None, 'published_shim_unknown')
+    return HOME + '/.a777-runtime-private/' + match[1].decode('ascii')
 
 
-def safe_path(path):
+def safe_path(path, runtime_root=None):
+    need(runtime_root is None or (isinstance(runtime_root, str) and
+         re.fullmatch(re.escape(HOME + '/.a777-runtime-private/') + r'[0-9a-f]{32}', runtime_root)),
+         'read_scope_refused')
     need(isinstance(path, str) and posixpath.normpath(path) == path and
          '\\' not in path and '\x00' not in path and
-         any(path.startswith(root + '/') for root in (DOCROOT, RUNTIME)), 'read_scope_refused')
+         any(path.startswith(root + '/') for root in (DOCROOT,) + ((runtime_root,) if runtime_root else ())), 'read_scope_refused')
     return path
 
 
 def read_bytes(client, path):
-    safe_path(path)
+    safe_path(path, getattr(client, '_inspection_bound_runtime', None)
+              if getattr(client, '_inspection_active', False) else None)
     # Fresh provider observations reject reported links/unknown types; they do
     # not establish realpath, inode or POSIX ownership. No native proof inferred.
     parts = path[len(HOME) + 1:].split('/')
@@ -182,6 +206,7 @@ def read_bytes(client, path):
     # response (including path/filename/unknown fields) is retained or exported.
     if path in {DOCROOT + '/' + name for name in ('index.php', 'app.php', 'legal.php')}:
         client._inspection_shim_encoding = file_content_shape(data)
+        need(client._inspection_shim_encoding != {'oversize': True}, 'published_shim_oversize')
     need(isinstance(data, dict) and isinstance(data.get('content'), str), 'file_content_unknown')
     try:
         return data['content'].encode('latin-1')
@@ -452,10 +477,17 @@ def source_inventory(root):
 
 
 def inspect(client, candidate):
+    # Revoke prior authorization before account/domain reads can raise, and
+    # invalidate cached provider observations for this fresh invocation.
+    client._inspection_bound_runtime = None
+    client._inspection_listings = {}
+    client._inspection_active = True
     report = {'mode': 'inspect', 'deployed': False, 'writesPerformed': False,
               'nativeCanonicalVerified': False, 'nativeOwnershipVerified': False,
               'backupVerified': False, 'migrationLedgerVerified': False,
-              'inspectionComplete': False, 'errorCode': None}
+              'inspectionComplete': False, 'errorCode': None,
+              'currentProducerProvenanceVerified': False,
+              'deploymentAuthorized': False}
     try:
         need(client.account_home() == HOME, 'account_identity_unknown')
         domain_metadata = {}
@@ -465,6 +497,8 @@ def inspect(client, candidate):
         report['documentRoots'] = domain_roots(domain_data,
             authenticated_home=HOME, metadata=domain_metadata)
         report['domainAccountMetadata'] = domain_metadata
+        client._inspection_bound_runtime = None
+        runtime_roots = []
         for name in ('index.php', 'app.php', 'legal.php'):
             report['shimEntry'] = name
             report['shimStage'] = 'fileman_read'
@@ -478,16 +512,22 @@ def inspect(client, candidate):
                 if encoding is not None:
                     report['shimEncoding'] = encoding
             report['shimShape'] = shim_shape(content, name)
-            report['shimStage'] = 'producer_binding'
-            parse_shim(content, name)
+            report['shimStage'] = 'structural_binding'
+            runtime_roots.append(parse_shim(content, name))
+        need(len(set(runtime_roots)) == 1, 'published_shim_roots_mismatch')
+        runtime = runtime_roots[0]
+        need(all(not (runtime == root or runtime.startswith(root + '/') or root.startswith(runtime + '/'))
+                 for root in report['documentRoots']), 'runtime_inside_document_root')
+        client._inspection_bound_runtime = runtime
         report['shimStage'] = 'all_entries_bound'
-        report['shimBoundRuntime'] = RUNTIME
-        report['configSha256'] = digest(read_bytes(client, RUNTIME + '/config/runtime.php'))
-        metadata = json.loads(read_bytes(client, RUNTIME + '/release.json'))
+        report.update(runtimeRootBindingVerified=True, runtimeRootPolicy='account_scoped_structural_discovery_v2',
+                      boundShimCount=3, activeRuntimeSha256=digest(runtime.encode('ascii')))
+        report['configSha256'] = digest(read_bytes(client, runtime + '/config/runtime.php'))
+        metadata = json.loads(read_bytes(client, runtime + '/release.json'))
         need(isinstance(metadata, dict) and metadata.get('format') == 'architex-release-v1' and
              metadata.get('sourceCommit') == BASELINE and metadata.get('sourceDirty') is False and
              metadata.get('environment') == 'production', 'live_baseline_unknown')
-        raw_manifest = json.loads(read_bytes(client, RUNTIME + '/release-manifest.json'))
+        raw_manifest = json.loads(read_bytes(client, runtime + '/release-manifest.json'))
         files = manifest(raw_manifest)
         need(metadata.get('version') == raw_manifest['version'], 'live_version_unknown')
         hashes = {}
@@ -508,7 +548,7 @@ def inspect(client, candidate):
                 continue
             need(relative in files, 'live_inventory_incomplete')
             need(expected is not None and files[relative]['sha256'] == expected, 'live_manifest_baseline_mismatch')
-            actual = read_bytes(client, RUNTIME + '/' + relative)
+            actual = read_bytes(client, runtime + '/' + relative)
             need(digest(actual) == expected and len(actual) == files[relative]['bytes'], 'live_bytes_baseline_mismatch')
             hashes[relative] = digest(actual)
             if relative.startswith('public/') and not relative.endswith('.php') and relative != 'public/.htaccess':
@@ -521,7 +561,7 @@ def inspect(client, candidate):
             changedViewCount=sum(n.startswith('app/views/') for n in candidate['changes']),
             observedFileHashes=hashes, immutableSourceDiffVerified=True,
             inspectionComplete=True, composerArtifactEquivalenceVerified=False)
-        need(digest(read_bytes(client, RUNTIME + '/config/runtime.php')) == report['configSha256'], 'config_changed_during_inspection')
+        need(digest(read_bytes(client, runtime + '/config/runtime.php')) == report['configSha256'], 'config_changed_during_inspection')
     except Exception as error:
         report['inspectionComplete'] = False
         report['errorCode'] = error.code if type(error) is Refusal else 'provider_or_contract_failed'
@@ -529,6 +569,10 @@ def inspect(client, candidate):
                 'domain_inventory_keys', 'domain_inventory_main', 'domain_inventory_group',
                 'domain_inventory_total', 'domain_inventory_row'}:
             report['domainInventoryPredicate'] = error.predicate
+    finally:
+        client._inspection_bound_runtime = None
+        client._inspection_active = False
+        client._inspection_listings = {}
     return report
 
 

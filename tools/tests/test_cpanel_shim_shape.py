@@ -8,6 +8,41 @@ import cpanel_ui_release as ui
 
 
 class ShimShape(unittest.TestCase):
+    def test_stale_binding_revoked_before_account_and_domain_failures(self):
+        for failure in ('account', 'domain'):
+            class Client:
+                _inspection_bound_runtime = ui.RUNTIME
+                _inspection_active = True
+                def account_home(self):
+                    if failure == 'account': raise RuntimeError('secret')
+                    return ui.HOME
+                def _uapi(self, *args): raise RuntimeError('secret')
+                def list_files(self, *args): raise AssertionError('transport reached')
+            client = Client()
+            ui.inspect(client, {})
+            self.assertIsNone(client._inspection_bound_runtime)
+            with self.assertRaises(ui.Refusal):
+                ui.read_bytes(client, ui.RUNTIME + '/config/runtime.php')
+
+    def test_oversize_observation_does_not_scan_or_hash(self):
+        content = b'SECRET' * 1000
+        with patch.object(ui, 'digest', side_effect=AssertionError('hash called')):
+            self.assertEqual(ui.shim_shape(content, 'index.php'), {'oversize': True})
+        self.assertEqual(ui.file_content_shape({'content': content.decode()}), {'oversize': True})
+        with self.assertRaises(ui.Refusal): ui.parse_shim(b'x' * 1025, 'index.php')
+
+    def test_public_read_bounds_before_encoding(self):
+        path = ui.DOCROOT + '/index.php'
+        class Client:
+            def list_files(self, parent):
+                part = path[len(parent) + 1:].split('/')[0]
+                return [{'name': part, 'type': 'file' if parent + '/' + part == path else 'dir'}]
+            def _uapi(self, *args): return {'content': 'SECRET' * 1000}
+        client = Client()
+        with self.assertRaises(ui.Refusal) as caught: ui.read_bytes(client, path)
+        self.assertEqual(caught.exception.code, 'published_shim_oversize')
+        self.assertEqual(client._inspection_shim_encoding, {'oversize': True})
+
     def test_exact_and_noise_are_value_free_and_binding_unchanged(self):
         secret = b'NEVER_EXPORT_INJECTED_CONFIG_SECRET'
         for name in ('index.php', 'app.php', 'legal.php'):
@@ -29,6 +64,54 @@ class ShimShape(unittest.TestCase):
                 with self.assertRaises(ui.Refusal):
                     ui.parse_shim(content, name)
 
+    def test_current_runtime_discovery_and_three_entry_binding(self):
+        root = ui.HOME + '/.a777-runtime-private/' + '1234567890abcdef' * 2
+        sources = [ui.shim(name).replace(ui.RUNTIME.encode(), root.encode())
+                   for name in ('index.php', 'app.php', 'legal.php')]
+        for name, source in zip(('index.php', 'app.php', 'legal.php'), sources):
+            self.assertEqual(ui.parse_shim(source, name), root)
+            self.assertTrue(ui.shim_shape(source, name)['accountScopedStructureMatched'])
+            self.assertFalse(ui.shim_shape(source, name)['historicalTemplateParity'])
+            self.assertFalse(ui.shim_shape(source, name)['currentProducerProvenanceVerified'])
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args): return {}
+        with patch.object(ui, 'domain_roots', return_value=[ui.DOCROOT]), \
+                patch.object(ui, 'read_bytes', side_effect=sources + [ui.Refusal('fixture_config_unavailable')]) as reader:
+            report = ui.inspect(Client(), {})
+        self.assertEqual(report['errorCode'], 'fixture_config_unavailable')
+        self.assertTrue(report['runtimeRootBindingVerified'])
+        self.assertEqual(report['activeRuntimeSha256'], ui.digest(root.encode()))
+        self.assertEqual(reader.call_args.args[1], root + '/config/runtime.php')
+        self.assertNotIn(root, json.dumps(report))
+
+    def test_roots_must_match_and_be_outside_every_document_root(self):
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args): return {}
+        other = ui.HOME + '/.a777-runtime-private/' + 'a' * 32
+        for sources, roots, code in (
+                ([ui.shim('index.php'), ui.shim('app.php').replace(ui.RUNTIME.encode(), other.encode()), ui.shim('legal.php')],
+                 [ui.DOCROOT], 'published_shim_roots_mismatch'),
+                ([ui.shim(n) for n in ('index.php', 'app.php', 'legal.php')],
+                 [ui.DOCROOT, ui.HOME], 'runtime_inside_document_root')):
+            with patch.object(ui, 'domain_roots', return_value=roots), patch.object(ui, 'read_bytes', side_effect=sources) as reader:
+                report = ui.inspect(Client(), {})
+            self.assertEqual(report['errorCode'], code)
+            self.assertEqual(reader.call_count, 3)
+            self.assertNotIn('configSha256', report)
+            self.assertIsNone(getattr(Client(), '_inspection_bound_runtime', None))
+
+    def test_dynamic_grammar_rejects_unreviewed_paths(self):
+        source = ui.shim('index.php')
+        for root in (ui.HOME + '/.a777-runtime-private/' + 'A' * 32,
+                     ui.HOME + '/.a777-runtime-private/' + 'a' * 33,
+                     '/home/other/.a777-runtime-private/' + 'a' * 32,
+                     ui.HOME + '/public_html/' + 'a' * 32,
+                     ui.RUNTIME + '/..', ui.RUNTIME + '/suffix'):
+            with self.assertRaises(ui.Refusal):
+                ui.parse_shim(source.replace(ui.RUNTIME.encode(), root.encode()), 'index.php')
+
     def test_first_failure_observed_before_config(self):
         class Client:
             def account_home(self): return ui.HOME
@@ -39,7 +122,7 @@ class ShimShape(unittest.TestCase):
             report = ui.inspect(Client(), {})
         self.assertEqual(report['errorCode'], 'published_shim_unknown')
         self.assertEqual(report['shimEntry'], 'index.php')
-        self.assertEqual(report['shimStage'], 'producer_binding')
+        self.assertEqual(report['shimStage'], 'structural_binding')
         self.assertEqual(report['shimShape']['format'], 'unknown')
         self.assertEqual(reader.call_count, 1)
         self.assertNotIn('configSha256', report)
@@ -100,7 +183,7 @@ class ShimShape(unittest.TestCase):
                 patch.object(ui, 'read_bytes', side_effect=[ui.shim('index.php'), ui.shim('app.php') + b'noise']) as reader:
             report = ui.inspect(Client(), {})
         self.assertEqual(report['shimEntry'], 'app.php')
-        self.assertEqual(report['shimStage'], 'producer_binding')
+        self.assertEqual(report['shimStage'], 'structural_binding')
         self.assertEqual(report['errorCode'], 'published_shim_unknown')
         self.assertEqual(reader.call_count, 2)
         self.assertNotIn('configSha256', report)
