@@ -58,12 +58,15 @@ async function pageFor(t,kind){
     window.calls=[];window.records=[];window.queue=[{id,subject_user_id:'independent-applicant',subject_email:'test@example.invalid',kind:'professional_registration',grade:'document_uploaded',registration_body:'ECSA',registration_number:'TEST-123',evidence_file_id:'e'.repeat(32)}];
     const state={ready:true,session:{userId:'reviewer',memberships:[{organisationId:org,role:'admin'}]},organisationId:org,selectedProjectId:project,projects:[{id:project,name:'Test project'}]};
     window.context={getState:()=>state,capabilities:{readBackCollection:true},subscribe:()=>()=>{},read:async p=>{
-      if(p.includes('toolbox'))return window.records;if(p.includes('site-execution'))return {inspections:window.records,ncrs:[],evidence:[]};if(p.includes('trust-compliance'))return {complianceItems:[]};if(p==='/verification-review-queue')return window.queue;if(p==='/verifications')return [];throw Error('Unexpected read '+p);
+      if(p==='/projects/'+project+'/work-permits')return {permits:[],canDraft:false};if(p.includes('toolbox'))return window.records;if(p.includes('site-execution'))return {inspections:window.records,ncrs:[],evidence:[]};if(p.includes('trust-compliance'))return {complianceItems:[]};if(p==='/verification-review-queue')return window.queue;if(p==='/verifications')return [];throw Error('Unexpected read '+p);
     },write:async(p,b,o)=>{window.calls.push({p,b,o});const r=p.includes('/review')?{id,grade:b.decision}:p.includes('toolbox')?{id,...b,status:'completed'}:{id,...b,status:'draft',projectId:project};window.records.push(r);window.queue=[];return r;}};
     window.confirm=()=>true;
   },{project,org,id});
   const group=kind==='bom'?'document-tools':kind==='safety'?'site-tools':'governance';
   for(const f of ['adapters/'+group+'.js','modules/'+group+'.js'])await page.addScriptTag({content:source(f)});
+  // about:blank has no asset origin and all network is intentionally blocked.
+  // Load the real native dependency, not a stand-in or a bypass of mountFrame.
+  if(kind==='safety'){await page.addScriptTag({content:source('modules/work-permits.js')});await page.addScriptTag({content:source('modules/m3-dialog.js')});await page.addStyleTag({content:fs.readFileSync(path.join(base,'../css/material3-expressive.css'),'utf8')});}
   await page.evaluate(async({kind,html})=>{
     const api=kind==='bom'?V1CloneDocumentTools:kind==='safety'?V1CloneSiteTools:V1CloneGovernance;window.module=api.install({context});
     if(kind==='admin_review'){await window.module.apply(kind);return;}
@@ -78,11 +81,35 @@ test('original BoQ frame edits explicit lines, saves and renders real history',a
   await f.locator('[data-boq-history]').getByText('Measured wall',{exact:false}).waitFor();
   const call=(await page.evaluate(()=>calls))[0];assert.equal(call.b.issueImmediately,false);assert.equal(call.b.input.items[0].rate,30);
 });
-test('original safety frame drafts safety inspection and keeps permits unavailable',async t=>{
+test('original safety frame loads the native internal permit register without claiming external approval',async t=>{
+  const page=await pageFor(t,'safety'),permits=page.frameLocator('iframe').locator('#tab-permits');
+  await permits.getByRole('status',{includeHidden:true}).filter({hasText:'Persisted internal work-permit register'}).waitFor({state:'attached'});
+  assert.match(await permits.innerText(),/No internal work permits returned for this project/);
+  assert.match(await permits.innerText(),/No statutory permit.*OHS compliance is certified/);
+  assert.equal(await permits.locator('form.work-permit-form').evaluate(form=>form.hidden),true);
+  assert.equal(await page.evaluate(()=>calls.length),0);
+});
+test('original safety frame drafts safety inspection and keeps external permits separate',async t=>{
   const page=await pageFor(t,'safety'),f=page.frameLocator('iframe');assert.equal(await f.locator('[data-site-create]').count(),1);
-  await f.locator('[data-site-create]').click();await f.locator('[data-site-records="inspections"]').getByText('Observed unguarded opening').waitFor();
+  await f.locator('[data-site-create]').click();const draft=page.getByRole('dialog',{name:'Draft internal inspection'});await draft.getByLabel('Inspection finding',{exact:true}).fill('Observed unguarded opening');await draft.getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('dialog',{name:'Save draft inspection'}).getByRole('button',{name:'Save draft',exact:true}).click();await f.locator('[data-site-records="inspections"]').getByText('Observed unguarded opening').waitFor();
   const call=(await page.evaluate(()=>calls))[0];assert.equal(call.b.inspectionType,'safety');assert.deepEqual(call.b.checklist,[]);assert.equal(call.b.signOffRequired,true);
-  assert.match(await f.locator('#tab-permits').innerText(),/Not available/);
+  assert.match(await f.locator('#tab-permits').innerText(),/Required external permits must be uploaded as project documents/);
+});
+test('same-scope inspection failure restores action and retains finding',async t=>{
+ const page=await pageFor(t,'safety'),action=page.frameLocator('iframe').locator('[data-site-create]');await page.evaluate(()=>{context.write=async()=>{throw Error('Write unavailable');};});
+ await action.click();await page.getByRole('dialog').getByLabel('Inspection finding',{exact:true}).fill('Retained finding');await page.getByRole('dialog').getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.frameLocator('iframe').locator('[data-site-tools-status]').filter({hasText:'Write unavailable No success claimed. Finding retained: Retained finding'}).waitFor({state:'attached'});assert.equal(await action.isEnabled(),true);
+});
+for(const outcome of ['resolve','reject'])for(const lifecycle of ['scope','removed','replaced'])test('pending inspection '+outcome+' ignores stale '+lifecycle+' UI',async t=>{
+ const page=await pageFor(t,'safety'),f=page.frameLocator('iframe');
+ await page.evaluate(outcome=>{context.write=()=>new Promise((resolve,reject)=>{window.settleWrite=()=>outcome==='resolve'?resolve({id:'a'.repeat(32)}):reject(Error('Deferred failure'));});},outcome);
+ await f.locator('[data-site-create]').click();await page.getByRole('dialog',{name:'Draft internal inspection'}).getByLabel('Inspection finding',{exact:true}).fill('Retained finding');await page.getByRole('dialog').getByRole('button',{name:'Continue',exact:true}).click();await page.getByRole('dialog',{name:'Save draft inspection'}).getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.waitForFunction(()=>!!window.settleWrite);
+ const mutations=await page.evaluate(async lifecycle=>{
+  const frame=document.querySelector('iframe'),doc=frame.contentDocument;let changes=0;const observer=new MutationObserver(records=>changes+=records.length);observer.observe(doc,{subtree:true,attributes:true,childList:true,characterData:true});
+  if(lifecycle==='removed')frame.remove();else if(lifecycle==='replaced'){frame.srcdoc='<p>Replacement</p>';await new Promise(r=>frame.onload=r);}else context.getState().selectedProjectId='f'.repeat(32);
+  settleWrite();await new Promise(r=>setTimeout(r,150));observer.disconnect();return changes;
+ },lifecycle);assert.equal(mutations,0);
 });
 test('admin displays selected independent evidence and explicitly confirmed decision',async t=>{
   const page=await pageFor(t,'admin_review');assert.match(await page.locator('#main').innerText(),/independent-applicant/);
@@ -96,9 +123,16 @@ test('saved BoQ downloads the exact server advisory artifact without inventing a
   await page.evaluate(()=>{const read=context.read;context.read=async p=>p.endsWith('/exports')?[{id:'f'.repeat(32),format:'json',mime_type:'application/json',filename:'boq_takeoff-'+'a'.repeat(32)+'.json',sha256:'d'.repeat(64)}]:read(p);context.download=async(p,options)=>{calls.push({p,options});return {blob:new Blob(['Synthetic advisory artifact only'],{type:options.mimeType}),...options};};});
   for(const [name,value] of Object.entries({title:'Measured export',currency:'ZAR',contingencyPercent:'0',description:'Measured line',quantity:'1',unit:'m2',rate:'0'}))await f.locator(`[name="${name}"]`).fill(value);
   await f.locator('[data-boq-form] button[type=submit]').click();await f.locator('[data-boq-history]').getByText('Measured line',{exact:false}).waitFor();
-  const pending=page.waitForEvent('download');await f.getByRole('button',{name:'Download JSON',exact:true}).click();const download=await pending;
+  const pending=page.waitForEvent('download',{timeout:20000});await f.getByRole('button',{name:'Download JSON',exact:true}).click();const download=await pending;
   assert.equal(download.suggestedFilename(),'boq_takeoff-'+id+'.json');const output=path.join(process.env.TMPDIR||'E:/Hermes/home/cache/scratch','a777-roles-advisory-download-test.json');await download.saveAs(output);assert.equal(fs.readFileSync(output,'utf8'),'Synthetic advisory artifact only');fs.unlinkSync(output);
-  assert.equal(await f.getByRole('button',{name:'Download PDF',exact:true}).count(),0);
+  // PDF is a supported server artifact; absence from this response must refuse
+  // retrieval rather than manufacture a browser-side PDF.
+  const before=await page.evaluate(()=>calls.length);let pdfDownloads=0;
+  page.on('download',()=>pdfDownloads++);
+  await f.getByRole('button',{name:'Download PDF',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelector('iframe').contentDocument.documentElement.dataset.documentStatus==='Invalid advisory artifact metadata.');
+  assert.equal(await page.evaluate(()=>calls.length),before);
+  assert.equal(pdfDownloads,0);
 });
 test('native save cancellation sends nothing and BoQ starts with no synthetic input values',async t=>{
   const page=await pageFor(t,'bom'),f=page.frameLocator('iframe');
@@ -109,5 +143,5 @@ test('native save cancellation sends nothing and BoQ starts with no synthetic in
   await page.evaluate(()=>document.querySelector('iframe').contentWindow.confirm=()=>false);
   await f.locator('[data-boq-form] button[type=submit]').click();assert.equal(await page.evaluate(()=>calls.length),0);
   const safety=await pageFor(t,'safety');await safety.evaluate(()=>document.querySelector('iframe').contentWindow.confirm=()=>false);
-  await safety.frameLocator('iframe').locator('[data-site-create]').click();assert.equal(await safety.evaluate(()=>calls.length),0);
+  await safety.frameLocator('iframe').locator('[data-site-create]').click();await safety.getByRole('dialog',{name:'Draft internal inspection'}).getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(await safety.evaluate(()=>calls.length),0);
 });

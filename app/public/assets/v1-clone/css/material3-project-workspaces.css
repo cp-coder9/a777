@@ -1,0 +1,26 @@
+/* Native project dialog: preserve the original palette and inherited typography. */
+#v1NewProjectDialog.expressive-project-dialog [role="dialog"] {
+  box-sizing: border-box;
+  border-radius: 28px !important;
+  padding: 28px !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+#v1NewProjectDialog.expressive-project-dialog h3 { font-size: 24px !important; line-height: 1.2; }
+#v1NewProjectDialog.expressive-project-dialog form { gap: 16px !important; }
+#v1NewProjectDialog.expressive-project-dialog :is(input,select,textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px !important;
+}
+#v1NewProjectDialog.expressive-project-dialog button { min-height: 44px; border-radius: 999px !important; }
+#v1NewProjectDialog.expressive-project-dialog :is(input,select,textarea,button):focus-visible {
+  outline: 2px solid #102033;
+  outline-offset: 3px;
+}
+#v1NewProjectDialog.expressive-project-dialog [role="status"] { margin: 0; line-height: 1.5; }
+#v1NewProjectDialog.expressive-project-dialog [aria-busy="true"] { cursor: progress; }
+@media (max-width: 600px) {
+  #v1NewProjectDialog.expressive-project-dialog [role="dialog"] { padding: 20px !important; max-height: calc(100dvh - 24px) !important; }
+}

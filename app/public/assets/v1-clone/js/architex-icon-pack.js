@@ -5,8 +5,8 @@
  *
  * The shell declares `const iconShapes` in a classic script, so it lives in the
  * global lexical scope rather than on window; the merge must target that binding
- * or new keys silently never reach icon(). Existing keys are never replaced, so
- * the v1.html icon registry stays the design reference for the icons it owns.
+ * or new keys silently never reach icon(). Approved registry keys replace existing geometry; unregistered keys are untouched, so
+ * the original logo and external extensions remain untouched.
  */
 (function(){
   function shapesObject(){
@@ -14,647 +14,2263 @@
     return (typeof window.iconShapes==='object'&&window.iconShapes)||null;
   }
   var meta={
-"dashboard": {
-"label": "Dashboard",
-"category": "primary",
-"tone": "core",
-"priority": "P0",
-"file": "icons/dashboard.svg"
+"action": {
+"category": "platform",
+"file": "icons/action.svg",
+"label": "Action",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/action.svg"
 },
-"projects": {
-"label": "Projects",
-"category": "primary",
-"tone": "core",
-"priority": "P0",
-"file": "icons/projects.svg"
+"tone": "core"
 },
-"specification": {
-"label": "Specification",
-"category": "primary",
-"tone": "core",
-"priority": "P0",
-"file": "icons/specification.svg"
+"action_centre": {
+"category": "platform",
+"file": "icons/action_centre.svg",
+"label": "Action Centre",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/action_centre.svg"
 },
-"workflow": {
-"label": "Workflow",
-"category": "primary",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/workflow.svg"
-},
-"marketplace": {
-"label": "Marketplace",
-"category": "primary",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/marketplace.svg"
-},
-"procurement": {
-"label": "Procurement",
-"category": "primary",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/procurement.svg"
-},
-"contracts": {
-"label": "Contracts",
-"category": "primary",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/contracts.svg"
-},
-"calendar": {
-"label": "Calendar",
-"category": "primary",
-"tone": "core",
-"priority": "P0",
-"file": "icons/calendar.svg"
-},
-"messages": {
-"label": "Messages",
-"category": "primary",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/messages.svg"
-},
-"reports": {
-"label": "Reports",
-"category": "primary",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/reports.svg"
-},
-"team": {
-"label": "Team",
-"category": "primary",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/team.svg"
-},
-"wingman": {
-"label": "Wingman",
-"category": "primary",
-"tone": "lavender",
-"priority": "P0",
-"file": "icons/wingman.svg"
-},
-"remoteDesktop": {
-"label": "Remote Desktop",
-"category": "remoteDesktop",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/remoteDesktop.svg"
-},
-"remoteSession": {
-"label": "Remote Session",
-"category": "remoteDesktop",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/remoteSession.svg"
-},
-"sessionBroker": {
-"label": "Session Broker",
-"category": "remoteDesktop",
-"tone": "lavender",
-"priority": "P0",
-"file": "icons/sessionBroker.svg"
-},
-"sessionToken": {
-"label": "Session Token",
-"category": "remoteDesktop",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/sessionToken.svg"
-},
-"hostAgent": {
-"label": "Host Agent",
-"category": "remoteDesktop",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/hostAgent.svg"
-},
-"browserViewer": {
-"label": "Browser Viewer",
-"category": "remoteDesktop",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/browserViewer.svg"
-},
-"fileHandoff": {
-"label": "File Handoff",
-"category": "remoteDesktop",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/fileHandoff.svg"
-},
-"recordingConsent": {
-"label": "Recording Consent",
-"category": "remoteDesktop",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/recordingConsent.svg"
-},
-"formSystem": {
-"label": "Form System",
-"category": "forms",
-"tone": "core",
-"priority": "P0",
-"file": "icons/formSystem.svg"
-},
-"formTemplateLibrary": {
-"label": "Form Template Library",
-"category": "forms",
-"tone": "core",
-"priority": "P0",
-"file": "icons/formTemplateLibrary.svg"
-},
-"formEditor": {
-"label": "Form Editor",
-"category": "forms",
-"tone": "core",
-"priority": "P0",
-"file": "icons/formEditor.svg"
-},
-"autoFill": {
-"label": "Auto-Fill",
-"category": "forms",
-"tone": "lavender",
-"priority": "P0",
-"file": "icons/autoFill.svg"
-},
-"formSignature": {
-"label": "Form Signature",
-"category": "forms",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/formSignature.svg"
-},
-"formApprovalWorkflow": {
-"label": "Form Approval Workflow",
-"category": "forms",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/formApprovalWorkflow.svg"
-},
-"formPdfExport": {
-"label": "Form PDF Export",
-"category": "forms",
-"tone": "core",
-"priority": "P0",
-"file": "icons/formPdfExport.svg"
-},
-"eiaWorkspace": {
-"label": "EIA Workspace",
-"category": "environmental",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/eiaWorkspace.svg"
+"tone": "core"
 },
 "activityScreening": {
+"category": "environmental",
+"file": "icons/activityScreening.svg",
 "label": "Activity Screening",
-"category": "environmental",
-"tone": "cobalt",
 "priority": "P0",
-"file": "icons/activityScreening.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/activityScreening.svg"
 },
-"basicAssessment": {
-"label": "Basic Assessment",
-"category": "environmental",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/basicAssessment.svg"
+"tone": "cobalt"
 },
-"fullEia": {
-"label": "Full EIA",
-"category": "environmental",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/fullEia.svg"
+"admin_review": {
+"category": "platform",
+"file": "icons/admin_review.svg",
+"label": "Admin Review",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/admin_review.svg"
 },
-"environmentalAuthorisation": {
-"label": "Environmental Authorisation",
-"category": "environmental",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/environmentalAuthorisation.svg"
+"tone": "core"
 },
-"emprMonitor": {
-"label": "EMPr Monitor",
-"category": "environmental",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/emprMonitor.svg"
+"advisor": {
+"category": "platform",
+"file": "icons/advisor.svg",
+"label": "Advisor",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/advisor.svg"
 },
-"publicParticipation": {
-"label": "Public Participation",
-"category": "environmental",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/publicParticipation.svg"
-},
-"greenBuilding": {
-"label": "Green Building",
-"category": "environmental",
-"tone": "core",
-"priority": "P0",
-"file": "icons/greenBuilding.svg"
-},
-"practiceManagement": {
-"label": "Practice Management",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/practiceManagement.svg"
-},
-"firmDashboard": {
-"label": "Firm Dashboard",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/firmDashboard.svg"
-},
-"timesheetCapture": {
-"label": "Timesheet Capture",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/timesheetCapture.svg"
-},
-"expenseClaim": {
-"label": "Expense Claim",
-"category": "practiceManagement",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/expenseClaim.svg"
-},
-"billingRates": {
-"label": "Billing Rates",
-"category": "practiceManagement",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/billingRates.svg"
-},
-"feeTracker": {
-"label": "Fee Tracker",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/feeTracker.svg"
-},
-"wipReport": {
-"label": "WIP Report",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/wipReport.svg"
-},
-"profitability": {
-"label": "Profitability",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/profitability.svg"
-},
-"practiceInvoice": {
-"label": "Practice Invoice",
-"category": "practiceManagement",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/practiceInvoice.svg"
-},
-"resourceCapacity": {
-"label": "Resource Capacity",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/resourceCapacity.svg"
-},
-"crmPipeline": {
-"label": "CRM Pipeline",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/crmPipeline.svg"
-},
-"incomeForecast": {
-"label": "Income Forecast",
-"category": "practiceManagement",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/incomeForecast.svg"
-},
-"bimQuantities": {
-"label": "BIM Quantities",
-"category": "bim",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/bimQuantities.svg"
-},
-"ifcUpload": {
-"label": "IFC Upload",
-"category": "bim",
-"tone": "core",
-"priority": "P0",
-"file": "icons/ifcUpload.svg"
-},
-"ifcModel": {
-"label": "IFC Model",
-"category": "bim",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/ifcModel.svg"
-},
-"modelValidation": {
-"label": "Model Validation",
-"category": "bim",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/modelValidation.svg"
-},
-"quantityExtraction": {
-"label": "Quantity Extraction",
-"category": "bim",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/quantityExtraction.svg"
-},
-"mappingRules": {
-"label": "Mapping Rules",
-"category": "bim",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/mappingRules.svg"
-},
-"boqGenerator": {
-"label": "BoQ Generator",
-"category": "bim",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/boqGenerator.svg"
-},
-"bimExport": {
-"label": "BIM Export",
-"category": "bim",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/bimExport.svg"
-},
-"bimSpecForgeSync": {
-"label": "SpecForge BIM Sync",
-"category": "bim",
-"tone": "core",
-"priority": "P0",
-"file": "icons/bimSpecForgeSync.svg"
-},
-"rfqMarketplace": {
-"label": "RFQ Marketplace",
-"category": "rfq",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/rfqMarketplace.svg"
-},
-"rfqPackage": {
-"label": "RFQ Package",
-"category": "rfq",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/rfqPackage.svg"
-},
-"supplierProfile": {
-"label": "Supplier Profile",
-"category": "rfq",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/supplierProfile.svg"
-},
-"quoteSubmission": {
-"label": "Quote Submission",
-"category": "rfq",
-"tone": "amber",
-"priority": "P0",
-"file": "icons/quoteSubmission.svg"
-},
-"quoteComparison": {
-"label": "Quote Comparison",
-"category": "rfq",
-"tone": "cobalt",
-"priority": "P0",
-"file": "icons/quoteComparison.svg"
-},
-"rfqAward": {
-"label": "RFQ Award",
-"category": "rfq",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/rfqAward.svg"
-},
-"bbbeeCompliance": {
-"label": "B-BBEE Compliance",
-"category": "rfq",
-"tone": "coral",
-"priority": "P0",
-"file": "icons/bbbeeCompliance.svg"
-},
-"municipalRefuseCalculator": {
-"label": "Municipal Refuse Calculator",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/municipalRefuseCalculator.svg"
-},
-"municipalityProfile": {
-"label": "Municipality Profile",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/municipalityProfile.svg"
-},
-"buildingType": {
-"label": "Building Type",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/buildingType.svg"
-},
-"wasteVolume": {
-"label": "Waste Volume",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/wasteVolume.svg"
-},
-"refuseStorageArea": {
-"label": "Refuse Storage Area",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/refuseStorageArea.svg"
-},
-"areaDimensions": {
-"label": "Area Dimensions",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/areaDimensions.svg"
-},
-"binAllocation": {
-"label": "Bin Allocation",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/binAllocation.svg"
-},
-"collectionVehicleAccess": {
-"label": "Collection Vehicle Access",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/collectionVehicleAccess.svg"
-},
-"ventilationRequirement": {
-"label": "Ventilation Requirement",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/ventilationRequirement.svg"
-},
-"drainageRequirement": {
-"label": "Drainage Requirement",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/drainageRequirement.svg"
-},
-"missingMunicipalField": {
-"label": "Missing Municipal Field",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/missingMunicipalField.svg"
+"tone": "core"
 },
 "advisoryDisclaimer": {
+"category": "refuse",
+"file": "icons/advisoryDisclaimer.svg",
 "label": "Advisory Disclaimer",
-"category": "refuse",
-"tone": "core",
 "priority": "P0",
-"file": "icons/advisoryDisclaimer.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/advisoryDisclaimer.svg"
 },
-"professionalSignOff": {
-"label": "Professional Sign-Off",
-"category": "refuse",
-"tone": "core",
-"priority": "P0",
-"file": "icons/professionalSignOff.svg"
+"tone": "core"
 },
-"lockedUntilSignOff": {
-"label": "Locked Until Sign-Off",
+"approvals_queue": {
+"category": "platform",
+"file": "icons/approvals_queue.svg",
+"label": "Approvals Queue",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/approvals_queue.svg"
+},
+"tone": "core"
+},
+"areaDimensions": {
 "category": "refuse",
-"tone": "core",
+"file": "icons/areaDimensions.svg",
+"label": "Area Dimensions",
 "priority": "P0",
-"file": "icons/lockedUntilSignOff.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/areaDimensions.svg"
+},
+"tone": "core"
+},
+"attach": {
+"category": "platform",
+"file": "icons/attach.svg",
+"label": "Attach",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/attach.svg"
+},
+"tone": "core"
+},
+"autoFill": {
+"category": "forms",
+"file": "icons/autoFill.svg",
+"label": "Auto-Fill",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/autoFill.svg"
+},
+"tone": "lavender"
+},
+"basicAssessment": {
+"category": "environmental",
+"file": "icons/basicAssessment.svg",
+"label": "Basic Assessment",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/basicAssessment.svg"
+},
+"tone": "coral"
+},
+"bbbeeCompliance": {
+"category": "rfq",
+"file": "icons/bbbeeCompliance.svg",
+"label": "B-BBEE Compliance",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bbbeeCompliance.svg"
+},
+"tone": "coral"
+},
+"billingRates": {
+"category": "practiceManagement",
+"file": "icons/billingRates.svg",
+"label": "Billing Rates",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/billingRates.svg"
+},
+"tone": "amber"
+},
+"bimExport": {
+"category": "bim",
+"file": "icons/bimExport.svg",
+"label": "BIM Export",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bimExport.svg"
+},
+"tone": "cobalt"
+},
+"bimQuantities": {
+"category": "bim",
+"file": "icons/bimQuantities.svg",
+"label": "BIM Quantities",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bimQuantities.svg"
+},
+"tone": "cobalt"
+},
+"bimSpecForgeSync": {
+"category": "bim",
+"file": "icons/bimSpecForgeSync.svg",
+"label": "SpecForge BIM Sync",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bimSpecForgeSync.svg"
+},
+"tone": "core"
+},
+"bim_ifc": {
+"category": "platform",
+"file": "icons/bim_ifc.svg",
+"label": "Bim Ifc",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bim_ifc.svg"
+},
+"tone": "core"
+},
+"binAllocation": {
+"category": "refuse",
+"file": "icons/binAllocation.svg",
+"label": "Bin Allocation",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/binAllocation.svg"
+},
+"tone": "core"
+},
+"bom": {
+"category": "platform",
+"file": "icons/bom.svg",
+"label": "Bom",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/bom.svg"
+},
+"tone": "core"
+},
+"boqGenerator": {
+"category": "bim",
+"file": "icons/boqGenerator.svg",
+"label": "BoQ Generator",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/boqGenerator.svg"
+},
+"tone": "amber"
+},
+"brief": {
+"category": "platform",
+"file": "icons/brief.svg",
+"label": "Brief",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/brief.svg"
+},
+"tone": "core"
+},
+"browserViewer": {
+"category": "remoteDesktop",
+"file": "icons/browserViewer.svg",
+"label": "Browser Viewer",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/browserViewer.svg"
+},
+"tone": "cobalt"
+},
+"budget": {
+"category": "platform",
+"file": "icons/budget.svg",
+"label": "Budget",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/budget.svg"
+},
+"tone": "core"
+},
+"buildingType": {
+"category": "refuse",
+"file": "icons/buildingType.svg",
+"label": "Building Type",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/buildingType.svg"
+},
+"tone": "core"
+},
+"calendar": {
+"category": "primary",
+"file": "icons/calendar.svg",
+"label": "Calendar",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/calendar.svg"
+},
+"tone": "core"
+},
+"checklist": {
+"category": "practice",
+"file": "icons/checklist.svg",
+"label": "Checklist",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-001.js iconShapes.action"
+},
+"tone": "cobalt"
+},
+"clusters": {
+"category": "platform",
+"file": "icons/clusters.svg",
+"label": "Clusters",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/clusters.svg"
+},
+"tone": "core"
+},
+"collectionVehicleAccess": {
+"category": "refuse",
+"file": "icons/collectionVehicleAccess.svg",
+"label": "Collection Vehicle Access",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/collectionVehicleAccess.svg"
+},
+"tone": "core"
+},
+"compliance_hub": {
+"category": "platform",
+"file": "icons/compliance_hub.svg",
+"label": "Compliance Hub",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/compliance_hub.svg"
+},
+"tone": "core"
+},
+"contract": {
+"category": "practice",
+"file": "icons/contract.svg",
+"label": "Contract",
+"priority": "P1",
+"provenance": {
+"intent": "Explicit singular practice tab counterpart of canonical contracts geometry.",
+"source": "icons/contracts.svg"
+},
+"tone": "cobalt"
+},
+"contract_admin": {
+"category": "platform",
+"file": "icons/contract_admin.svg",
+"label": "Contract Admin",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/contract_admin.svg"
+},
+"tone": "core"
+},
+"contractor_compliance": {
+"category": "platform",
+"file": "icons/contractor_compliance.svg",
+"label": "Contractor Compliance",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/contractor_compliance.svg"
+},
+"tone": "core"
+},
+"contracts": {
+"category": "primary",
+"file": "icons/contracts.svg",
+"label": "Contracts",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/contracts.svg"
+},
+"tone": "coral"
+},
+"council_navigator": {
+"category": "platform",
+"file": "icons/council_navigator.svg",
+"label": "Council Navigator",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/council_navigator.svg"
+},
+"tone": "core"
+},
+"cpd_learning": {
+"category": "platform",
+"file": "icons/cpd_learning.svg",
+"label": "Cpd Learning",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/cpd_learning.svg"
+},
+"tone": "core"
+},
+"crmPipeline": {
+"category": "practiceManagement",
+"file": "icons/crmPipeline.svg",
+"label": "CRM Pipeline",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/crmPipeline.svg"
+},
+"tone": "cobalt"
+},
+"dashboard": {
+"category": "primary",
+"file": "icons/dashboard.svg",
+"label": "Dashboard",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/dashboard.svg"
+},
+"tone": "core"
+},
+"detail": {
+"category": "platform",
+"file": "icons/detail.svg",
+"label": "Detail",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/detail.svg"
+},
+"tone": "core"
+},
+"dispute_resolution": {
+"category": "platform",
+"file": "icons/dispute_resolution.svg",
+"label": "Dispute Resolution",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/dispute_resolution.svg"
+},
+"tone": "core"
+},
+"document": {
+"category": "platform",
+"file": "icons/document.svg",
+"label": "Document",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/document.svg"
+},
+"tone": "core"
+},
+"documents_drawings": {
+"category": "platform",
+"file": "icons/documents_drawings.svg",
+"label": "Documents Drawings",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/documents_drawings.svg"
+},
+"tone": "core"
+},
+"drainageRequirement": {
+"category": "refuse",
+"file": "icons/drainageRequirement.svg",
+"label": "Drainage Requirement",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/drainageRequirement.svg"
+},
+"tone": "core"
+},
+"drawing": {
+"category": "platform",
+"file": "icons/drawing.svg",
+"label": "Drawing",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/drawing.svg"
+},
+"tone": "core"
+},
+"eiaWorkspace": {
+"category": "environmental",
+"file": "icons/eiaWorkspace.svg",
+"label": "EIA Workspace",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eiaWorkspace.svg"
+},
+"tone": "coral"
+},
+"eia_workspace": {
+"category": "platform",
+"file": "icons/eia_workspace.svg",
+"label": "Eia Workspace",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eia_workspace.svg"
+},
+"tone": "core"
+},
+"emprMonitor": {
+"category": "environmental",
+"file": "icons/emprMonitor.svg",
+"label": "EMPr Monitor",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/emprMonitor.svg"
+},
+"tone": "cobalt"
+},
+"eng_cable": {
+"category": "engineering",
+"file": "icons/eng_cable.svg",
+"label": "Eng Cable",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_cable.svg"
+},
+"tone": "core"
+},
+"eng_concrete": {
+"category": "engineering",
+"file": "icons/eng_concrete.svg",
+"label": "Eng Concrete",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_concrete.svg"
+},
+"tone": "core"
+},
+"eng_db": {
+"category": "engineering",
+"file": "icons/eng_db.svg",
+"label": "Eng Db",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_db.svg"
+},
+"tone": "core"
+},
+"eng_drain": {
+"category": "engineering",
+"file": "icons/eng_drain.svg",
+"label": "Eng Drain",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_drain.svg"
+},
+"tone": "core"
+},
+"eng_duct": {
+"category": "engineering",
+"file": "icons/eng_duct.svg",
+"label": "Eng Duct",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_duct.svg"
+},
+"tone": "core"
+},
+"eng_escape": {
+"category": "engineering",
+"file": "icons/eng_escape.svg",
+"label": "Eng Escape",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_escape.svg"
+},
+"tone": "core"
+},
+"eng_fire": {
+"category": "engineering",
+"file": "icons/eng_fire.svg",
+"label": "Eng Fire",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_fire.svg"
+},
+"tone": "core"
+},
+"eng_geo": {
+"category": "engineering",
+"file": "icons/eng_geo.svg",
+"label": "Eng Geo",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_geo.svg"
+},
+"tone": "core"
+},
+"eng_heat": {
+"category": "engineering",
+"file": "icons/eng_heat.svg",
+"label": "Eng Heat",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_heat.svg"
+},
+"tone": "core"
+},
+"eng_hotwater": {
+"category": "engineering",
+"file": "icons/eng_hotwater.svg",
+"label": "Eng Hotwater",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_hotwater.svg"
+},
+"tone": "core"
+},
+"eng_hydrant": {
+"category": "engineering",
+"file": "icons/eng_hydrant.svg",
+"label": "Eng Hydrant",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_hydrant.svg"
+},
+"tone": "core"
+},
+"eng_steel": {
+"category": "engineering",
+"file": "icons/eng_steel.svg",
+"label": "Eng Steel",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_steel.svg"
+},
+"tone": "core"
+},
+"eng_storm": {
+"category": "engineering",
+"file": "icons/eng_storm.svg",
+"label": "Eng Storm",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_storm.svg"
+},
+"tone": "core"
+},
+"eng_timber": {
+"category": "engineering",
+"file": "icons/eng_timber.svg",
+"label": "Eng Timber",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_timber.svg"
+},
+"tone": "core"
+},
+"eng_units": {
+"category": "engineering",
+"file": "icons/eng_units.svg",
+"label": "Eng Units",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_units.svg"
+},
+"tone": "core"
+},
+"eng_water": {
+"category": "engineering",
+"file": "icons/eng_water.svg",
+"label": "Eng Water",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_water.svg"
+},
+"tone": "core"
+},
+"eng_wind": {
+"category": "engineering",
+"file": "icons/eng_wind.svg",
+"label": "Eng Wind",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/eng_wind.svg"
+},
+"tone": "core"
+},
+"engineering_hub": {
+"category": "platform",
+"file": "icons/engineering_hub.svg",
+"label": "Engineering Hub",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/engineering_hub.svg"
+},
+"tone": "core"
+},
+"environmentalAuthorisation": {
+"category": "environmental",
+"file": "icons/environmentalAuthorisation.svg",
+"label": "Environmental Authorisation",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/environmentalAuthorisation.svg"
+},
+"tone": "coral"
+},
+"environmental_heritage": {
+"category": "platform",
+"file": "icons/environmental_heritage.svg",
+"label": "Environmental Heritage",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/environmental_heritage.svg"
+},
+"tone": "core"
+},
+"expand": {
+"category": "platform",
+"file": "icons/expand.svg",
+"label": "Expand",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/expand.svg"
+},
+"tone": "core"
+},
+"expenseClaim": {
+"category": "practiceManagement",
+"file": "icons/expenseClaim.svg",
+"label": "Expense Claim",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/expenseClaim.svg"
+},
+"tone": "amber"
+},
+"export": {
+"category": "platform",
+"file": "icons/export.svg",
+"label": "Export",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/export.svg"
+},
+"tone": "core"
 },
 "exportPdfReport": {
-"label": "Export PDF Report",
 "category": "refuse",
-"tone": "core",
+"file": "icons/exportPdfReport.svg",
+"label": "Export PDF Report",
 "priority": "P0",
-"file": "icons/exportPdfReport.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/exportPdfReport.svg"
+},
+"tone": "core"
+},
+"feeTracker": {
+"category": "practiceManagement",
+"file": "icons/feeTracker.svg",
+"label": "Fee Tracker",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/feeTracker.svg"
+},
+"tone": "cobalt"
+},
+"fee_proposal": {
+"category": "platform",
+"file": "icons/fee_proposal.svg",
+"label": "Fee Proposal",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/fee_proposal.svg"
+},
+"tone": "core"
+},
+"feedback": {
+"category": "platform",
+"file": "icons/feedback.svg",
+"label": "Feedback",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/feedback.svg"
+},
+"tone": "core"
+},
+"fileHandoff": {
+"category": "remoteDesktop",
+"file": "icons/fileHandoff.svg",
+"label": "File Handoff",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/fileHandoff.svg"
+},
+"tone": "coral"
+},
+"finance": {
+"category": "platform",
+"file": "icons/finance.svg",
+"label": "Finance",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/finance.svg"
+},
+"tone": "core"
+},
+"firmDashboard": {
+"category": "practiceManagement",
+"file": "icons/firmDashboard.svg",
+"label": "Firm Dashboard",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/firmDashboard.svg"
+},
+"tone": "cobalt"
+},
+"fm_bridge": {
+"category": "platform",
+"file": "icons/fm_bridge.svg",
+"label": "Fm Bridge",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/fm_bridge.svg"
+},
+"tone": "core"
+},
+"forecast": {
+"category": "practice",
+"file": "icons/forecast.svg",
+"label": "Forecast",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-002.js iconShapes.forecast"
+},
+"tone": "cobalt"
+},
+"formApprovalWorkflow": {
+"category": "forms",
+"file": "icons/formApprovalWorkflow.svg",
+"label": "Form Approval Workflow",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formApprovalWorkflow.svg"
+},
+"tone": "coral"
+},
+"formEditor": {
+"category": "forms",
+"file": "icons/formEditor.svg",
+"label": "Form Editor",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formEditor.svg"
+},
+"tone": "core"
+},
+"formPdfExport": {
+"category": "forms",
+"file": "icons/formPdfExport.svg",
+"label": "Form PDF Export",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formPdfExport.svg"
+},
+"tone": "core"
+},
+"formSignature": {
+"category": "forms",
+"file": "icons/formSignature.svg",
+"label": "Form Signature",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formSignature.svg"
+},
+"tone": "coral"
+},
+"formSystem": {
+"category": "forms",
+"file": "icons/formSystem.svg",
+"label": "Form System",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formSystem.svg"
+},
+"tone": "core"
+},
+"formTemplateLibrary": {
+"category": "forms",
+"file": "icons/formTemplateLibrary.svg",
+"label": "Form Template Library",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/formTemplateLibrary.svg"
+},
+"tone": "core"
+},
+"forms": {
+"category": "platform",
+"file": "icons/forms.svg",
+"label": "Forms",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/forms.svg"
+},
+"tone": "core"
+},
+"fullEia": {
+"category": "environmental",
+"file": "icons/fullEia.svg",
+"label": "Full EIA",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/fullEia.svg"
+},
+"tone": "coral"
+},
+"god_mode": {
+"category": "platform",
+"file": "icons/god_mode.svg",
+"label": "God Mode",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/god_mode.svg"
+},
+"tone": "core"
+},
+"greenBuilding": {
+"category": "environmental",
+"file": "icons/greenBuilding.svg",
+"label": "Green Building",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/greenBuilding.svg"
+},
+"tone": "core"
+},
+"hostAgent": {
+"category": "remoteDesktop",
+"file": "icons/hostAgent.svg",
+"label": "Host Agent",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/hostAgent.svg"
+},
+"tone": "cobalt"
+},
+"iconography_registry": {
+"category": "platform",
+"file": "icons/iconography_registry.svg",
+"label": "Iconography Registry",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/iconography_registry.svg"
+},
+"tone": "core"
+},
+"ifcModel": {
+"category": "bim",
+"file": "icons/ifcModel.svg",
+"label": "IFC Model",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/ifcModel.svg"
+},
+"tone": "cobalt"
+},
+"ifcUpload": {
+"category": "bim",
+"file": "icons/ifcUpload.svg",
+"label": "IFC Upload",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/ifcUpload.svg"
+},
+"tone": "core"
+},
+"inbox": {
+"category": "platform",
+"file": "icons/inbox.svg",
+"label": "Inbox",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/inbox.svg"
+},
+"tone": "core"
+},
+"incomeForecast": {
+"category": "practiceManagement",
+"file": "icons/incomeForecast.svg",
+"label": "Income Forecast",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/incomeForecast.svg"
+},
+"tone": "cobalt"
+},
+"inspector": {
+"category": "platform",
+"file": "icons/inspector.svg",
+"label": "Inspector",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/inspector.svg"
+},
+"tone": "core"
+},
+"insurance_register": {
+"category": "platform",
+"file": "icons/insurance_register.svg",
+"label": "Insurance Register",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/insurance_register.svg"
+},
+"tone": "core"
+},
+"integration": {
+"category": "platform",
+"file": "icons/integration.svg",
+"label": "Integration",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/integration.svg"
+},
+"tone": "core"
+},
+"issues_rfis": {
+"category": "platform",
+"file": "icons/issues_rfis.svg",
+"label": "Issues Rfis",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/issues_rfis.svg"
+},
+"tone": "core"
+},
+"itp": {
+"category": "platform",
+"file": "icons/itp.svg",
+"label": "Itp",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/itp.svg"
+},
+"tone": "core"
+},
+"knowledge": {
+"category": "platform",
+"file": "icons/knowledge.svg",
+"label": "Knowledge",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/knowledge.svg"
+},
+"tone": "core"
+},
+"lockedUntilSignOff": {
+"category": "refuse",
+"file": "icons/lockedUntilSignOff.svg",
+"label": "Locked Until Sign-Off",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/lockedUntilSignOff.svg"
+},
+"tone": "core"
+},
+"mappingRules": {
+"category": "bim",
+"file": "icons/mappingRules.svg",
+"label": "Mapping Rules",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/mappingRules.svg"
+},
+"tone": "cobalt"
+},
+"market_insights": {
+"category": "platform",
+"file": "icons/market_insights.svg",
+"label": "Market Insights",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/market_insights.svg"
+},
+"tone": "core"
+},
+"marketplace": {
+"category": "primary",
+"file": "icons/marketplace.svg",
+"label": "Marketplace",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/marketplace.svg"
+},
+"tone": "amber"
+},
+"meeting_agenda": {
+"category": "platform",
+"file": "icons/meeting_agenda.svg",
+"label": "Meeting Agenda",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_agenda.svg"
+},
+"tone": "core"
+},
+"meeting_camera": {
+"category": "platform",
+"file": "icons/meeting_camera.svg",
+"label": "Meeting Camera",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_camera.svg"
+},
+"tone": "core"
+},
+"meeting_caption": {
+"category": "platform",
+"file": "icons/meeting_caption.svg",
+"label": "Meeting Caption",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_caption.svg"
+},
+"tone": "core"
+},
+"meeting_day": {
+"category": "platform",
+"file": "icons/meeting_day.svg",
+"label": "Meeting Day",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_day.svg"
+},
+"tone": "core"
+},
+"meeting_hand": {
+"category": "platform",
+"file": "icons/meeting_hand.svg",
+"label": "Meeting Hand",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_hand.svg"
+},
+"tone": "core"
+},
+"meeting_invite": {
+"category": "platform",
+"file": "icons/meeting_invite.svg",
+"label": "Meeting Invite",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_invite.svg"
+},
+"tone": "core"
+},
+"meeting_mic": {
+"category": "platform",
+"file": "icons/meeting_mic.svg",
+"label": "Meeting Mic",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_mic.svg"
+},
+"tone": "core"
+},
+"meeting_recording": {
+"category": "platform",
+"file": "icons/meeting_recording.svg",
+"label": "Meeting Recording",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_recording.svg"
+},
+"tone": "core"
+},
+"meeting_review": {
+"category": "platform",
+"file": "icons/meeting_review.svg",
+"label": "Meeting Review",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_review.svg"
+},
+"tone": "core"
+},
+"meeting_share": {
+"category": "platform",
+"file": "icons/meeting_share.svg",
+"label": "Meeting Share",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_share.svg"
+},
+"tone": "core"
+},
+"meeting_template": {
+"category": "platform",
+"file": "icons/meeting_template.svg",
+"label": "Meeting Template",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meeting_template.svg"
+},
+"tone": "core"
+},
+"meetings": {
+"category": "platform",
+"file": "icons/meetings.svg",
+"label": "Meetings",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/meetings.svg"
+},
+"tone": "core"
+},
+"menu": {
+"category": "platform",
+"file": "icons/menu.svg",
+"label": "Menu",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/menu.svg"
+},
+"tone": "core"
+},
+"messages": {
+"category": "primary",
+"file": "icons/messages.svg",
+"label": "Messages",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/messages.svg"
+},
+"tone": "coral"
+},
+"milestone": {
+"category": "platform",
+"file": "icons/milestone.svg",
+"label": "Milestone",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/milestone.svg"
+},
+"tone": "core"
+},
+"missingMunicipalField": {
+"category": "refuse",
+"file": "icons/missingMunicipalField.svg",
+"label": "Missing Municipal Field",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/missingMunicipalField.svg"
+},
+"tone": "core"
+},
+"modelValidation": {
+"category": "bim",
+"file": "icons/modelValidation.svg",
+"label": "Model Validation",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/modelValidation.svg"
+},
+"tone": "coral"
+},
+"municipal": {
+"category": "platform",
+"file": "icons/municipal.svg",
+"label": "Municipal",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/municipal.svg"
+},
+"tone": "core"
+},
+"municipalRefuseCalculator": {
+"category": "refuse",
+"file": "icons/municipalRefuseCalculator.svg",
+"label": "Municipal Refuse Calculator",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/municipalRefuseCalculator.svg"
+},
+"tone": "core"
+},
+"municipal_tracker": {
+"category": "platform",
+"file": "icons/municipal_tracker.svg",
+"label": "Municipal Tracker",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/municipal_tracker.svg"
+},
+"tone": "core"
+},
+"municipalityProfile": {
+"category": "refuse",
+"file": "icons/municipalityProfile.svg",
+"label": "Municipality Profile",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/municipalityProfile.svg"
+},
+"tone": "core"
+},
+"ncr_manager": {
+"category": "platform",
+"file": "icons/ncr_manager.svg",
+"label": "Ncr Manager",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/ncr_manager.svg"
+},
+"tone": "core"
+},
+"nhbrc_enrolment": {
+"category": "platform",
+"file": "icons/nhbrc_enrolment.svg",
+"label": "Nhbrc Enrolment",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/nhbrc_enrolment.svg"
+},
+"tone": "core"
+},
+"notification": {
+"category": "practice",
+"file": "icons/notification.svg",
+"label": "Notification",
+"priority": "P1",
+"provenance": {
+"intent": "Preserve original purpose-specific practice geometry; canonicalized for explicit compiled coverage.",
+"source": "js/reference-002.js Object.assign(iconShapes)"
+},
+"tone": "cobalt"
+},
+"payments_escrow": {
+"category": "platform",
+"file": "icons/payments_escrow.svg",
+"label": "Payments Escrow",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/payments_escrow.svg"
+},
+"tone": "core"
+},
+"planning": {
+"category": "platform",
+"file": "icons/planning.svg",
+"label": "Planning",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/planning.svg"
+},
+"tone": "core"
+},
+"practiceInvoice": {
+"category": "practiceManagement",
+"file": "icons/practiceInvoice.svg",
+"label": "Practice Invoice",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/practiceInvoice.svg"
+},
+"tone": "amber"
+},
+"practiceManagement": {
+"category": "practiceManagement",
+"file": "icons/practiceManagement.svg",
+"label": "Practice Management",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/practiceManagement.svg"
+},
+"tone": "cobalt"
+},
+"practice_management": {
+"category": "platform",
+"file": "icons/practice_management.svg",
+"label": "Practice Management",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/practice_management.svg"
+},
+"tone": "core"
+},
+"procurement": {
+"category": "primary",
+"file": "icons/procurement.svg",
+"label": "Procurement",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/procurement.svg"
+},
+"tone": "amber"
+},
+"professionalSignOff": {
+"category": "refuse",
+"file": "icons/professionalSignOff.svg",
+"label": "Professional Sign-Off",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/professionalSignOff.svg"
+},
+"tone": "core"
+},
+"professional_directory": {
+"category": "platform",
+"file": "icons/professional_directory.svg",
+"label": "Professional Directory",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/professional_directory.svg"
+},
+"tone": "core"
+},
+"profitability": {
+"category": "practiceManagement",
+"file": "icons/profitability.svg",
+"label": "Profitability",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/profitability.svg"
+},
+"tone": "cobalt"
+},
+"programme": {
+"category": "platform",
+"file": "icons/programme.svg",
+"label": "Programme",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/programme.svg"
+},
+"tone": "core"
+},
+"progress": {
+"category": "platform",
+"file": "icons/progress.svg",
+"label": "Progress",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/progress.svg"
+},
+"tone": "core"
 },
 "projectPassportSync": {
-"label": "Project Passport Sync",
 "category": "refuse",
-"tone": "core",
+"file": "icons/projectPassportSync.svg",
+"label": "Project Passport Sync",
 "priority": "P0",
-"file": "icons/projectPassportSync.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/projectPassportSync.svg"
+},
+"tone": "core"
+},
+"project_explorer": {
+"category": "platform",
+"file": "icons/project_explorer.svg",
+"label": "Project Explorer",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/project_explorer.svg"
+},
+"tone": "core"
+},
+"project_passport": {
+"category": "platform",
+"file": "icons/project_passport.svg",
+"label": "Project Passport",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/project_passport.svg"
+},
+"tone": "core"
+},
+"projects": {
+"category": "primary",
+"file": "icons/projects.svg",
+"label": "Projects",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/projects.svg"
+},
+"tone": "core"
+},
+"publicParticipation": {
+"category": "environmental",
+"file": "icons/publicParticipation.svg",
+"label": "Public Participation",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/publicParticipation.svg"
+},
+"tone": "coral"
+},
+"quantityExtraction": {
+"category": "bim",
+"file": "icons/quantityExtraction.svg",
+"label": "Quantity Extraction",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/quantityExtraction.svg"
+},
+"tone": "cobalt"
+},
+"quoteComparison": {
+"category": "rfq",
+"file": "icons/quoteComparison.svg",
+"label": "Quote Comparison",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/quoteComparison.svg"
+},
+"tone": "cobalt"
+},
+"quoteSubmission": {
+"category": "rfq",
+"file": "icons/quoteSubmission.svg",
+"label": "Quote Submission",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/quoteSubmission.svg"
+},
+"tone": "amber"
+},
+"recordingConsent": {
+"category": "remoteDesktop",
+"file": "icons/recordingConsent.svg",
+"label": "Recording Consent",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/recordingConsent.svg"
+},
+"tone": "coral"
+},
+"refuseStorageArea": {
+"category": "refuse",
+"file": "icons/refuseStorageArea.svg",
+"label": "Refuse Storage Area",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/refuseStorageArea.svg"
+},
+"tone": "core"
+},
+"refuse_calculator": {
+"category": "platform",
+"file": "icons/refuse_calculator.svg",
+"label": "Refuse Calculator",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/refuse_calculator.svg"
+},
+"tone": "core"
+},
+"remoteDesktop": {
+"category": "remoteDesktop",
+"file": "icons/remoteDesktop.svg",
+"label": "Remote Desktop",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/remoteDesktop.svg"
+},
+"tone": "cobalt"
+},
+"remoteSession": {
+"category": "remoteDesktop",
+"file": "icons/remoteSession.svg",
+"label": "Remote Session",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/remoteSession.svg"
+},
+"tone": "cobalt"
+},
+"remote_desktop": {
+"category": "platform",
+"file": "icons/remote_desktop.svg",
+"label": "Remote Desktop",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/remote_desktop.svg"
+},
+"tone": "core"
+},
+"reports": {
+"category": "primary",
+"file": "icons/reports.svg",
+"label": "Reports",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/reports.svg"
+},
+"tone": "cobalt"
+},
+"resourceCapacity": {
+"category": "practiceManagement",
+"file": "icons/resourceCapacity.svg",
+"label": "Resource Capacity",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/resourceCapacity.svg"
+},
+"tone": "cobalt"
+},
+"rfi": {
+"category": "platform",
+"file": "icons/rfi.svg",
+"label": "Rfi",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/rfi.svg"
+},
+"tone": "core"
+},
+"rfqAward": {
+"category": "rfq",
+"file": "icons/rfqAward.svg",
+"label": "RFQ Award",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/rfqAward.svg"
+},
+"tone": "coral"
+},
+"rfqMarketplace": {
+"category": "rfq",
+"file": "icons/rfqMarketplace.svg",
+"label": "RFQ Marketplace",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/rfqMarketplace.svg"
+},
+"tone": "amber"
+},
+"rfqPackage": {
+"category": "rfq",
+"file": "icons/rfqPackage.svg",
+"label": "RFQ Package",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/rfqPackage.svg"
+},
+"tone": "amber"
+},
+"rfq_marketplace": {
+"category": "platform",
+"file": "icons/rfq_marketplace.svg",
+"label": "Rfq Marketplace",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/rfq_marketplace.svg"
+},
+"tone": "core"
+},
+"risk": {
+"category": "practice",
+"file": "icons/risk.svg",
+"label": "Risk",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-002.js iconShapes.risk"
+},
+"tone": "cobalt"
+},
+"safety": {
+"category": "platform",
+"file": "icons/safety.svg",
+"label": "Safety",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/safety.svg"
+},
+"tone": "core"
+},
+"search": {
+"category": "platform",
+"file": "icons/search.svg",
+"label": "Search",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/search.svg"
+},
+"tone": "core"
+},
+"sessionBroker": {
+"category": "remoteDesktop",
+"file": "icons/sessionBroker.svg",
+"label": "Session Broker",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/sessionBroker.svg"
+},
+"tone": "lavender"
+},
+"sessionToken": {
+"category": "remoteDesktop",
+"file": "icons/sessionToken.svg",
+"label": "Session Token",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/sessionToken.svg"
+},
+"tone": "coral"
+},
+"settings": {
+"category": "platform",
+"file": "icons/settings.svg",
+"label": "Settings",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/settings.svg"
+},
+"tone": "core"
+},
+"site_diary": {
+"category": "practice",
+"file": "icons/site_diary.svg",
+"label": "Site Diary",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-002.js iconShapes.site_diary"
+},
+"tone": "cobalt"
+},
+"site_instructions": {
+"category": "platform",
+"file": "icons/site_instructions.svg",
+"label": "Site Instructions",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/site_instructions.svg"
+},
+"tone": "core"
+},
+"snag_manager": {
+"category": "platform",
+"file": "icons/snag_manager.svg",
+"label": "Snag Manager",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/snag_manager.svg"
+},
+"tone": "core"
 },
 "specForgePush": {
-"label": "SpecForge Push",
 "category": "refuse",
-"tone": "core",
+"file": "icons/specForgePush.svg",
+"label": "SpecForge Push",
 "priority": "P0",
-"file": "icons/specForgePush.svg"
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/specForgePush.svg"
+},
+"tone": "core"
+},
+"specification": {
+"category": "primary",
+"file": "icons/specification.svg",
+"label": "Specification",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/specification.svg"
+},
+"tone": "core"
+},
+"standalone": {
+"category": "platform",
+"file": "icons/standalone.svg",
+"label": "Standalone",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/standalone.svg"
+},
+"tone": "core"
+},
+"supplierProfile": {
+"category": "rfq",
+"file": "icons/supplierProfile.svg",
+"label": "Supplier Profile",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/supplierProfile.svg"
+},
+"tone": "amber"
+},
+"supplier_catalog": {
+"category": "platform",
+"file": "icons/supplier_catalog.svg",
+"label": "Supplier Catalog",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/supplier_catalog.svg"
+},
+"tone": "core"
+},
+"survey_geomatics": {
+"category": "platform",
+"file": "icons/survey_geomatics.svg",
+"label": "Survey Geomatics",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/survey_geomatics.svg"
+},
+"tone": "core"
+},
+"team": {
+"category": "primary",
+"file": "icons/team.svg",
+"label": "Team",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/team.svg"
+},
+"tone": "coral"
+},
+"team_workspace": {
+"category": "platform",
+"file": "icons/team_workspace.svg",
+"label": "Team Workspace",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/team_workspace.svg"
+},
+"tone": "core"
+},
+"timesheet": {
+"category": "practice",
+"file": "icons/timesheet.svg",
+"label": "Timesheet",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-002.js iconShapes.timesheet"
+},
+"tone": "cobalt"
+},
+"timesheetCapture": {
+"category": "practiceManagement",
+"file": "icons/timesheetCapture.svg",
+"label": "Timesheet Capture",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/timesheetCapture.svg"
+},
+"tone": "cobalt"
+},
+"tools": {
+"category": "platform",
+"file": "icons/tools.svg",
+"label": "Tools",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/tools.svg"
+},
+"tone": "core"
+},
+"trends": {
+"category": "platform",
+"file": "icons/trends.svg",
+"label": "Trends",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/trends.svg"
+},
+"tone": "core"
+},
+"valuation": {
+"category": "practice",
+"file": "icons/valuation.svg",
+"label": "Valuation",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+"source": "js/reference-002.js iconShapes.valuation"
+},
+"tone": "cobalt"
+},
+"ventilationRequirement": {
+"category": "refuse",
+"file": "icons/ventilationRequirement.svg",
+"label": "Ventilation Requirement",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/ventilationRequirement.svg"
+},
+"tone": "core"
+},
+"wasteVolume": {
+"category": "refuse",
+"file": "icons/wasteVolume.svg",
+"label": "Waste Volume",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/wasteVolume.svg"
+},
+"tone": "core"
+},
+"wingman": {
+"category": "primary",
+"file": "icons/wingman.svg",
+"label": "Wingman",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/wingman.svg"
+},
+"tone": "lavender"
+},
+"wipReport": {
+"category": "practiceManagement",
+"file": "icons/wipReport.svg",
+"label": "WIP Report",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/wipReport.svg"
+},
+"tone": "cobalt"
+},
+"workflow": {
+"category": "primary",
+"file": "icons/workflow.svg",
+"label": "Workflow",
+"priority": "P0",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/workflow.svg"
+},
+"tone": "amber"
+},
+"xa": {
+"category": "platform",
+"file": "icons/xa.svg",
+"label": "Xa",
+"priority": "P1",
+"provenance": {
+"intent": "Canonical original Architex origami SVG",
+"source": "icons/xa.svg"
+},
+"tone": "core"
 }
 }, shapes={
-"dashboard": "<rect class=\"outline\" x=\"5\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"5\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"fold\" x=\"14\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/>",
-"projects": "<path class=\"outline\" d=\"M4 7.5a2 2 0 0 1 2-2h4l1.8 2H18a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9Z\"/><polygon class=\"fold\" points=\"14.5,11.2 19,11.2 19,16.8 13.6,16.8\"/>",
-"specification": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"11\" x2=\"13\" y2=\"11\"/><line class=\"line\" x1=\"9\" y1=\"14\" x2=\"14\" y2=\"14\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"workflow": "<path class=\"outline\" d=\"M8 7a7 7 0 0 1 10 4\"Z\"/><polyline class=\"line\" points=\"17,7 18.2,11 14.4,10\"/><path class=\"line\" d=\"M16 17A7 7 0 0 1 6 13\"/><polyline class=\"line\" points=\"7,17 5.8,13 9.6,14\"/><polygon class=\"fold\" points=\"14,15 20,12.5 17.3,18.5\"/>",
-"marketplace": "<path class=\"outline\" d=\"M6 8.5h12l-.8 9a2 2 0 0 1-2 1.8H8.8a2 2 0 0 1-2-1.8L6 8.5Z\"/><path class=\"line\" d=\"M8.5 8.5V7a3.5 3.5 0 0 1 7 0v1.5\"/><polygon class=\"fold\" points=\"18.7,13 18.7,18.5 13.5,18.5\"/>",
-"procurement": "<circle class=\"outline\" cx=\"9\" cy=\"18.5\" r=\"1.3\"/><circle class=\"line\" cx=\"17\" cy=\"18.5\" r=\"1.3\"/><polyline class=\"line\" points=\"5,6 7,6 8.2,14 17.5,14 19,9 9,9\"/><line class=\"line\" x1=\"8.5\" y1=\"14\" x2=\"7.7\" y2=\"16.8\"/><polygon class=\"fold\" points=\"12,9 18.2,9 16.8,14 13.2,14\"/>",
-"contracts": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"calendar": "<rect class=\"outline\" x=\"4.5\" y=\"6.5\" width=\"15\" height=\"13\" rx=\"2.5\"/><line class=\"line\" x1=\"4.8\" y1=\"10\" x2=\"19.2\" y2=\"10\"/><line class=\"line\" x1=\"8\" y1=\"4.5\" x2=\"8\" y2=\"8\"/><line class=\"line\" x1=\"16\" y1=\"4.5\" x2=\"16\" y2=\"8\"/><polygon class=\"fold\" points=\"19.0,13.5 19.0,18.5 13.8,18.5\"/>",
-"messages": "<path class=\"outline\" d=\"M7 5h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H11l-4 4v-4H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z\"/><polygon class=\"fold\" points=\"18.8,10.5 18.8,15.3 13.5,15.3\"/>",
-"reports": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"8\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"10\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"team": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"2\"/><path class=\"line\" d=\"M5 18c0-2.2 1.8-4 4-4s4 1.8 4 4\"/><path class=\"line\" d=\"M11 18c0-2.2 1.8-4 4-4s4 1.8 4 4\"/><path class=\"fold\" d=\"M8.5 18c0-2.7 1.4-4.5 3.5-4.5s3.5 1.8 3.5 4.5Z\"/>",
-"wingman": "<path class=\"outline\" d=\"M4.5 10.5L9.5 6.5L18.8 7.8L14.2 11.2L16.6 18.2L4.5 10.5Z\"/><polygon class=\"fold\" points=\"12.3,8.6 18.8,7.8 14.2,11.2 16.6,18.2 11,13.8\"/>",
-"remoteDesktop": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
-"remoteSession": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><circle class=\"outline\" cx=\"17\" cy=\"8\" r=\"1.2\"/><line class=\"line\" x1=\"15.8\" y1=\"9.2\" x2=\"14.8\" y2=\"10.2\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
-"sessionBroker": "<circle class=\"outline\" cx=\"7\" cy=\"12\" r=\"1.2\"/><circle class=\"line\" cx=\"17\" cy=\"8\" r=\"1.2\"/><circle class=\"line\" cx=\"17\" cy=\"16\" r=\"1.2\"/><line class=\"line\" x1=\"8.2\" y1=\"11.4\" x2=\"15.8\" y2=\"8.6\"/><line class=\"line\" x1=\"8.2\" y1=\"12.6\" x2=\"15.8\" y2=\"15.4\"/><polygon class=\"fold\" points=\"13.8,8.6 17,8.6 15.4,10.8\"/>",
-"sessionToken": "<rect class=\"outline\" x=\"6\" y=\"7\" width=\"12\" height=\"10\" rx=\"2\"/><circle class=\"outline\" cx=\"10\" cy=\"12\" r=\"1.5\"/><line class=\"line\" x1=\"11.5\" y1=\"12\" x2=\"15.5\" y2=\"12\"/><polygon class=\"fold\" points=\"18,12 18,17 13,17\"/>",
-"hostAgent": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><circle class=\"outline\" cx=\"17\" cy=\"8\" r=\"1.2\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
+"action": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"m8 9 2 2 4-4M8 15h8\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"action_centre": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h5M8 16h6\"/><circle class=\"outline\" cx=\"18\" cy=\"6\" r=\"3\"/><path class=\"fold\" d=\"M15 21h4v-4z\"/>",
+"activityScreening": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><circle class=\"outline\" cx=\"10.5\" cy=\"10.5\" r=\"2.8\"/><line class=\"line\" x1=\"12.3\" y1=\"12.3\" x2=\"14.1\" y2=\"14.1\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"admin_review": "<circle class=\"outline\" cx=\"9\" cy=\"9\" r=\"3\"/><path class=\"line\" d=\"M3 20c0-4 2-7 6-7 2 0 3.5.7 4.5 2\"/><path class=\"line\" d=\"M16 12v8M12 16h8\"/><path class=\"fold\" d=\"M16 20h4v-4z\"/>",
+"advisor": "<path class=\"outline\" d=\"M12 3a7 7 0 0 1 4 13v3H8v-3A7 7 0 0 1 12 3z\"/><path class=\"line\" d=\"M9 22h6M9 11h6M12 8v6\"/><path class=\"fold\" d=\"M15 17h4v-4z\"/>",
+"advisoryDisclaimer": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"12\" y1=\"13\" x2=\"12\" y2=\"15\"/><circle class=\"outline\" cx=\"12\" cy=\"16.8\" r=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"approvals_queue": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"m8 9 2 2 4-4M8 15h8\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"areaDimensions": "<rect class=\"outline\" x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"1.5\"/><line class=\"line\" x1=\"7\" y1=\"5\" x2=\"7\" y2=\"7\"/><line class=\"line\" x1=\"5\" y1=\"7\" x2=\"7\" y2=\"7\"/><line class=\"line\" x1=\"17\" y1=\"19\" x2=\"17\" y2=\"17\"/><line class=\"line\" x1=\"19\" y1=\"17\" x2=\"17\" y2=\"17\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
+"attach": "<path class=\"outline\" d=\"M8 17 17 8a3 3 0 0 0-4-4L5 12a5 5 0 0 0 7 7l7-7Z\"/><path class=\"line\" d=\"m8 14 7-7\"/><path class=\"fold\" d=\"M15 15h4l-4 4z\"/>",
+"autoFill": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><rect class=\"outline\" x=\"9\" y=\"9\" width=\"6\" height=\"4\" rx=\"0.8\"/><line class=\"line\" x1=\"12\" y1=\"8\" x2=\"12\" y2=\"10\"/><line class=\"line\" x1=\"11\" y1=\"9\" x2=\"13\" y2=\"9\"/><line class=\"line\" x1=\"15\" y1=\"11.5\" x2=\"15\" y2=\"13\"/><line class=\"line\" x1=\"14\" y1=\"12.2\" x2=\"16\" y2=\"12.2\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"basicAssessment": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"15\" y2=\"9\"/><line class=\"line\" x1=\"10\" y1=\"12\" x2=\"15\" y2=\"12\"/><line class=\"line\" x1=\"10\" y1=\"15\" x2=\"15\" y2=\"15\"/><polyline class=\"line\" points=\"7.2,9 8,9.8 9,8.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"bbbeeCompliance": "<circle class=\"outline\" cx=\"12\" cy=\"10\" r=\"3\"/><polyline class=\"line\" points=\"10.5,12.5 9.8,17 12,15.5 14.2,17 13.5,12.5\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><polygon class=\"fold\" points=\"14.3,14.2 16.4,12.2 16.4,16\"/>",
+"billingRates": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"8\" y1=\"9\" x2=\"16\" y2=\"9\"/><line class=\"line\" x1=\"8\" y1=\"12\" x2=\"16\" y2=\"12\"/><line class=\"line\" x1=\"8\" y1=\"15\" x2=\"16\" y2=\"15\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"10\" y2=\"15\"/><line class=\"line\" x1=\"14\" y1=\"9\" x2=\"14\" y2=\"15\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"bimExport": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
+"bimQuantities": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><line class=\"line\" x1=\"9\" y1=\"18\" x2=\"9\" y2=\"15\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13\"/><line class=\"line\" x1=\"15\" y1=\"18\" x2=\"15\" y2=\"11\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
+"bimSpecForgeSync": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><polygon class=\"outline\" points=\"12,8 16,10.3 16,15 12,17.3 8,15 8,10.3\"/><line class=\"line\" x1=\"8\" y1=\"18\" x2=\"16\" y2=\"18\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"bim_ifc": "<path class=\"outline\" d=\"m4 7 8-4 8 4v10l-8 4-8-4z\"/><path class=\"line\" d=\"m4 7 8 4 8-4M12 11v10M8 9v4M16 9v4\"/><path class=\"fold\" d=\"M15 19l5-2v-4z\"/>",
+"binAllocation": "<rect class=\"outline\" x=\"6\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><rect class=\"line\" x=\"10\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><rect class=\"line\" x=\"14\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
+"bom": "<path class=\"outline\" d=\"M4 6l8-4 8 4v12l-8 4-8-4z\"/><path class=\"line\" d=\"M4 6l8 4 8-4M12 10v12\"/><path class=\"fold\" d=\"M15 20l5-2v-4z\"/>",
+"boqGenerator": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"15\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"15\" y2=\"15.5\"/><line class=\"line\" x1=\"10\" y1=\"9.5\" x2=\"10\" y2=\"15.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"brief": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h6M8 16h4\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
 "browserViewer": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"14\" rx=\"2\"/><line class=\"line\" x1=\"4\" y1=\"8.5\" x2=\"20\" y2=\"8.5\"/><circle class=\"outline\" cx=\"7\" cy=\"6.7\" r=\"0.5\"/><circle class=\"outline\" cx=\"9\" cy=\"6.7\" r=\"0.5\"/><circle class=\"outline\" cx=\"11\" cy=\"6.7\" r=\"0.5\"/><rect class=\"outline\" x=\"8\" y=\"10\" width=\"8\" height=\"5\" rx=\"1\"/><polygon class=\"fold\" points=\"19,13 19,18 14,18\"/>",
+"budget": "<circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"9\"/><path class=\"line\" d=\"M12 7v10M15 9c-1-2-6-2-6 1s6 1 6 4-5 3-6 1\"/><path class=\"fold\" d=\"M16 17l4-2v4z\"/>",
+"buildingType": "<path class=\"outline\" d=\"M3 10 12 3l9 7v11H3z\"/><path class=\"line\" d=\"M9 21v-7h6v7M6 10h3M15 10h3\"/><path class=\"fold\" d=\"M16 6l5 4h-5z\"/>",
+"calendar": "<rect class=\"outline\" x=\"4.5\" y=\"6.5\" width=\"15\" height=\"13\" rx=\"2.5\"/><line class=\"line\" x1=\"4.8\" y1=\"10\" x2=\"19.2\" y2=\"10\"/><line class=\"line\" x1=\"8\" y1=\"4.5\" x2=\"8\" y2=\"8\"/><line class=\"line\" x1=\"16\" y1=\"4.5\" x2=\"16\" y2=\"8\"/><polygon class=\"fold\" points=\"19.0,13.5 19.0,18.5 13.8,18.5\"/>",
+"checklist": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"m8 9 2 2 4-4M8 15h8\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"clusters": "<circle class=\"outline\" cx=\"7\" cy=\"8\" r=\"3\"/><circle class=\"line\" cx=\"17\" cy=\"8\" r=\"3\"/><circle class=\"line\" cx=\"12\" cy=\"17\" r=\"3\"/><path class=\"line\" d=\"M9 10l2 4M15 10l-2 4M10 8h4\"/><path class=\"fold\" d=\"M14 19l3-2v3z\"/>",
+"collectionVehicleAccess": "<path class=\"outline\" d=\"M4 8h9v7H4z\"/><path class=\"line\" d=\"M13 10h3l2 2v3h-5z\"/><circle class=\"line\" cx=\"8\" cy=\"18\" r=\"1.3\"/><circle class=\"line\" cx=\"16\" cy=\"18\" r=\"1.3\"/><polygon class=\"fold\" points=\"13.5,12 18.5,12 18.5,17\"/>",
+"compliance_hub": "<path class=\"outline\" d=\"M12 2l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6z\"/><path class=\"line\" d=\"m8 12 2.5 2.5L16 9\"/><path class=\"fold\" d=\"M16 17l4-5v5z\"/>",
+"contract": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"contract_admin": "<path class=\"outline\" d=\"M5 2h10l4 4v16H5z\"/><path class=\"line\" d=\"M8 10h8M8 14h8M8 18c2-2 4 2 7-1\"/><path class=\"fold\" d=\"M15 2v4h4z\"/>",
+"contractor_compliance": "<path class=\"outline\" d=\"M4 14a8 8 0 0 1 16 0v2H4z\"/><path class=\"line\" d=\"M3 18h18\"/><path class=\"line\" d=\"m9 13 2 2 4-5\"/><path class=\"fold\" d=\"M16 16h4v-4z\"/>",
+"contracts": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"council_navigator": "<path class=\"outline\" d=\"M3 9h18M5 9v10M10 9v10M15 9v10M3 19h18M12 3l9 5H3z\"/><path class=\"line\" d=\"M18 12v4M16 14h4\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"cpd_learning": "<path class=\"outline\" d=\"m3 9 9-5 9 5-9 5zM6 12v5c3 2 9 2 12 0v-5Z\"/><path class=\"line\" d=\"M21 9v7\"/><path class=\"fold\" d=\"M16 12l5-3v5z\"/>",
+"crmPipeline": "<polyline class=\"line\" points=\"6,8 10,8 10,12 14,12 14,16 18,16\"/><rect class=\"outline\" x=\"5\" y=\"7\" width=\"2\" height=\"2\" rx=\"0.5\"/><rect class=\"line\" x=\"9\" y=\"11\" width=\"2\" height=\"2\" rx=\"0.5\"/><rect class=\"line\" x=\"13\" y=\"15\" width=\"2\" height=\"2\" rx=\"0.5\"/><polygon class=\"fold\" points=\"14,15 18,15 16,19\"/>",
+"dashboard": "<path class=\"outline\" d=\"M3 4h8v7H3zM14 4h7v12h-7zM3 14h8v6H3zM14 19h7v1h-7z\"/><path class=\"fold\" d=\"M17 4h4v4z\"/>",
+"detail": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h8M8 16h4\"/><circle class=\"outline\" cx=\"17\" cy=\"17\" r=\"2\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"dispute_resolution": "<path class=\"outline\" d=\"M12 3v18M5 7h14M7 7l-3 6h6zM17 7l-3 6h6z\"/><path class=\"fold\" d=\"M15 21h5v-5z\"/>",
+"document": "<path class=\"outline\" d=\"M6 2h9l5 5v15H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z\"/><path class=\"line\" d=\"M8 12h8M8 16h6\"/><path class=\"fold\" d=\"M15 2v5h5z\"/>",
+"documents_drawings": "<path class=\"outline\" d=\"M4 4h16v16H4z\"/><path class=\"line\" d=\"M7 16 11 9l3 4 3-6M7 17h10\"/><path class=\"fold\" d=\"M15 20h5v-5z\"/>",
+"drainageRequirement": "<path class=\"outline\" d=\"M12 7c2 3 3 4.5 3 6a3 3 0 1 1-6 0c0-1.5 1-3 3-6Z\"/><line class=\"line\" x1=\"7\" y1=\"18\" x2=\"17\" y2=\"18\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
+"drawing": "<path class=\"outline\" d=\"M4 3h16v18H4z\"/><path class=\"line\" d=\"M7 17 17 7M7 7h4v4M13 13h4v4\"/><path class=\"fold\" d=\"M15 21h5v-5z\"/>",
+"eiaWorkspace": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"eia_workspace": "<path class=\"outline\" d=\"M5 2h10l4 4v16H5z\"/><path class=\"line\" d=\"M8 17c1-5 4-7 8-8-1 5-4 7-8 8z\"/><path class=\"fold\" d=\"M15 2v4h4z\"/>",
+"emprMonitor": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polyline class=\"line\" points=\"14,9.5 15.1,10.7 17.2,8.8\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
+"eng_cable": "<path class=\"outline\" d=\"M4 12c0-4 3-7 7-7s7 3 7 7-3 7-7 7H6Z\"/><path class=\"line\" d=\"M8 9h6M8 13h6\"/><path class=\"fold\" d=\"M15 17h3v-3z\"/>",
+"eng_concrete": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"15\" rx=\"2\"/><path class=\"line\" d=\"M7 9h10M7 13h10M9 5v15M15 5v15\"/><path class=\"fold\" d=\"M16 20h4v-4z\"/>",
+"eng_db": "<rect class=\"outline\" x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"2\"/><path class=\"line\" d=\"M8 7h8M8 11h3M14 11h2M8 15h3M14 15h2\"/><path class=\"fold\" d=\"M16 21h4v-4z\"/>",
+"eng_drain": "<path class=\"outline\" d=\"M4 5h16v4H4z\"/><path class=\"line\" d=\"M7 12h10M8 15h8M10 18h4\"/><path class=\"fold\" d=\"M16 9h4V5z\"/>",
+"eng_duct": "<circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"8\"/><path class=\"line\" d=\"M12 5v5l4-2M19 12h-5l2 4M12 19v-5l-4 2M5 12h5L8 8\"/><path class=\"fold\" d=\"M16 17h3v-3z\"/>",
+"eng_escape": "<path class=\"outline\" d=\"M4 4h10v16H4z\"/><path class=\"line\" d=\"M9 12h11M16 8l4 4-4 4\"/><path class=\"fold\" d=\"M10 20h4v-4z\"/>",
+"eng_fire": "<path class=\"outline\" d=\"M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-5 4-7 0 3 2 4 3 5Z\"/><path class=\"fold\" d=\"M14 18h3v-3z\"/>",
+"eng_geo": "<path class=\"outline\" d=\"M3 17h18M5 17l3-5 4 3 4-7 3 9Z\"/><path class=\"line\" d=\"M4 20h16\"/><path class=\"fold\" d=\"M16 17h5v-5z\"/>",
+"eng_heat": "<path class=\"outline\" d=\"M10 4a2 2 0 0 1 4 0v9a5 5 0 1 1-4 0z\"/><path class=\"line\" d=\"M12 7v8\"/><path class=\"fold\" d=\"M15 18h3v-3z\"/>",
+"eng_hotwater": "<path class=\"outline\" d=\"M7 3h10v18H7z\"/><path class=\"line\" d=\"M10 8c0-2 2-2 2-4M14 8c0-2 2-2 2-4M10 15h4\"/><path class=\"fold\" d=\"M14 21h3v-3z\"/>",
+"eng_hydrant": "<path class=\"outline\" d=\"M8 7h8v13H8z\"/><path class=\"line\" d=\"M6 9h12M10 4h4v3\"/><path class=\"line\" d=\"M5 13h3M16 13h3\"/><path class=\"fold\" d=\"M13 20h3v-3z\"/>",
+"eng_steel": "<path class=\"outline\" d=\"M5 4h14v4H5zM5 16h14v4H5z\"/><path class=\"line\" d=\"M8 8v8M16 8v8\"/><path class=\"fold\" d=\"M15 20h4v-4z\"/>",
+"eng_storm": "<path class=\"outline\" d=\"M12 3c3 4 6 7 6 11a6 6 0 1 1-12 0c0-4 3-7 6-11z\"/><path class=\"line\" d=\"M8 15h8\"/><path class=\"fold\" d=\"M15 18h3v-3z\"/>",
+"eng_timber": "<rect class=\"outline\" x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path class=\"line\" d=\"M7 8c4-3 6 3 10 0M7 13c4-3 6 3 10 0\"/><path class=\"fold\" d=\"M16 20h4v-4z\"/>",
+"eng_units": "<path class=\"outline\" d=\"M4 7h16v10H4z\"/><path class=\"line\" d=\"M7 7v4M10 7v2M13 7v4M16 7v2\"/><path class=\"fold\" d=\"M16 17h4v-4z\"/>",
+"eng_water": "<path class=\"outline\" d=\"M3 8h13v5H3z\"/><path class=\"line\" d=\"M16 6h4v9h-4z\"/><path class=\"line\" d=\"M8 13v6M5 19h6\"/><path class=\"fold\" d=\"M16 13h4V9z\"/>",
+"eng_wind": "<path class=\"outline\" d=\"M3 8h11c3 0 3-4 0-4M3 12h16c3 0 3 4 0 4M3 16h8Z\"/><path class=\"fold\" d=\"M17 19h4v-4z\"/>",
+"engineering_hub": "<path class=\"outline\" d=\"M3 8 12 3l9 5v12H3z\"/><path class=\"line\" d=\"M7 20V9h10v11M7 13h10M12 9v11\"/><path class=\"fold\" d=\"M16 5l5 3h-5z\"/>",
+"environmentalAuthorisation": "<path class=\"outline\" d=\"M12 4l6 2v4.5c0 4.2-2.4 7.2-6 9-3.6-1.8-6-4.8-6-9V6l6-2Z\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"13.6,6.2 18,6.2 15.4,10.6\"/>",
+"environmental_heritage": "<path class=\"outline\" d=\"M4 20c4-8 7-13 16-16-1 9-5 14-16 16z\"/><path class=\"line\" d=\"M6 18c4-4 7-7 12-11M11 13v6\"/><path class=\"fold\" d=\"M15 15l4-8-1 7z\"/>",
+"expand": "<path class=\"outline\" d=\"M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6Z\"/><path class=\"fold\" d=\"M16 3h5v5z\"/>",
+"expenseClaim": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"13\" y2=\"15.5\"/><path class=\"line\" d=\"M12 11h2a1.5 1.5 0 1 1 0 3h-2a1.5 1.5 0 1 1 0-3Zm1-1V16\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"export": "<path class=\"outline\" d=\"M4 10v11h16V10M12 16V3m-4 4 4-4 4 4Z\"/><path class=\"fold\" d=\"M16 17h4v4z\"/>",
+"exportPdfReport": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><rect class=\"outline\" x=\"9\" y=\"15.5\" width=\"6\" height=\"2\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"feeTracker": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"8\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"10\"/><path class=\"line\" d=\"M10 9h4a1.4 1.4 0 0 1 0 2.8h-4\"/><line class=\"line\" x1=\"12\" y1=\"8\" x2=\"12\" y2=\"17\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"fee_proposal": "<path class=\"outline\" d=\"M5 2h10l4 4v16H5z\"/><path class=\"line\" d=\"M8 11h8M8 16h5M14 13v6M11 16h6\"/><path class=\"fold\" d=\"M15 2v4h4z\"/>",
+"feedback": "<path class=\"outline\" d=\"M4 4h16v12H9l-5 4z\"/><path class=\"line\" d=\"M8 8h8M8 12h5\"/><path class=\"fold\" d=\"M15 16h5v-5z\"/>",
 "fileHandoff": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"8\" y1=\"14\" x2=\"16\" y2=\"14\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"recordingConsent": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"2.2\"/><line class=\"line\" x1=\"12\" y1=\"9.8\" x2=\"12\" y2=\"14.2\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"finance": "<rect class=\"outline\" x=\"3\" y=\"6\" width=\"18\" height=\"14\" rx=\"3\"/><path class=\"line\" d=\"M3 10h18M16 15h2\"/><path class=\"fold\" d=\"M16 20h5v-5z\"/>",
+"firmDashboard": "<rect class=\"outline\" x=\"5\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"5\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><polygon class=\"fold\" points=\"14,5 19,5 19,10\"/>",
+"fm_bridge": "<path class=\"outline\" d=\"M3 20V8l6-4 6 4v12z\"/><path class=\"line\" d=\"M15 11l6-3v12h-6z\"/><path class=\"line\" d=\"M7 12h4M7 16h4M17 13h2M17 17h2\"/><path class=\"fold\" d=\"M17 20h4v-4z\"/>",
+"forecast": "<path class=\"outline\" d=\"M4 20V5h16v15Z\"/><path class=\"line\" d=\"m7 15 4-4 3 2 5-7M16 6h3v3\"/><path class=\"fold\" d=\"M16 20h4v-4z\"/>",
+"formApprovalWorkflow": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><line class=\"line\" x1=\"14\" y1=\"12\" x2=\"17\" y2=\"12\"/><polyline class=\"line\" points=\"15.5,10.5 17,12 15.5,13.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"formEditor": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"14\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"13\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"12\" y2=\"15.5\"/><path class=\"outline\" d=\"M14.5 15.5l2-2 1 1-2 2-1.7.3.7-1.3Z\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"formPdfExport": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><rect class=\"outline\" x=\"9\" y=\"15.5\" width=\"6\" height=\"2\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"formSignature": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
 "formSystem": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><rect class=\"outline\" x=\"9\" y=\"9\" width=\"3\" height=\"3\" rx=\"0.6\"/><rect class=\"outline\" x=\"13\" y=\"9\" width=\"2\" height=\"2\" rx=\"0.6\"/><rect class=\"outline\" x=\"9\" y=\"13\" width=\"6\" height=\"2\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
 "formTemplateLibrary": "<rect class=\"outline\" x=\"7\" y=\"6\" width=\"9\" height=\"12\" rx=\"2\"/><rect class=\"line\" x=\"9\" y=\"4\" width=\"8\" height=\"12\" rx=\"2\"/><polygon class=\"fold\" points=\"13.5,4 17,7.5 13.5,7.5\"/>",
-"formEditor": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"14\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"13\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"12\" y2=\"15.5\"/><path class=\"outline\" d=\"M14.5 15.5l2-2 1 1-2 2-1.7.3.7-1.3Z\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"autoFill": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><rect class=\"outline\" x=\"9\" y=\"9\" width=\"6\" height=\"4\" rx=\"0.8\"/><line class=\"line\" x1=\"12\" y1=\"8\" x2=\"12\" y2=\"10\"/><line class=\"line\" x1=\"11\" y1=\"9\" x2=\"13\" y2=\"9\"/><line class=\"line\" x1=\"15\" y1=\"11.5\" x2=\"15\" y2=\"13\"/><line class=\"line\" x1=\"14\" y1=\"12.2\" x2=\"16\" y2=\"12.2\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"formSignature": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"formApprovalWorkflow": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><line class=\"line\" x1=\"14\" y1=\"12\" x2=\"17\" y2=\"12\"/><polyline class=\"line\" points=\"15.5,10.5 17,12 15.5,13.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"formPdfExport": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><rect class=\"outline\" x=\"9\" y=\"15.5\" width=\"6\" height=\"2\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"eiaWorkspace": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"activityScreening": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><circle class=\"outline\" cx=\"10.5\" cy=\"10.5\" r=\"2.8\"/><line class=\"line\" x1=\"12.3\" y1=\"12.3\" x2=\"14.1\" y2=\"14.1\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"basicAssessment": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"15\" y2=\"9\"/><line class=\"line\" x1=\"10\" y1=\"12\" x2=\"15\" y2=\"12\"/><line class=\"line\" x1=\"10\" y1=\"15\" x2=\"15\" y2=\"15\"/><polyline class=\"line\" points=\"7.2,9 8,9.8 9,8.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"forms": "<path class=\"outline\" d=\"M5 2h10l4 4v16H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z\"/><rect class=\"outline\" x=\"7\" y=\"9\" width=\"3\" height=\"3\" rx=\".6\"/><path class=\"line\" d=\"M12 10h4M7 16h9\"/><path class=\"fold\" d=\"M15 2v4h4z\"/>",
 "fullEia": "<rect class=\"outline\" x=\"6\" y=\"6\" width=\"8\" height=\"12\" rx=\"2\"/><rect class=\"line\" x=\"10\" y=\"8\" width=\"8\" height=\"12\" rx=\"2\"/><polygon class=\"fold\" points=\"13.5,8 18,12 13.5,12\"/>",
-"environmentalAuthorisation": "<path class=\"outline\" d=\"M12 4l6 2v4.5c0 4.2-2.4 7.2-6 9-3.6-1.8-6-4.8-6-9V6l6-2Z\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"13.6,6.2 18,6.2 15.4,10.6\"/>",
-"emprMonitor": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polyline class=\"line\" points=\"14,9.5 15.1,10.7 17.2,8.8\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
-"publicParticipation": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"12\" cy=\"7\" r=\"2.2\"/><path class=\"line\" d=\"M4.5 18c0-2.5 2.2-4.1 4.6-4.1 1 0 1.8.2 2.4.7\"/><path class=\"line\" d=\"M19.5 18c0-2.5-2.2-4.1-4.6-4.1-1 0-1.8.2-2.4.7\"/><path class=\"fold\" d=\"M8.8 18c0-2.1 1.3-3.8 3.2-3.8s3.2 1.7 3.2 3.8Z\"/><line class=\"line\" x1=\"15.5\" y1=\"12.5\" x2=\"18.5\" y2=\"12.5\"/>",
+"god_mode": "<path class=\"outline\" d=\"M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z\"/><circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"3\"/><path class=\"fold\" d=\"M17 16l4 2-3 3z\"/>",
 "greenBuilding": "<rect class=\"outline\" x=\"6\" y=\"5\" width=\"12\" height=\"14\" rx=\"2\"/><line class=\"line\" x1=\"10\" y1=\"8\" x2=\"10\" y2=\"16\"/><line class=\"line\" x1=\"14\" y1=\"8\" x2=\"14\" y2=\"16\"/><line class=\"line\" x1=\"8\" y1=\"10\" x2=\"16\" y2=\"10\"/><line class=\"line\" x1=\"8\" y1=\"13\" x2=\"16\" y2=\"13\"/><path class=\"line\" d=\"M11 15c2.8-4.2 5.8-4.1 7-3-1 2.4-3.7 4.7-7 4.4-1-.1-1.3-.8 0-1.4Z\"/><line class=\"line\" x1=\"11.5\" y1=\"15.2\" x2=\"14.8\" y2=\"11.8\"/><polygon class=\"fold\" points=\"18.0,14 18.0,18.5 13.5,18.5\"/>",
-"practiceManagement": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><rect class=\"outline\" x=\"8\" y=\"8\" width=\"4\" height=\"3\" rx=\"0.8\"/><line class=\"line\" x1=\"14.5\" y1=\"16\" x2=\"14.5\" y2=\"13\"/><line class=\"line\" x1=\"17\" y1=\"16\" x2=\"17\" y2=\"11\"/><line class=\"line\" x1=\"19.5\" y1=\"16\" x2=\"19.5\" y2=\"12\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"firmDashboard": "<rect class=\"outline\" x=\"5\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"5\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"5\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><rect class=\"line\" x=\"14\" y=\"14\" width=\"5\" height=\"5\" rx=\"1.5\"/><polygon class=\"fold\" points=\"14,5 19,5 19,10\"/>",
-"timesheetCapture": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><circle class=\"outline\" cx=\"15.2\" cy=\"12.2\" r=\"2.2\"/><line class=\"line\" x1=\"15.2\" y1=\"12.2\" x2=\"15.2\" y2=\"11\"/><line class=\"line\" x1=\"15.2\" y1=\"12.2\" x2=\"16.2\" y2=\"12.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"expenseClaim": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"13\" y2=\"15.5\"/><path class=\"line\" d=\"M12 11h2a1.5 1.5 0 1 1 0 3h-2a1.5 1.5 0 1 1 0-3Zm1-1V16\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"billingRates": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"8\" y1=\"9\" x2=\"16\" y2=\"9\"/><line class=\"line\" x1=\"8\" y1=\"12\" x2=\"16\" y2=\"12\"/><line class=\"line\" x1=\"8\" y1=\"15\" x2=\"16\" y2=\"15\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"10\" y2=\"15\"/><line class=\"line\" x1=\"14\" y1=\"9\" x2=\"14\" y2=\"15\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"feeTracker": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"8\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"10\"/><path class=\"line\" d=\"M10 9h4a1.4 1.4 0 0 1 0 2.8h-4\"/><line class=\"line\" x1=\"12\" y1=\"8\" x2=\"12\" y2=\"17\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"wipReport": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"9\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"12\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"profitability": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><polyline class=\"line\" points=\"8,15 10,13 12,13.5 16,9\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"13\" y2=\"9\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"practiceInvoice": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"13\" y2=\"15.5\"/><rect class=\"outline\" x=\"9\" y=\"17\" width=\"6\" height=\"1.5\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"resourceCapacity": "<circle class=\"outline\" cx=\"9\" cy=\"8.5\" r=\"1.8\"/><circle class=\"line\" cx=\"15\" cy=\"8.5\" r=\"1.8\"/><path class=\"line\" d=\"M6.3 17c0-2 1.4-3.5 3.2-3.5 1.1 0 2.1.3 2.5 1\"/><path class=\"line\" d=\"M12.3 17c0-2 1.4-3.5 3.2-3.5 1.1 0 2.1.3 2.5 1\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"15\"/><line class=\"line\" x1=\"14.5\" y1=\"18\" x2=\"14.5\" y2=\"13\"/><polygon class=\"fold\" points=\"12,15 16.5,15 14.5,19\"/>",
-"crmPipeline": "<polyline class=\"line\" points=\"6,8 10,8 10,12 14,12 14,16 18,16\"/><rect class=\"outline\" x=\"5\" y=\"7\" width=\"2\" height=\"2\" rx=\"0.5\"/><rect class=\"line\" x=\"9\" y=\"11\" width=\"2\" height=\"2\" rx=\"0.5\"/><rect class=\"line\" x=\"13\" y=\"15\" width=\"2\" height=\"2\" rx=\"0.5\"/><polygon class=\"fold\" points=\"14,15 18,15 16,19\"/>",
-"incomeForecast": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><polyline class=\"line\" points=\"8,15 10,12 12,13 16,9\"/><polyline class=\"line\" points=\"14.5,9 16,9 16,10.5\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
-"bimQuantities": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><line class=\"line\" x1=\"9\" y1=\"18\" x2=\"9\" y2=\"15\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13\"/><line class=\"line\" x1=\"15\" y1=\"18\" x2=\"15\" y2=\"11\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
-"ifcUpload": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"hostAgent": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><circle class=\"outline\" cx=\"17\" cy=\"8\" r=\"1.2\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
+"iconography_registry": "<rect class=\"outline\" x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect class=\"line\" x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"2\"/><rect class=\"line\" x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/><rect class=\"line\" x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"2\"/><path class=\"fold\" d=\"M16 14h5v5z\"/>",
 "ifcModel": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
-"modelValidation": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
-"quantityExtraction": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"13\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"10\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"8\"/><circle class=\"outline\" cx=\"14.7\" cy=\"11.2\" r=\"2.2\"/><line class=\"line\" x1=\"16.2\" y1=\"12.7\" x2=\"17.6\" y2=\"14.1\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"ifcUpload": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"inbox": "<path class=\"outline\" d=\"M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 3v-15a2 2 0 0 1 2-2z\"/><path class=\"line\" d=\"M8 10h8M8 14h5\"/><path class=\"fold\" d=\"M17 19h3l-3 3z\"/>",
+"incomeForecast": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><polyline class=\"line\" points=\"8,15 10,12 12,13 16,9\"/><polyline class=\"line\" points=\"14.5,9 16,9 16,10.5\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"inspector": "<rect class=\"outline\" x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"/><path class=\"line\" d=\"M14 3v18M17 8h2M17 12h2\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"insurance_register": "<path class=\"outline\" d=\"M12 2l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6z\"/><path class=\"line\" d=\"M9 13c1-2 5-2 6 0M10 10h4\"/><path class=\"fold\" d=\"M16 17l4-5v5z\"/>",
+"integration": "<path class=\"outline\" d=\"M7 8a4 4 0 1 0 0 8h3M17 8a4 4 0 1 1 0 8h-3Z\"/><path class=\"line\" d=\"M9 12h6\"/><path class=\"fold\" d=\"M15 16h4v-4z\"/>",
+"issues_rfis": "<path class=\"outline\" d=\"M4 4h16v13H9l-5 4z\"/><path class=\"line\" d=\"M9 8c.5-2 5-2 5 1 0 2-2 2-2 4M12 15h.01\"/><path class=\"fold\" d=\"M15 17h5v-5z\"/>",
+"itp": "<path class=\"outline\" d=\"M6 3h12a2 2 0 0 1 2 2v16H4V5a2 2 0 0 1 2-2z\"/><path class=\"line\" d=\"M8 8l1.5 1.5L12 7M14 8h3M8 14l1.5 1.5L12 13M14 14h3\"/><path class=\"fold\" d=\"M15 21h5v-5z\"/>",
+"knowledge": "<path class=\"outline\" d=\"M4 4h7a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4z\"/><path class=\"line\" d=\"M20 4h-7a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h7z\"/><path class=\"fold\" d=\"M16 17h4v-4z\"/>",
+"lockedUntilSignOff": "<rect class=\"outline\" x=\"7\" y=\"11\" width=\"10\" height=\"8\" rx=\"2\"/><path class=\"line\" d=\"M9 11V9a3 3 0 0 1 6 0v2\"/><polygon class=\"fold\" points=\"13,14 17,14 15,18\"/>",
 "mappingRules": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"1.2\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"1.2\"/><circle class=\"line\" cx=\"12\" cy=\"16\" r=\"1.2\"/><line class=\"line\" x1=\"9.2\" y1=\"8.6\" x2=\"14.8\" y2=\"8.6\"/><line class=\"line\" x1=\"8.7\" y1=\"9.2\" x2=\"11.5\" y2=\"14.8\"/><line class=\"line\" x1=\"15.3\" y1=\"9.2\" x2=\"12.5\" y2=\"14.8\"/><polygon class=\"fold\" points=\"13.4,14.2 17,14.2 15.3,17\"/>",
-"boqGenerator": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"15\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"15\" y2=\"15.5\"/><line class=\"line\" x1=\"10\" y1=\"9.5\" x2=\"10\" y2=\"15.5\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"bimExport": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
-"bimSpecForgeSync": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><polygon class=\"outline\" points=\"12,8 16,10.3 16,15 12,17.3 8,15 8,10.3\"/><line class=\"line\" x1=\"8\" y1=\"18\" x2=\"16\" y2=\"18\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"market_insights": "<rect class=\"outline\" x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"/><path class=\"line\" d=\"M7 16v-4M12 16V8M17 16v-7M6 18h12\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"marketplace": "<path class=\"outline\" d=\"M6 8.5h12l-.8 9a2 2 0 0 1-2 1.8H8.8a2 2 0 0 1-2-1.8L6 8.5Z\"/><path class=\"line\" d=\"M8.5 8.5V7a3.5 3.5 0 0 1 7 0v1.5\"/><polygon class=\"fold\" points=\"18.7,13 18.7,18.5 13.5,18.5\"/>",
+"meeting_agenda": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h8M8 16h6M3 7h2M3 11h2M3 15h2\"/><path class=\"fold\" d=\"M15 21h4v-4z\"/>",
+"meeting_camera": "<rect class=\"outline\" x=\"3\" y=\"6\" width=\"13\" height=\"12\" rx=\"3\"/><path class=\"line\" d=\"m16 10 5-3v10l-5-3z\"/><path class=\"fold\" d=\"M12 18h4v-4z\"/>",
+"meeting_caption": "<rect class=\"outline\" x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path class=\"line\" d=\"M10 10c-3-2-5 0-5 2s2 4 5 2M19 10c-3-2-5 0-5 2s2 4 5 2\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"meeting_day": "<rect class=\"outline\" x=\"3\" y=\"4\" width=\"18\" height=\"17\" rx=\"3\"/><path class=\"line\" d=\"M7 2v4M17 2v4M3 9h18M7 13h4M7 17h7\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"meeting_hand": "<path class=\"outline\" d=\"M7 12V6a2 2 0 0 1 4 0v4-6a2 2 0 0 1 4 0v6-4a2 2 0 0 1 4 0v8c0 5-3 8-8 8-4 0-6-2-8-6l-1-3a2 2 0 0 1 4-1z\"/><path class=\"fold\" d=\"M15 20h4v-4z\"/>",
+"meeting_invite": "<path class=\"outline\" d=\"M3 6h18v13H3z\"/><path class=\"line\" d=\"m3 7 9 7 9-7M17 3v6M14 6h6\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"meeting_mic": "<rect class=\"outline\" x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path class=\"line\" d=\"M6 11a6 6 0 0 0 12 0M12 17v4M8 21h8\"/><path class=\"fold\" d=\"M15 17h3v-3z\"/>",
+"meeting_recording": "<rect class=\"outline\" x=\"3\" y=\"5\" width=\"13\" height=\"14\" rx=\"3\"/><circle class=\"outline\" cx=\"9.5\" cy=\"12\" r=\"3\"/><path class=\"line\" d=\"m16 10 5-3v10l-5-3z\"/><path class=\"fold\" d=\"M12 19h4v-4z\"/>",
+"meeting_review": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h5M8 16h4M15 15l2 2 4-5\"/><path class=\"fold\" d=\"M15 21h4v-4z\"/>",
+"meeting_share": "<rect class=\"outline\" x=\"3\" y=\"4\" width=\"18\" height=\"14\" rx=\"2\"/><path class=\"line\" d=\"M12 15V7M8 11l4-4 4 4M8 21h8\"/><path class=\"fold\" d=\"M16 18h5v-5z\"/>",
+"meeting_template": "<path class=\"outline\" d=\"M4 4h16v16H4z\"/><path class=\"line\" d=\"M8 4v16M8 9h12M11 13h6M11 16h4\"/><path class=\"fold\" d=\"M16 20h4v-4z\"/>",
+"meetings": "<rect class=\"outline\" x=\"3\" y=\"5\" width=\"13\" height=\"14\" rx=\"3\"/><path class=\"line\" d=\"m16 10 5-3v10l-5-3z\"/><path class=\"line\" d=\"M7 9h5M7 13h4\"/><path class=\"fold\" d=\"M12 19h4v-4z\"/>",
+"menu": "<rect class=\"outline\" x=\"3\" y=\"5\" width=\"18\" height=\"14\" rx=\"3\"/><path class=\"line\" d=\"M7 9h10M7 13h10M7 17h6\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"messages": "<path class=\"outline\" d=\"M7 5h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H11l-4 4v-4H7a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z\"/><polygon class=\"fold\" points=\"18.8,10.5 18.8,15.3 13.5,15.3\"/>",
+"milestone": "<path class=\"outline\" d=\"M5 3v18M5 4h13l-3 4 3 4H5Z\"/><path class=\"fold\" d=\"M14 8l4 4h-4z\"/>",
+"missingMunicipalField": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><circle class=\"outline\" cx=\"12\" cy=\"15\" r=\"0.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"modelValidation": "<polygon class=\"outline\" points=\"12,4 18,7.5 18,15.5 12,19 6,15.5 6,7.5\"/><line class=\"line\" x1=\"12\" y1=\"4\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"18\" y2=\"15.5\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"6\" y2=\"15.5\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><polygon class=\"fold\" points=\"12,12 18,8.5 18,15.5\"/>",
+"municipal": "<path class=\"outline\" d=\"M3 9h18M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18M12 3l9 5H3z\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"municipalRefuseCalculator": "<rect class=\"outline\" x=\"6\" y=\"4\" width=\"12\" height=\"16\" rx=\"2\"/><rect class=\"outline\" x=\"8.2\" y=\"6.5\" width=\"7.6\" height=\"3.2\" rx=\"1\"/><line class=\"line\" x1=\"9\" y1=\"13\" x2=\"10.5\" y2=\"13\"/><line class=\"line\" x1=\"13\" y1=\"13\" x2=\"14.5\" y2=\"13\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"10.5\" y2=\"16\"/><line class=\"line\" x1=\"13\" y1=\"16\" x2=\"14.5\" y2=\"16\"/><polygon class=\"fold\" points=\"13,15 18,15 18,20\"/>",
+"municipal_tracker": "<path class=\"outline\" d=\"M4 3h16v18H4z\"/><path class=\"line\" d=\"M8 7h8M8 11h8M8 15h4\"/><circle class=\"outline\" cx=\"17\" cy=\"16\" r=\"2\"/><path class=\"fold\" d=\"M15 21h5v-5z\"/>",
+"municipalityProfile": "<polyline class=\"line\" points=\"6,10 12,6 18,10\"/><rect class=\"outline\" x=\"7\" y=\"10\" width=\"10\" height=\"8\" rx=\"1\"/><line class=\"line\" x1=\"9.5\" y1=\"10\" x2=\"9.5\" y2=\"18\"/><line class=\"line\" x1=\"14.5\" y1=\"10\" x2=\"14.5\" y2=\"18\"/><polygon class=\"fold\" points=\"13,14 17,14 15,18\"/>",
+"ncr_manager": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h5M9 17l6-6M15 17l-6-6\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"nhbrc_enrolment": "<path class=\"outline\" d=\"M3 11 12 4l9 7v10H3z\"/><path class=\"line\" d=\"M8 21v-6h8v6M9 10h6\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"notification": "<path class=\"outline\" d=\"M6 17h12l-2-3V9a4 4 0 0 0-8 0v5z\"/><path class=\"line\" d=\"M10 20h4\"/><path class=\"fold\" d=\"M15 17h3v-3z\"/>",
+"payments_escrow": "<path class=\"line\" d=\"M4 7h16v13H4zM7 7V4h10v3\"/><circle class=\"outline\" cx=\"12\" cy=\"13\" r=\"3\"/><path class=\"fold\" d=\"M15 20h5v-5z\"/>",
+"planning": "<path class=\"outline\" d=\"M5 3h14a2 2 0 0 1 2 2v14H3V5a2 2 0 0 1 2-2z\"/><path class=\"line\" d=\"M7 7h10M7 11h6M8 19v3M16 19v3\"/><path class=\"fold\" d=\"M15 19h6v-6z\"/>",
+"practiceInvoice": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"9\" y1=\"15.5\" x2=\"13\" y2=\"15.5\"/><rect class=\"outline\" x=\"9\" y=\"17\" width=\"6\" height=\"1.5\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"practiceManagement": "<path class=\"outline\" d=\"M3 7h18v14H3z\"/><path class=\"line\" d=\"M8 7V3h8v4M3 12h18M10 12v3h4v-3\"/><path class=\"fold\" d=\"M17 17h4v4z\"/>",
+"practice_management": "<path class=\"outline\" d=\"M4 4h16v16H4z\"/><path class=\"line\" d=\"M4 9h16M9 9v11M12 13h5M12 16h4\"/><path class=\"fold\" d=\"M15 20h5v-5z\"/>",
+"procurement": "<circle class=\"outline\" cx=\"9\" cy=\"18.5\" r=\"1.3\"/><circle class=\"line\" cx=\"17\" cy=\"18.5\" r=\"1.3\"/><polyline class=\"line\" points=\"5,6 7,6 8.2,14 17.5,14 19,9 9,9\"/><line class=\"line\" x1=\"8.5\" y1=\"14\" x2=\"7.7\" y2=\"16.8\"/><polygon class=\"fold\" points=\"12,9 18.2,9 16.8,14 13.2,14\"/>",
+"professionalSignOff": "<circle class=\"outline\" cx=\"12\" cy=\"8\" r=\"2\"/><path class=\"line\" d=\"M9 18c0-2.4 2.4-4 5-4s5 1.6 5 4\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"13.5,14.5 17.2,14.5 15.4,17.2\"/>",
+"professional_directory": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"3\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"3\"/><path class=\"line\" d=\"M3 20c0-4 2-6 5-6s5 2 5 6M12 20c0-3 1.5-5 4-5s4 2 4 5\"/><path class=\"fold\" d=\"M15 20h5v-5z\"/>",
+"profitability": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><polyline class=\"line\" points=\"8,15 10,13 12,13.5 16,9\"/><line class=\"line\" x1=\"10\" y1=\"9\" x2=\"13\" y2=\"9\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"programme": "<path class=\"outline\" d=\"M4 5h16v14H4z\"/><path class=\"line\" d=\"M7 9h10M7 13h7M7 17h4\"/><path class=\"fold\" d=\"M15 19h5v-5z\"/>",
+"progress": "<circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"9\"/><path class=\"line\" d=\"M12 12V5a7 7 0 0 1 7 7\"/><path class=\"fold\" d=\"M12 12h7a7 7 0 0 1-4 6z\"/>",
+"projectPassportSync": "<rect class=\"outline\" x=\"7\" y=\"5\" width=\"10\" height=\"14\" rx=\"2\"/><circle class=\"outline\" cx=\"12\" cy=\"11\" r=\"2.3\"/><line class=\"line\" x1=\"9.7\" y1=\"11\" x2=\"14.3\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"8.7\" x2=\"12\" y2=\"13.3\"/><line class=\"line\" x1=\"16\" y1=\"14\" x2=\"18\" y2=\"14\"/><polyline class=\"line\" points=\"16.8,12.8 18,14 16.8,15.2\"/><polygon class=\"fold\" points=\"13.5,14.5 17.2,14.5 15.4,17.2\"/>",
+"project_explorer": "<path class=\"outline\" d=\"M3 7h8l2-2h8v14H3z\"/><circle class=\"outline\" cx=\"10\" cy=\"13\" r=\"3\"/><path class=\"line\" d=\"M12.5 15.5 16 19\"/><path class=\"fold\" d=\"M16 19h5v-5z\"/>",
+"project_passport": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><circle class=\"outline\" cx=\"9\" cy=\"9\" r=\"2\"/><path class=\"line\" d=\"M7 14h10M7 17h7\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"projects": "<path class=\"outline\" d=\"M4 7.5a2 2 0 0 1 2-2h4l1.8 2H18a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9Z\"/><polygon class=\"fold\" points=\"14.5,11.2 19,11.2 19,16.8 13.6,16.8\"/>",
+"publicParticipation": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"12\" cy=\"7\" r=\"2.2\"/><path class=\"line\" d=\"M4.5 18c0-2.5 2.2-4.1 4.6-4.1 1 0 1.8.2 2.4.7\"/><path class=\"line\" d=\"M19.5 18c0-2.5-2.2-4.1-4.6-4.1-1 0-1.8.2-2.4.7\"/><path class=\"fold\" d=\"M8.8 18c0-2.1 1.3-3.8 3.2-3.8s3.2 1.7 3.2 3.8Z\"/><line class=\"line\" x1=\"15.5\" y1=\"12.5\" x2=\"18.5\" y2=\"12.5\"/>",
+"quantityExtraction": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"13\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"10\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"8\"/><circle class=\"outline\" cx=\"14.7\" cy=\"11.2\" r=\"2.2\"/><line class=\"line\" x1=\"16.2\" y1=\"12.7\" x2=\"17.6\" y2=\"14.1\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"quoteComparison": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M13 6.5h4.2L19 8.3V19a1.8 1.8 0 0 1-1.8 1.8H14\"/><polygon class=\"fold\" points=\"15,15 19,15 17,19\"/>",
+"quoteSubmission": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13.5\"/><polyline class=\"line\" points=\"10.7,14.8 12,13.5 13.3,14.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"recordingConsent": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"2.2\"/><line class=\"line\" x1=\"12\" y1=\"9.8\" x2=\"12\" y2=\"14.2\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"refuseStorageArea": "<rect class=\"outline\" x=\"6\" y=\"7\" width=\"12\" height=\"10\" rx=\"2\"/><rect class=\"outline\" x=\"8\" y=\"9\" width=\"8\" height=\"6\" rx=\"1\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
+"refuse_calculator": "<path class=\"outline\" d=\"M6 7h12l-1 14H7zM8 7V4h8v3M4 7h16Z\"/><path class=\"line\" d=\"M10 11v6M14 11v6\"/><path class=\"fold\" d=\"M13 21h4l.3-4z\"/>",
+"remoteDesktop": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
+"remoteSession": "<rect class=\"outline\" x=\"4\" y=\"5\" width=\"16\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"9\" y1=\"19\" x2=\"15\" y2=\"19\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"19\"/><circle class=\"outline\" cx=\"17\" cy=\"8\" r=\"1.2\"/><line class=\"line\" x1=\"15.8\" y1=\"9.2\" x2=\"14.8\" y2=\"10.2\"/><polygon class=\"fold\" points=\"19,10 19,14 14,14\"/>",
+"remote_desktop": "<rect class=\"outline\" x=\"3\" y=\"4\" width=\"18\" height=\"13\" rx=\"2\"/><path class=\"line\" d=\"M8 21h8M12 17v4M7 8h10\"/><path class=\"fold\" d=\"M16 17h5v-5z\"/>",
+"reports": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"8\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"10\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"resourceCapacity": "<circle class=\"outline\" cx=\"9\" cy=\"8.5\" r=\"1.8\"/><circle class=\"line\" cx=\"15\" cy=\"8.5\" r=\"1.8\"/><path class=\"line\" d=\"M6.3 17c0-2 1.4-3.5 3.2-3.5 1.1 0 2.1.3 2.5 1\"/><path class=\"line\" d=\"M12.3 17c0-2 1.4-3.5 3.2-3.5 1.1 0 2.1.3 2.5 1\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"15\"/><line class=\"line\" x1=\"14.5\" y1=\"18\" x2=\"14.5\" y2=\"13\"/><polygon class=\"fold\" points=\"12,15 16.5,15 14.5,19\"/>",
+"rfi": "<path class=\"outline\" d=\"M4 4h16v13H9l-5 4z\"/><path class=\"line\" d=\"M9 9h6M9 13h4\"/><path class=\"fold\" d=\"M15 17h5v-5z\"/>",
+"rfqAward": "<circle class=\"outline\" cx=\"12\" cy=\"10\" r=\"3\"/><polyline class=\"line\" points=\"10.5,12.5 9.8,17 12,15.5 14.2,17 13.5,12.5\"/><line class=\"line\" x1=\"10\" y1=\"10\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"14.5\" y2=\"8.8\"/><polygon class=\"fold\" points=\"14.3,14.2 16.4,12.2 16.4,16\"/>",
 "rfqMarketplace": "<path class=\"outline\" d=\"M6 8.5h12l-.8 9a2 2 0 0 1-2 1.8H8.8a2 2 0 0 1-2-1.8L6 8.5Z\"/><path class=\"line\" d=\"M8.5 8.5V7a3.5 3.5 0 0 1 7 0v1.5\"/><line class=\"line\" x1=\"10\" y1=\"12\" x2=\"14\" y2=\"12\"/><polygon class=\"fold\" points=\"18.7,13 18.7,18.5 13.5,18.5\"/>",
 "rfqPackage": "<rect class=\"outline\" x=\"5\" y=\"7\" width=\"14\" height=\"11\" rx=\"2\"/><line class=\"line\" x1=\"12\" y1=\"7\" x2=\"12\" y2=\"18\"/><line class=\"line\" x1=\"5\" y1=\"11.5\" x2=\"19\" y2=\"11.5\"/><line class=\"line\" x1=\"9\" y1=\"12\" x2=\"15\" y2=\"12\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"rfq_marketplace": "<path class=\"outline\" d=\"M4 8h16v12H4z\"/><path class=\"line\" d=\"M7 8V5h10v3\"/><path class=\"line\" d=\"M8 12h8M8 16h5\"/><path class=\"fold\" d=\"M15 20h5v-5z\"/>",
+"risk": "<path class=\"outline\" d=\"M12 3 22 20H2z\"/><path class=\"line\" d=\"M12 9v5M12 17h.01\"/><path class=\"fold\" d=\"M16 20h6l-3-5z\"/>",
+"safety": "<path class=\"outline\" d=\"M4 14a8 8 0 0 1 16 0v2H4z\"/><path class=\"line\" d=\"M8 14V9M16 14V9M3 18h18\"/><path class=\"fold\" d=\"M16 16h4v-4z\"/>",
+"search": "<circle class=\"outline\" cx=\"10\" cy=\"10\" r=\"6\"/><path class=\"line\" d=\"M15 15l6 6\"/><path class=\"fold\" d=\"M14 14l3 1-2 2z\"/>",
+"sessionBroker": "<circle class=\"outline\" cx=\"7\" cy=\"12\" r=\"1.2\"/><circle class=\"line\" cx=\"17\" cy=\"8\" r=\"1.2\"/><circle class=\"line\" cx=\"17\" cy=\"16\" r=\"1.2\"/><line class=\"line\" x1=\"8.2\" y1=\"11.4\" x2=\"15.8\" y2=\"8.6\"/><line class=\"line\" x1=\"8.2\" y1=\"12.6\" x2=\"15.8\" y2=\"15.4\"/><polygon class=\"fold\" points=\"13.8,8.6 17,8.6 15.4,10.8\"/>",
+"sessionToken": "<rect class=\"outline\" x=\"6\" y=\"7\" width=\"12\" height=\"10\" rx=\"2\"/><circle class=\"outline\" cx=\"10\" cy=\"12\" r=\"1.5\"/><line class=\"line\" x1=\"11.5\" y1=\"12\" x2=\"15.5\" y2=\"12\"/><polygon class=\"fold\" points=\"18,12 18,17 13,17\"/>",
+"settings": "<circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"4\"/><path class=\"line\" d=\"M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1\"/><path class=\"fold\" d=\"M16 16l4 1-3 3z\"/>",
+"site_diary": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 7h8M8 11h8M8 15h5\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"site_instructions": "<path class=\"outline\" d=\"M5 2h10l4 4v16H5z\"/><path class=\"line\" d=\"M8 11h8M8 15h5M9 19l6-6\"/><path class=\"fold\" d=\"M15 2v4h4z\"/>",
+"snag_manager": "<path class=\"outline\" d=\"M5 3h14v18H5z\"/><path class=\"line\" d=\"M8 8h8M8 12h8M8 16h4\"/><circle class=\"outline\" cx=\"16\" cy=\"16\" r=\"2\"/><path class=\"fold\" d=\"M14 21h5v-5z\"/>",
+"specForgePush": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"15\" y2=\"12.5\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13.5\"/><polyline class=\"line\" points=\"10.7,14.8 12,13.5 13.3,14.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"specification": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"11\" x2=\"13\" y2=\"11\"/><line class=\"line\" x1=\"9\" y1=\"14\" x2=\"14\" y2=\"14\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"standalone": "<path class=\"outline\" d=\"M4 5h16v14H4z\"/><path class=\"line\" d=\"M8 9h8M8 13h8\"/><path class=\"fold\" d=\"M15 19h5v-5z\"/>",
 "supplierProfile": "<circle class=\"outline\" cx=\"12\" cy=\"8\" r=\"2\"/><path class=\"line\" d=\"M9 18c0-2.4 2.4-4 5-4s5 1.6 5 4\"/><rect class=\"outline\" x=\"14\" y=\"10\" width=\"3\" height=\"3\" rx=\"0.8\"/><polygon class=\"fold\" points=\"13.5,14.5 17.2,14.5 15.4,17.2\"/>",
-"quoteSubmission": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"14\" y2=\"12.5\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13.5\"/><polyline class=\"line\" points=\"10.7,14.8 12,13.5 13.3,14.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"quoteComparison": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><path class=\"line\" d=\"M13 6.5h4.2L19 8.3V19a1.8 1.8 0 0 1-1.8 1.8H14\"/><polygon class=\"fold\" points=\"15,15 19,15 17,19\"/>",
-"rfqAward": "<circle class=\"outline\" cx=\"12\" cy=\"10\" r=\"3\"/><polyline class=\"line\" points=\"10.5,12.5 9.8,17 12,15.5 14.2,17 13.5,12.5\"/><line class=\"line\" x1=\"10\" y1=\"10\" x2=\"12\" y2=\"12\"/><line class=\"line\" x1=\"12\" y1=\"12\" x2=\"14.5\" y2=\"8.8\"/><polygon class=\"fold\" points=\"14.3,14.2 16.4,12.2 16.4,16\"/>",
-"bbbeeCompliance": "<circle class=\"outline\" cx=\"12\" cy=\"10\" r=\"3\"/><polyline class=\"line\" points=\"10.5,12.5 9.8,17 12,15.5 14.2,17 13.5,12.5\"/><polyline class=\"line\" points=\"10,12 11.3,13.5 14.2,10.2\"/><polygon class=\"fold\" points=\"14.3,14.2 16.4,12.2 16.4,16\"/>",
-"municipalRefuseCalculator": "<rect class=\"outline\" x=\"6\" y=\"4\" width=\"12\" height=\"16\" rx=\"2\"/><rect class=\"outline\" x=\"8.2\" y=\"6.5\" width=\"7.6\" height=\"3.2\" rx=\"1\"/><line class=\"line\" x1=\"9\" y1=\"13\" x2=\"10.5\" y2=\"13\"/><line class=\"line\" x1=\"13\" y1=\"13\" x2=\"14.5\" y2=\"13\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"10.5\" y2=\"16\"/><line class=\"line\" x1=\"13\" y1=\"16\" x2=\"14.5\" y2=\"16\"/><polygon class=\"fold\" points=\"13,15 18,15 18,20\"/>",
-"municipalityProfile": "<polyline class=\"line\" points=\"6,10 12,6 18,10\"/><rect class=\"outline\" x=\"7\" y=\"10\" width=\"10\" height=\"8\" rx=\"1\"/><line class=\"line\" x1=\"9.5\" y1=\"10\" x2=\"9.5\" y2=\"18\"/><line class=\"line\" x1=\"14.5\" y1=\"10\" x2=\"14.5\" y2=\"18\"/><polygon class=\"fold\" points=\"13,14 17,14 15,18\"/>",
-"buildingType": "<polyline class=\"line\" points=\"5,10 12,4.5 19,10\"/><path class=\"outline\" d=\"M7 9.8V18.5H17V9.8\"Z\"/><polygon class=\"fold\" points=\"13,13 17,13 15,18\"/>",
-"wasteVolume": "<rect class=\"outline\" x=\"8\" y=\"8\" width=\"8\" height=\"9\" rx=\"1.5\"/><line class=\"line\" x1=\"9.5\" y1=\"8\" x2=\"10.5\" y2=\"6.5\"/><line class=\"line\" x1=\"14.5\" y1=\"8\" x2=\"13.5\" y2=\"6.5\"/><line class=\"line\" x1=\"10\" y1=\"12\" x2=\"14\" y2=\"12\"/><polygon class=\"fold\" points=\"13,13 16,13 14.5,17\"/>",
-"refuseStorageArea": "<rect class=\"outline\" x=\"6\" y=\"7\" width=\"12\" height=\"10\" rx=\"2\"/><rect class=\"outline\" x=\"8\" y=\"9\" width=\"8\" height=\"6\" rx=\"1\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
-"areaDimensions": "<rect class=\"outline\" x=\"7\" y=\"7\" width=\"10\" height=\"10\" rx=\"1.5\"/><line class=\"line\" x1=\"7\" y1=\"5\" x2=\"7\" y2=\"7\"/><line class=\"line\" x1=\"5\" y1=\"7\" x2=\"7\" y2=\"7\"/><line class=\"line\" x1=\"17\" y1=\"19\" x2=\"17\" y2=\"17\"/><line class=\"line\" x1=\"19\" y1=\"17\" x2=\"17\" y2=\"17\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
-"binAllocation": "<rect class=\"outline\" x=\"6\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><rect class=\"line\" x=\"10\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><rect class=\"line\" x=\"14\" y=\"9\" width=\"4\" height=\"6\" rx=\"1\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
-"collectionVehicleAccess": "<path class=\"outline\" d=\"M4 8h9v7H4z\"/><path class=\"line\" d=\"M13 10h3l2 2v3h-5z\"/><circle class=\"line\" cx=\"8\" cy=\"18\" r=\"1.3\"/><circle class=\"line\" cx=\"16\" cy=\"18\" r=\"1.3\"/><polygon class=\"fold\" points=\"13.5,12 18.5,12 18.5,17\"/>",
+"supplier_catalog": "<path class=\"outline\" d=\"M3 8h18v12H3zM5 8l2-4h10l2 4Z\"/><path class=\"line\" d=\"M8 12h8M8 16h4\"/><path class=\"fold\" d=\"M16 20h5v-5z\"/>",
+"survey_geomatics": "<path class=\"outline\" d=\"M12 3l4 7-4 11-4-11z\"/><path class=\"line\" d=\"M12 10h7M5 10h3M4 21l4-11M20 21l-4-11\"/><path class=\"fold\" d=\"M12 3l4 7h-4z\"/>",
+"team": "<circle class=\"outline\" cx=\"8\" cy=\"8\" r=\"2\"/><circle class=\"line\" cx=\"16\" cy=\"8\" r=\"2\"/><path class=\"line\" d=\"M5 18c0-2.2 1.8-4 4-4s4 1.8 4 4\"/><path class=\"line\" d=\"M11 18c0-2.2 1.8-4 4-4s4 1.8 4 4\"/><path class=\"fold\" d=\"M8.5 18c0-2.7 1.4-4.5 3.5-4.5s3.5 1.8 3.5 4.5Z\"/>",
+"team_workspace": "<circle class=\"outline\" cx=\"12\" cy=\"7\" r=\"3\"/><circle class=\"outline\" cx=\"5\" cy=\"10\" r=\"2\"/><circle class=\"outline\" cx=\"19\" cy=\"10\" r=\"2\"/><path class=\"line\" d=\"M6 20c0-4 2-7 6-7s6 3 6 7M1.5 20c0-3 1-5 3.5-5M22.5 20c0-3-1-5-3.5-5\"/><path class=\"fold\" d=\"M15 20h4v-4z\"/>",
+"timesheet": "<rect class=\"outline\" x=\"3\" y=\"4\" width=\"18\" height=\"17\" rx=\"3\"/><path class=\"line\" d=\"M7 8h7M7 12h5M7 16h4\"/><circle class=\"outline\" cx=\"17\" cy=\"15\" r=\"3\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"timesheetCapture": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><circle class=\"outline\" cx=\"15.2\" cy=\"12.2\" r=\"2.2\"/><line class=\"line\" x1=\"15.2\" y1=\"12.2\" x2=\"15.2\" y2=\"11\"/><line class=\"line\" x1=\"15.2\" y1=\"12.2\" x2=\"16.2\" y2=\"12.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
+"tools": "<rect class=\"outline\" x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"4\"/><path class=\"line\" d=\"M8 8h8M8 12h5M8 16h8\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"trends": "<rect class=\"outline\" x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"3\"/><path class=\"line\" d=\"m6 16 4-5 3 2 5-7\"/><path class=\"fold\" d=\"M16 21h5v-5z\"/>",
+"valuation": "<path class=\"outline\" d=\"M4 3h16v18H4z\"/><path class=\"line\" d=\"M8 8h8M8 12h8M8 16h5M16 14v5M13.5 16.5h5\"/><path class=\"fold\" d=\"M15 21h5v-5z\"/>",
 "ventilationRequirement": "<circle class=\"outline\" cx=\"12\" cy=\"12\" r=\"1.2\"/><path class=\"line\" d=\"M12 6c1.8 0 3 .8 3 2 0 1.1-.9 1.7-2 2.2-.9.4-1.4 1-1 2.3\"/><path class=\"line\" d=\"M18 12c0 1.8-.8 3-2 3-1.1 0-1.7-.9-2.2-2-.4-.9-1-1.4-2.3-1\"/><path class=\"line\" d=\"M12 18c-1.8 0-3-.8-3-2 0-1.1.9-1.7 2-2.2.9-.4 1.4-1 1-2.3\"/><path class=\"line\" d=\"M6 12c0-1.8.8-3 2-3 1.1 0 1.7.9 2.2 2 .4.9 1 1.4 2.3 1\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
-"drainageRequirement": "<path class=\"outline\" d=\"M12 7c2 3 3 4.5 3 6a3 3 0 1 1-6 0c0-1.5 1-3 3-6Z\"/><line class=\"line\" x1=\"7\" y1=\"18\" x2=\"17\" y2=\"18\"/><polygon class=\"fold\" points=\"13.5,12 18,12 18,17\"/>",
-"missingMunicipalField": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><circle class=\"outline\" cx=\"12\" cy=\"15\" r=\"0.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"advisoryDisclaimer": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"12\" y1=\"13\" x2=\"12\" y2=\"15\"/><circle class=\"outline\" cx=\"12\" cy=\"16.8\" r=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"professionalSignOff": "<circle class=\"outline\" cx=\"12\" cy=\"8\" r=\"2\"/><path class=\"line\" d=\"M9 18c0-2.4 2.4-4 5-4s5 1.6 5 4\"/><path class=\"line\" d=\"M9 14c1.2-1.5 2.1 1.8 3.2.2.7-1 .8-2.4 1.8-1.8.6.3.7 1.2 1 2.4\"/><polygon class=\"fold\" points=\"13.5,14.5 17.2,14.5 15.4,17.2\"/>",
-"lockedUntilSignOff": "<rect class=\"outline\" x=\"7\" y=\"11\" width=\"10\" height=\"8\" rx=\"2\"/><path class=\"line\" d=\"M9 11V9a3 3 0 0 1 6 0v2\"/><polygon class=\"fold\" points=\"13,14 17,14 15,18\"/>",
-"exportPdfReport": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"12\" y1=\"14\" x2=\"12\" y2=\"9\"/><polyline class=\"line\" points=\"10.5,10.8 12,9 13.5,10.8\"/><rect class=\"outline\" x=\"9\" y=\"15.5\" width=\"6\" height=\"2\" rx=\"0.6\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>",
-"projectPassportSync": "<rect class=\"outline\" x=\"7\" y=\"5\" width=\"10\" height=\"14\" rx=\"2\"/><circle class=\"outline\" cx=\"12\" cy=\"11\" r=\"2.3\"/><line class=\"line\" x1=\"9.7\" y1=\"11\" x2=\"14.3\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"8.7\" x2=\"12\" y2=\"13.3\"/><line class=\"line\" x1=\"16\" y1=\"14\" x2=\"18\" y2=\"14\"/><polyline class=\"line\" points=\"16.8,12.8 18,14 16.8,15.2\"/><polygon class=\"fold\" points=\"13.5,14.5 17.2,14.5 15.4,17.2\"/>",
-"specForgePush": "<path class=\"outline\" d=\"M7 3.5h7l3 3V19a1.8 1.8 0 0 1-1.8 1.8H8.8A1.8 1.8 0 0 1 7 19V5.3A1.8 1.8 0 0 1 8.8 3.5Z\"/><line class=\"line\" x1=\"14\" y1=\"3.7\" x2=\"14\" y2=\"7\"/><line class=\"line\" x1=\"14\" y1=\"7\" x2=\"17.2\" y2=\"7\"/><line class=\"line\" x1=\"9\" y1=\"9.5\" x2=\"15\" y2=\"9.5\"/><line class=\"line\" x1=\"9\" y1=\"12.5\" x2=\"15\" y2=\"12.5\"/><line class=\"line\" x1=\"12\" y1=\"18\" x2=\"12\" y2=\"13.5\"/><polyline class=\"line\" points=\"10.7,14.8 12,13.5 13.3,14.8\"/><polygon class=\"fold\" points=\"14,3.7 17.2,7 14,7\"/>"
+"wasteVolume": "<rect class=\"outline\" x=\"8\" y=\"8\" width=\"8\" height=\"9\" rx=\"1.5\"/><line class=\"line\" x1=\"9.5\" y1=\"8\" x2=\"10.5\" y2=\"6.5\"/><line class=\"line\" x1=\"14.5\" y1=\"8\" x2=\"13.5\" y2=\"6.5\"/><line class=\"line\" x1=\"10\" y1=\"12\" x2=\"14\" y2=\"12\"/><polygon class=\"fold\" points=\"13,13 16,13 14.5,17\"/>",
+"wingman": "<path class=\"outline\" d=\"M4.5 10.5L9.5 6.5L18.8 7.8L14.2 11.2L16.6 18.2L4.5 10.5Z\"/><polygon class=\"fold\" points=\"12.3,8.6 18.8,7.8 14.2,11.2 16.6,18.2 11,13.8\"/>",
+"wipReport": "<rect class=\"outline\" x=\"5\" y=\"4\" width=\"14\" height=\"16\" rx=\"3\"/><line class=\"line\" x1=\"9\" y1=\"16\" x2=\"9\" y2=\"11\"/><line class=\"line\" x1=\"12\" y1=\"16\" x2=\"12\" y2=\"9\"/><line class=\"line\" x1=\"15\" y1=\"16\" x2=\"15\" y2=\"12\"/><polygon class=\"fold\" points=\"19,14 19,19 14,19\"/>",
+"workflow": "<path class=\"outline\" d=\"M3 4h6v6H3zM15 14h6v6h-6z\"/><path class=\"line\" d=\"M6 10v7h9M9 7h9v7\"/><path class=\"fold\" d=\"M17 14h4v4z\"/>",
+"xa": "<path class=\"outline\" d=\"M12 2l8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6z\"/><path class=\"outline\" d=\"M13 6l-4 7h4l-2 5 5-8h-4z\"/><path class=\"fold\" d=\"M16 16l4-4v5z\"/>"
 };
   var added=[], kept=[];
   window.ARCHITEX_ICON_PACK={meta:meta,shapes:shapes,added:added,keptByShell:kept,
@@ -663,7 +2279,7 @@
   function install(){
     var s=shapesObject(); if(!s) return false;
     Object.keys(shapes).forEach(function(k){
-      if(!s[k]){s[k]=shapes[k]; added.push(k);} else {kept.push(k);}
+      if(k==='logo') {kept.push(k);return;} if(added.indexOf(k)<0)added.push(k); s[k]=shapes[k];
     });
     window.ARCHITEX_ICON_PACK.installed=true;
     return true;

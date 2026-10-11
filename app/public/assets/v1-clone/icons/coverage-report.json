@@ -1,0 +1,3211 @@
+{
+  "cloneTools": [
+    "admin_review",
+    "approvals_queue",
+    "bim_ifc",
+    "bom",
+    "compliance_hub",
+    "contract_admin",
+    "contractor_compliance",
+    "council_navigator",
+    "cpd_learning",
+    "dispute_resolution",
+    "documents_drawings",
+    "eia_workspace",
+    "engineering_calc",
+    "environmental_heritage",
+    "fee_proposal",
+    "feedback",
+    "fm_bridge",
+    "forms",
+    "iconography_registry",
+    "inbox_action",
+    "insurance_register",
+    "issues_rfis",
+    "itp",
+    "market_insights",
+    "meetings",
+    "municipal",
+    "municipal_tracker",
+    "ncr_manager",
+    "nhbrc_enrolment",
+    "payments_escrow",
+    "planning",
+    "practice",
+    "professional_directory",
+    "project_explorer",
+    "project_passport",
+    "refuse_calculator",
+    "remote_desktop",
+    "rfq_marketplace",
+    "safety",
+    "site_instructions",
+    "snag_manager",
+    "specforge",
+    "supplier_catalog",
+    "survey_geomatics",
+    "team_workspace",
+    "wingman",
+    "xa"
+  ],
+  "globalItems": [
+    {
+      "icon": "dashboard",
+      "id": "command",
+      "label": "OS Command Centre",
+      "meta": "Home",
+      "tone": "core"
+    },
+    {
+      "icon": "projects",
+      "id": "projects",
+      "label": "Project Space",
+      "meta": "Datum",
+      "tone": "core"
+    },
+    {
+      "icon": "tools",
+      "id": "tools",
+      "label": "Workspace Tools",
+      "meta": "47",
+      "tone": "lavender"
+    },
+    {
+      "icon": "inbox",
+      "id": "inbox",
+      "label": "Inbox & Collaboration",
+      "meta": "7",
+      "tone": "coral"
+    },
+    {
+      "icon": "document",
+      "id": "documents",
+      "label": "Documents",
+      "meta": "128",
+      "tone": "core"
+    },
+    {
+      "icon": "finance",
+      "id": "finance",
+      "label": "Finance & Payments",
+      "meta": "4",
+      "tone": "amber"
+    },
+    {
+      "icon": "knowledge",
+      "id": "knowledge",
+      "label": "Knowledge & CPD",
+      "meta": "",
+      "tone": "cobalt"
+    },
+    {
+      "icon": "feedback",
+      "id": "feedback",
+      "label": "Feedback Intelligence",
+      "meta": "Loop",
+      "tone": "lavender"
+    },
+    {
+      "icon": "settings",
+      "id": "settings",
+      "label": "Settings",
+      "meta": "",
+      "tone": "core"
+    }
+  ],
+  "literalKeys": [
+    "action",
+    "action_centre",
+    "admin_review",
+    "advisor",
+    "advisoryDisclaimer",
+    "approvals_queue",
+    "areaDimensions",
+    "attach",
+    "bim_ifc",
+    "binAllocation",
+    "bom",
+    "brief",
+    "budget",
+    "buildingType",
+    "calendar",
+    "clusters",
+    "collectionVehicleAccess",
+    "compliance_hub",
+    "contract_admin",
+    "contractor_compliance",
+    "council_navigator",
+    "cpd_learning",
+    "dashboard",
+    "detail",
+    "dispute_resolution",
+    "document",
+    "documents_drawings",
+    "drawing",
+    "eia_workspace",
+    "eng_cable",
+    "eng_concrete",
+    "eng_db",
+    "eng_drain",
+    "eng_duct",
+    "eng_escape",
+    "eng_fire",
+    "eng_geo",
+    "eng_heat",
+    "eng_hotwater",
+    "eng_hydrant",
+    "eng_steel",
+    "eng_storm",
+    "eng_timber",
+    "eng_units",
+    "eng_water",
+    "eng_wind",
+    "engineering_hub",
+    "environmental_heritage",
+    "expand",
+    "export",
+    "exportPdfReport",
+    "fee_proposal",
+    "feedback",
+    "finance",
+    "fm_bridge",
+    "forms",
+    "god_mode",
+    "iconography_registry",
+    "inbox",
+    "inspector",
+    "insurance_register",
+    "integration",
+    "issues_rfis",
+    "itp",
+    "knowledge",
+    "lockedUntilSignOff",
+    "market_insights",
+    "meeting_agenda",
+    "meeting_camera",
+    "meeting_caption",
+    "meeting_day",
+    "meeting_hand",
+    "meeting_invite",
+    "meeting_mic",
+    "meeting_recording",
+    "meeting_review",
+    "meeting_share",
+    "meeting_template",
+    "meetings",
+    "menu",
+    "milestone",
+    "municipal",
+    "municipalRefuseCalculator",
+    "municipal_tracker",
+    "municipalityProfile",
+    "ncr_manager",
+    "nhbrc_enrolment",
+    "payments_escrow",
+    "planning",
+    "practice_management",
+    "professionalSignOff",
+    "professional_directory",
+    "programme",
+    "progress",
+    "project_explorer",
+    "project_passport",
+    "projects",
+    "refuseStorageArea",
+    "refuse_calculator",
+    "remote_desktop",
+    "rfi",
+    "rfq_marketplace",
+    "safety",
+    "search",
+    "settings",
+    "site_instructions",
+    "snag_manager",
+    "specification",
+    "standalone",
+    "supplier_catalog",
+    "survey_geomatics",
+    "team_workspace",
+    "tools",
+    "trends",
+    "ventilationRequirement",
+    "wasteVolume",
+    "wingman",
+    "workflow",
+    "xa"
+  ],
+  "productionOnly": [
+    "drawing_compliance_navigator",
+    "valuations"
+  ],
+  "productionTools": [
+    "admin_review",
+    "approvals_queue",
+    "bim_ifc",
+    "bom",
+    "compliance_hub",
+    "contract_admin",
+    "contractor_compliance",
+    "council_navigator",
+    "cpd_learning",
+    "dispute_resolution",
+    "documents_drawings",
+    "drawing_compliance_navigator",
+    "eia_workspace",
+    "engineering_calc",
+    "environmental_heritage",
+    "fee_proposal",
+    "feedback",
+    "fm_bridge",
+    "forms",
+    "iconography_registry",
+    "inbox_action",
+    "insurance_register",
+    "issues_rfis",
+    "itp",
+    "market_insights",
+    "meetings",
+    "municipal",
+    "municipal_tracker",
+    "ncr_manager",
+    "nhbrc_enrolment",
+    "payments_escrow",
+    "planning",
+    "practice",
+    "professional_directory",
+    "project_explorer",
+    "project_passport",
+    "refuse_calculator",
+    "remote_desktop",
+    "rfq_marketplace",
+    "safety",
+    "site_instructions",
+    "snag_manager",
+    "specforge",
+    "supplier_catalog",
+    "survey_geomatics",
+    "team_workspace",
+    "valuations",
+    "wingman",
+    "xa"
+  ],
+  "requiredKeys": [
+    "action",
+    "action_centre",
+    "admin_review",
+    "advisor",
+    "advisoryDisclaimer",
+    "approvals_queue",
+    "areaDimensions",
+    "attach",
+    "bimQuantities",
+    "bim_ifc",
+    "binAllocation",
+    "bom",
+    "brief",
+    "budget",
+    "buildingType",
+    "calendar",
+    "checklist",
+    "clusters",
+    "collectionVehicleAccess",
+    "compliance_hub",
+    "contract",
+    "contract_admin",
+    "contractor_compliance",
+    "council_navigator",
+    "cpd_learning",
+    "dashboard",
+    "detail",
+    "dispute_resolution",
+    "document",
+    "documents_drawings",
+    "drawing",
+    "eiaWorkspace",
+    "eia_workspace",
+    "eng_cable",
+    "eng_concrete",
+    "eng_db",
+    "eng_drain",
+    "eng_duct",
+    "eng_escape",
+    "eng_fire",
+    "eng_geo",
+    "eng_heat",
+    "eng_hotwater",
+    "eng_hydrant",
+    "eng_steel",
+    "eng_storm",
+    "eng_timber",
+    "eng_units",
+    "eng_water",
+    "eng_wind",
+    "engineering_hub",
+    "environmental_heritage",
+    "expand",
+    "export",
+    "exportPdfReport",
+    "fee_proposal",
+    "feedback",
+    "finance",
+    "fm_bridge",
+    "forecast",
+    "formSystem",
+    "forms",
+    "god_mode",
+    "iconography_registry",
+    "inbox",
+    "inspector",
+    "insurance_register",
+    "integration",
+    "issues_rfis",
+    "itp",
+    "knowledge",
+    "lockedUntilSignOff",
+    "market_insights",
+    "meeting_agenda",
+    "meeting_camera",
+    "meeting_caption",
+    "meeting_day",
+    "meeting_hand",
+    "meeting_invite",
+    "meeting_mic",
+    "meeting_recording",
+    "meeting_review",
+    "meeting_share",
+    "meeting_template",
+    "meetings",
+    "menu",
+    "milestone",
+    "municipal",
+    "municipalRefuseCalculator",
+    "municipal_tracker",
+    "municipalityProfile",
+    "ncr_manager",
+    "nhbrc_enrolment",
+    "notification",
+    "payments_escrow",
+    "planning",
+    "practiceManagement",
+    "practice_management",
+    "procurement",
+    "professionalSignOff",
+    "professional_directory",
+    "profitability",
+    "programme",
+    "progress",
+    "project_explorer",
+    "project_passport",
+    "projects",
+    "refuseStorageArea",
+    "refuse_calculator",
+    "remoteDesktop",
+    "remote_desktop",
+    "rfi",
+    "rfqMarketplace",
+    "rfq_marketplace",
+    "risk",
+    "safety",
+    "search",
+    "settings",
+    "site_diary",
+    "site_instructions",
+    "snag_manager",
+    "specification",
+    "standalone",
+    "supplier_catalog",
+    "survey_geomatics",
+    "team_workspace",
+    "timesheet",
+    "tools",
+    "trends",
+    "valuation",
+    "ventilationRequirement",
+    "wasteVolume",
+    "wingman",
+    "workflow",
+    "xa"
+  ],
+  "resolved": {
+    "action": {
+      "file": "icons/action.svg",
+      "geometry_sha256": "09d8cea591b9fc59cd21cdcdda55e4524b05ed6fb043d78ef7edb664a6c9d2a2",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/action.svg"
+      }
+    },
+    "action_centre": {
+      "file": "icons/action_centre.svg",
+      "geometry_sha256": "ce1eabafb9903bd46380645c07db42069974bb1c9d60018922fe221c3acc42df",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/action_centre.svg"
+      }
+    },
+    "admin_review": {
+      "file": "icons/admin_review.svg",
+      "geometry_sha256": "b430bc580233ce5e955352b6427e30bb884490e34fcd90c411d762a4bc72f905",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/admin_review.svg"
+      }
+    },
+    "advisor": {
+      "file": "icons/advisor.svg",
+      "geometry_sha256": "dac2115e56486bae08d111aa419e1bc6289682baf52e18bd40134996969ac8cc",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/advisor.svg"
+      }
+    },
+    "advisoryDisclaimer": {
+      "file": "icons/advisoryDisclaimer.svg",
+      "geometry_sha256": "f0adaa54947196b019858e5eb0b689bd68685d4f35ced7539ebbc750062aaabc",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/advisoryDisclaimer.svg"
+      }
+    },
+    "approvals_queue": {
+      "file": "icons/approvals_queue.svg",
+      "geometry_sha256": "09d8cea591b9fc59cd21cdcdda55e4524b05ed6fb043d78ef7edb664a6c9d2a2",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/approvals_queue.svg"
+      }
+    },
+    "areaDimensions": {
+      "file": "icons/areaDimensions.svg",
+      "geometry_sha256": "fa817434a4b691d7074e4475abf98e8f8043e03d699b9ac05fc11fd2b628df18",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/areaDimensions.svg"
+      }
+    },
+    "attach": {
+      "file": "icons/attach.svg",
+      "geometry_sha256": "25600075cf432c00d7c226dee7acbcc36eda66d624f4216d3df73389ee8649d8",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/attach.svg"
+      }
+    },
+    "bimQuantities": {
+      "file": "icons/bimQuantities.svg",
+      "geometry_sha256": "3cea687ee3235324e5329b03932d2688a425cd70508d247d8d4e66b9ee8bce61",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/bimQuantities.svg"
+      }
+    },
+    "bim_ifc": {
+      "file": "icons/bim_ifc.svg",
+      "geometry_sha256": "7ae2bf66076da218e3d63486afd7aa116d13a8ff5204b88012c0427a67ec20f3",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/bim_ifc.svg"
+      }
+    },
+    "binAllocation": {
+      "file": "icons/binAllocation.svg",
+      "geometry_sha256": "dba27ea459b97b7511e300db34d0fb3f9c3ac61bc8e760979600703e1f7acee9",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/binAllocation.svg"
+      }
+    },
+    "bom": {
+      "file": "icons/bom.svg",
+      "geometry_sha256": "8c3a2d99becc0f6d52d013f73a84b84383720b8514b937b058db18e0b09b2027",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/bom.svg"
+      }
+    },
+    "brief": {
+      "file": "icons/brief.svg",
+      "geometry_sha256": "f184246d6e3480e21ff21bbed2c90cee2cc4c7f8041f40e6cf9373561bf0b57c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/brief.svg"
+      }
+    },
+    "budget": {
+      "file": "icons/budget.svg",
+      "geometry_sha256": "d0f7a687522518c7c93911f23b67bc5deb819879fcdade3e5e7becdd6830c513",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/budget.svg"
+      }
+    },
+    "buildingType": {
+      "file": "icons/buildingType.svg",
+      "geometry_sha256": "88960c6e578d6da2ee43f0031e23a27e07718c2701ee05828c3a19e2b9605498",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/buildingType.svg"
+      }
+    },
+    "calendar": {
+      "file": "icons/calendar.svg",
+      "geometry_sha256": "d24d9f6d5a226e7de15990e01ac386034a3cb2208cbe0876f463a28f65cc18a7",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/calendar.svg"
+      }
+    },
+    "checklist": {
+      "file": "icons/checklist.svg",
+      "geometry_sha256": "09d8cea591b9fc59cd21cdcdda55e4524b05ed6fb043d78ef7edb664a6c9d2a2",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-001.js iconShapes.action"
+      }
+    },
+    "clusters": {
+      "file": "icons/clusters.svg",
+      "geometry_sha256": "1a354da52940452238d5e42d86ee0514b47d49dffa62d650f512310f5ffbe298",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/clusters.svg"
+      }
+    },
+    "collectionVehicleAccess": {
+      "file": "icons/collectionVehicleAccess.svg",
+      "geometry_sha256": "9a53f75563d684a2d8ac6100756d1ba653388c93d32c4685f404cdd97b3da50c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/collectionVehicleAccess.svg"
+      }
+    },
+    "compliance_hub": {
+      "file": "icons/compliance_hub.svg",
+      "geometry_sha256": "b0773b41183342c62fed69d7f2a7e00547513a7dfe9980c4303cfabf55c26c47",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/compliance_hub.svg"
+      }
+    },
+    "contract": {
+      "file": "icons/contract.svg",
+      "geometry_sha256": "f93e13e8c5ded04fcdd519b2d26dd82a0bb891c554226cd43acf4aa97b02fcc1",
+      "provenance": {
+        "intent": "Explicit singular practice tab counterpart of canonical contracts geometry.",
+        "source": "icons/contracts.svg"
+      }
+    },
+    "contract_admin": {
+      "file": "icons/contract_admin.svg",
+      "geometry_sha256": "b7df1b8e041d1402c03ff467890cc0e4bad3b3af4d3545b5907dbbf40375ae9b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/contract_admin.svg"
+      }
+    },
+    "contractor_compliance": {
+      "file": "icons/contractor_compliance.svg",
+      "geometry_sha256": "fae93d7abb1ebbbd2b4e1b0b3cdc8b7af4df714258ad583c02f37a88d43a1f20",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/contractor_compliance.svg"
+      }
+    },
+    "council_navigator": {
+      "file": "icons/council_navigator.svg",
+      "geometry_sha256": "4543c98f13e7866a1525a23a08ab377f05e83083b1a31144dfb56a6669ab7f29",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/council_navigator.svg"
+      }
+    },
+    "cpd_learning": {
+      "file": "icons/cpd_learning.svg",
+      "geometry_sha256": "7b74a7d797f3ae44c2cf16fe5105088521a85589aa2a16dbede3a550538bb57a",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/cpd_learning.svg"
+      }
+    },
+    "dashboard": {
+      "file": "icons/dashboard.svg",
+      "geometry_sha256": "d34f62ff1aa08d093807b525c952e6f329a27079ee34a7424ecf661d5fb5cf6c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/dashboard.svg"
+      }
+    },
+    "detail": {
+      "file": "icons/detail.svg",
+      "geometry_sha256": "f130acd93555d66c6b4c38f213656c00b43369df68ff949c4b8890f0b7e52846",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/detail.svg"
+      }
+    },
+    "dispute_resolution": {
+      "file": "icons/dispute_resolution.svg",
+      "geometry_sha256": "45db84e6a079bcbbe7912b85394ff11df3da32639dad774c6f8544096df9ffdd",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/dispute_resolution.svg"
+      }
+    },
+    "document": {
+      "file": "icons/document.svg",
+      "geometry_sha256": "e55971468a699f933938fde8dafbe5fa78a00079c7598e79636f49ae6a56f03b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/document.svg"
+      }
+    },
+    "documents_drawings": {
+      "file": "icons/documents_drawings.svg",
+      "geometry_sha256": "f244a3f12151ed840d9fb84bf6b8f95130053d1382c99727c4d23e42b2b749b1",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/documents_drawings.svg"
+      }
+    },
+    "drawing": {
+      "file": "icons/drawing.svg",
+      "geometry_sha256": "e478e86ae8e0a5eeae3561ee2c2eac6e908b8f7116b246a1513c293347cb09af",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/drawing.svg"
+      }
+    },
+    "eiaWorkspace": {
+      "file": "icons/eiaWorkspace.svg",
+      "geometry_sha256": "b510ad316c52b90f609b78774177c62527bef5173f4cc139bad79aa5da0813f9",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eiaWorkspace.svg"
+      }
+    },
+    "eia_workspace": {
+      "file": "icons/eia_workspace.svg",
+      "geometry_sha256": "cb4a899dd67a85cfe3390d3f4cee49adc4471136a70bf2fa9789aa9cfdf7c63e",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eia_workspace.svg"
+      }
+    },
+    "eng_cable": {
+      "file": "icons/eng_cable.svg",
+      "geometry_sha256": "8d42edf90bf031ff32d8412cf4ac1bcd2d6f1e52fc3ec217cf0f61ffc5f2e4e9",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_cable.svg"
+      }
+    },
+    "eng_concrete": {
+      "file": "icons/eng_concrete.svg",
+      "geometry_sha256": "449aeb92091c2c8a8ca890b7276d151dd871ea046b131ad1854118499476418a",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_concrete.svg"
+      }
+    },
+    "eng_db": {
+      "file": "icons/eng_db.svg",
+      "geometry_sha256": "985a4cc6334747a8ce3eb23a714f2e2153d9b8fec234fce39265a6ecc416ea32",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_db.svg"
+      }
+    },
+    "eng_drain": {
+      "file": "icons/eng_drain.svg",
+      "geometry_sha256": "fbd8fbbd00e104ce148832a3b45e99c3536c960994d68d8bfd229643644fa672",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_drain.svg"
+      }
+    },
+    "eng_duct": {
+      "file": "icons/eng_duct.svg",
+      "geometry_sha256": "213e1baccf926d087aa046917b2bb428e03e13530304f97051e817fd992fb9de",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_duct.svg"
+      }
+    },
+    "eng_escape": {
+      "file": "icons/eng_escape.svg",
+      "geometry_sha256": "91920c362e5e0f7f5bdce47c05153ca921a60f1a5d644f6117170923f0b2f97e",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_escape.svg"
+      }
+    },
+    "eng_fire": {
+      "file": "icons/eng_fire.svg",
+      "geometry_sha256": "bd64ed866e94d6a69bc1f545d9645168dc93f6cd01300e99cc5898c88e2938d9",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_fire.svg"
+      }
+    },
+    "eng_geo": {
+      "file": "icons/eng_geo.svg",
+      "geometry_sha256": "1068209dc515f78b8908563fc9e204fcb71134e4d924347aa1c598f342e3198c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_geo.svg"
+      }
+    },
+    "eng_heat": {
+      "file": "icons/eng_heat.svg",
+      "geometry_sha256": "4d82bb8d51c056a5f08f4a58275e78f95a0700e9ebd225481ed118955684a53a",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_heat.svg"
+      }
+    },
+    "eng_hotwater": {
+      "file": "icons/eng_hotwater.svg",
+      "geometry_sha256": "88b43c560594a87707890d592b1fe4db98c53f22dbefc8af477ec23a65bdeb23",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_hotwater.svg"
+      }
+    },
+    "eng_hydrant": {
+      "file": "icons/eng_hydrant.svg",
+      "geometry_sha256": "086b158bf35b931cd3bc36fd714fcb8365997252b061b2c21eecd956056bf7b5",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_hydrant.svg"
+      }
+    },
+    "eng_steel": {
+      "file": "icons/eng_steel.svg",
+      "geometry_sha256": "1d20d7fd5e0bf772679b97255995beeb8e20548de0279f554524fb6eb615f4a5",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_steel.svg"
+      }
+    },
+    "eng_storm": {
+      "file": "icons/eng_storm.svg",
+      "geometry_sha256": "4662edb112d78e6fe13a050116b8304180ba4f88f664317cfd04eb3870020148",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_storm.svg"
+      }
+    },
+    "eng_timber": {
+      "file": "icons/eng_timber.svg",
+      "geometry_sha256": "6d81ddcb69837864c044f493e599542ee6b236b25f86038ae178acaaff13d93b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_timber.svg"
+      }
+    },
+    "eng_units": {
+      "file": "icons/eng_units.svg",
+      "geometry_sha256": "9aecf401611e5682dce2359a4d43a70a69e9a7695d1990935e190bf6275c4716",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_units.svg"
+      }
+    },
+    "eng_water": {
+      "file": "icons/eng_water.svg",
+      "geometry_sha256": "2955a38c6b41d860d263650c82d64887af860a89c0cbf0b53fb0819dd74d415d",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_water.svg"
+      }
+    },
+    "eng_wind": {
+      "file": "icons/eng_wind.svg",
+      "geometry_sha256": "a685e5016a54dbff38da4ae8d0867df82a21b9e7505b7883301c2664640bf62c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/eng_wind.svg"
+      }
+    },
+    "engineering_hub": {
+      "file": "icons/engineering_hub.svg",
+      "geometry_sha256": "101f48599703228a255e71f64a56324d5d4bad41adf603b8f10d359814dbe269",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/engineering_hub.svg"
+      }
+    },
+    "environmental_heritage": {
+      "file": "icons/environmental_heritage.svg",
+      "geometry_sha256": "31ca4024218ad7450b26a77499af68f561d5e89b4be86f7162e2264c230f0daf",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/environmental_heritage.svg"
+      }
+    },
+    "expand": {
+      "file": "icons/expand.svg",
+      "geometry_sha256": "034c221eaaceae7527d6506c2bae3e2da64c8da27126ac03d3c942ba2673ed88",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/expand.svg"
+      }
+    },
+    "export": {
+      "file": "icons/export.svg",
+      "geometry_sha256": "0d27e981169536f2a327fee2ce1f8744d0942e8ca28ad714ac878eb63efdeb77",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/export.svg"
+      }
+    },
+    "exportPdfReport": {
+      "file": "icons/exportPdfReport.svg",
+      "geometry_sha256": "155f9102f80b30947e945c66ee34c2c165150c048c9afd1c8796e5d86075f432",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/exportPdfReport.svg"
+      }
+    },
+    "fee_proposal": {
+      "file": "icons/fee_proposal.svg",
+      "geometry_sha256": "fb026c0d10577cc12e7c3dc346c67ba0c48405e43b26901a50976cd7fb507d2c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/fee_proposal.svg"
+      }
+    },
+    "feedback": {
+      "file": "icons/feedback.svg",
+      "geometry_sha256": "f608584caec8186f981b5a5542eb27eae8ba65c4ccde97d2e94f24e455895c37",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/feedback.svg"
+      }
+    },
+    "finance": {
+      "file": "icons/finance.svg",
+      "geometry_sha256": "0b2081efc659ba1542df279d49401e48bceba13ace488b4162197cb0cf20d204",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/finance.svg"
+      }
+    },
+    "fm_bridge": {
+      "file": "icons/fm_bridge.svg",
+      "geometry_sha256": "dfa706c972d88354a8c3af8f51a8059abf4419381f28b9073faba04b95c26588",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/fm_bridge.svg"
+      }
+    },
+    "forecast": {
+      "file": "icons/forecast.svg",
+      "geometry_sha256": "24af78e8545971ffd69598e1258fb41801fe02a8b5c6b26744a61b68ef3a6d09",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-002.js iconShapes.forecast"
+      }
+    },
+    "formSystem": {
+      "file": "icons/formSystem.svg",
+      "geometry_sha256": "6517eeb1b1b0006a1774b22cb0a8a9a6c411dfd981154d29d2c1c84f3a43757c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/formSystem.svg"
+      }
+    },
+    "forms": {
+      "file": "icons/forms.svg",
+      "geometry_sha256": "67e3693d2496b481578b9b245134650b30db728b7d0364e10b6274fa3c3a52d6",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/forms.svg"
+      }
+    },
+    "god_mode": {
+      "file": "icons/god_mode.svg",
+      "geometry_sha256": "35f8f1aa31f5f7b62a92e5e9622d2c1add4d7f40d07b60e45a388e04874c8261",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/god_mode.svg"
+      }
+    },
+    "iconography_registry": {
+      "file": "icons/iconography_registry.svg",
+      "geometry_sha256": "3b57f0b246ade85555b84ac2fb3a41a6f7920487ddf2ec5e028e2e60b1d1ef76",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/iconography_registry.svg"
+      }
+    },
+    "inbox": {
+      "file": "icons/inbox.svg",
+      "geometry_sha256": "be708cd8ccd5f8a2fd175a1124f685ea8789b99f013f95949372e917e75b0bbc",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/inbox.svg"
+      }
+    },
+    "inspector": {
+      "file": "icons/inspector.svg",
+      "geometry_sha256": "29be325c0e804cf05b061a90f62bcd0130ae833bf8e49558fda1a45af84f03da",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/inspector.svg"
+      }
+    },
+    "insurance_register": {
+      "file": "icons/insurance_register.svg",
+      "geometry_sha256": "d8037e8852ea96e89b91e557392f6d4da427d2d8168c3566bbb2a0203b13ca55",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/insurance_register.svg"
+      }
+    },
+    "integration": {
+      "file": "icons/integration.svg",
+      "geometry_sha256": "95495f6c44a46c616a2120ae22ad728f1820b03486f016262df7e5eb735314ea",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/integration.svg"
+      }
+    },
+    "issues_rfis": {
+      "file": "icons/issues_rfis.svg",
+      "geometry_sha256": "06da28efa852bd37ac3a4c3c943c45471915232da4246fcfcc7ee3ec6d32cadf",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/issues_rfis.svg"
+      }
+    },
+    "itp": {
+      "file": "icons/itp.svg",
+      "geometry_sha256": "623c69a18311dcb0cd5a490c6ee72c8c2c4e30379609045b34f2080bd99549dc",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/itp.svg"
+      }
+    },
+    "knowledge": {
+      "file": "icons/knowledge.svg",
+      "geometry_sha256": "811fbaf86c8937570ed7f5b3e2a2bb9c234c334651d4b189e20afec39baedd75",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/knowledge.svg"
+      }
+    },
+    "lockedUntilSignOff": {
+      "file": "icons/lockedUntilSignOff.svg",
+      "geometry_sha256": "51280566f903e7c57be14379fb11aa3fcf64f8f29ee22f78755f26a76eb6c9bc",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/lockedUntilSignOff.svg"
+      }
+    },
+    "market_insights": {
+      "file": "icons/market_insights.svg",
+      "geometry_sha256": "f09889ede4829c69137f14cbd58e8df6847e71d171c523ea8da59b5edcec959a",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/market_insights.svg"
+      }
+    },
+    "meeting_agenda": {
+      "file": "icons/meeting_agenda.svg",
+      "geometry_sha256": "80c73e0b513951762e19e45d78d28661629d8926cb71c87a1e55780576d6bc8b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_agenda.svg"
+      }
+    },
+    "meeting_camera": {
+      "file": "icons/meeting_camera.svg",
+      "geometry_sha256": "70464607b887f478dd076fc86207e91beb25adbb0bd0b33aa41faa0446ef6343",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_camera.svg"
+      }
+    },
+    "meeting_caption": {
+      "file": "icons/meeting_caption.svg",
+      "geometry_sha256": "00f27f52484999b0d2259490d0b1989258e1a031fc4309db3f2335dbe1030df0",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_caption.svg"
+      }
+    },
+    "meeting_day": {
+      "file": "icons/meeting_day.svg",
+      "geometry_sha256": "afc720179b2146c1672dfd962411d1123a92f030fdaeb97486ee0060c468b9e6",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_day.svg"
+      }
+    },
+    "meeting_hand": {
+      "file": "icons/meeting_hand.svg",
+      "geometry_sha256": "b7f7531771303d489131ec79fbae1ee8aca664f4cc7e12a36596549cee69eaf8",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_hand.svg"
+      }
+    },
+    "meeting_invite": {
+      "file": "icons/meeting_invite.svg",
+      "geometry_sha256": "97b261dbe7e9518279a32c1a73835c31711e6ab032e85b2c2503bc8f15cf3387",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_invite.svg"
+      }
+    },
+    "meeting_mic": {
+      "file": "icons/meeting_mic.svg",
+      "geometry_sha256": "58b1265b8a6be64d6e8dc2a10483a0ae35fdfa1daa194f1ca7a4055a050970be",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_mic.svg"
+      }
+    },
+    "meeting_recording": {
+      "file": "icons/meeting_recording.svg",
+      "geometry_sha256": "ca402a029a6c1622a9f37b1e03d1ea1cfea10682eb04166c7fdf50db0dbbc3e3",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_recording.svg"
+      }
+    },
+    "meeting_review": {
+      "file": "icons/meeting_review.svg",
+      "geometry_sha256": "ccb0e09fbe7fdc03116e73cecc8078cdeadc87b1ce1704b55116483046ac8e68",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_review.svg"
+      }
+    },
+    "meeting_share": {
+      "file": "icons/meeting_share.svg",
+      "geometry_sha256": "0d79d0af80fee2951d1bfd04d016ccaf3ac3a03b8c332df5269b1f6ba536e86d",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_share.svg"
+      }
+    },
+    "meeting_template": {
+      "file": "icons/meeting_template.svg",
+      "geometry_sha256": "a926b375dd740990eaba6395c8833b82297143bb3f9b6eae61fdcd60c610ae69",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meeting_template.svg"
+      }
+    },
+    "meetings": {
+      "file": "icons/meetings.svg",
+      "geometry_sha256": "47da129ed62c189df6ae5943d7bc0dde5a878db35bc9e816547a1f2c8b8ff2ae",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/meetings.svg"
+      }
+    },
+    "menu": {
+      "file": "icons/menu.svg",
+      "geometry_sha256": "41dd178a7abf359821de336733d52e101241fe3db65ca2f803ff09de32c84c0d",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/menu.svg"
+      }
+    },
+    "milestone": {
+      "file": "icons/milestone.svg",
+      "geometry_sha256": "807ad8e2d0cbfff849daa5e0b313e0faed0576b256c258be191262a4ec03ec4c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/milestone.svg"
+      }
+    },
+    "municipal": {
+      "file": "icons/municipal.svg",
+      "geometry_sha256": "a2ecf92bafc26c5c7f7c325a0eb05189eda07b181aa51b4662385cadcf45db6c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/municipal.svg"
+      }
+    },
+    "municipalRefuseCalculator": {
+      "file": "icons/municipalRefuseCalculator.svg",
+      "geometry_sha256": "f0b7a3ae353c7b23026963dc251e3acb0c552cbd9a3e54bc72af484ec06d7201",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/municipalRefuseCalculator.svg"
+      }
+    },
+    "municipal_tracker": {
+      "file": "icons/municipal_tracker.svg",
+      "geometry_sha256": "f69229ec30f5ad952cd454cbf51afefb7071c74c1be446427b886ce0ba8c2497",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/municipal_tracker.svg"
+      }
+    },
+    "municipalityProfile": {
+      "file": "icons/municipalityProfile.svg",
+      "geometry_sha256": "8911c9c3bbfaa5ee283e72b2acf57f8e9f5a0c2370aa3cde4b9551e3eb9fb6ad",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/municipalityProfile.svg"
+      }
+    },
+    "ncr_manager": {
+      "file": "icons/ncr_manager.svg",
+      "geometry_sha256": "61f983b17c5ae9a9ea04e028691c7db0e8ce910e18affa801943796413d1df48",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/ncr_manager.svg"
+      }
+    },
+    "nhbrc_enrolment": {
+      "file": "icons/nhbrc_enrolment.svg",
+      "geometry_sha256": "c688b958ddb8c10f7e2ad59462291b44f6dd2207ac5f5201811722858110a705",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/nhbrc_enrolment.svg"
+      }
+    },
+    "notification": {
+      "file": "icons/notification.svg",
+      "geometry_sha256": "8eda0769d00b6af1b3cff7eb5805b8e8697b389ebe0123d854a726ff6fe308b6",
+      "provenance": {
+        "intent": "Preserve original purpose-specific practice geometry; canonicalized for explicit compiled coverage.",
+        "source": "js/reference-002.js Object.assign(iconShapes)"
+      }
+    },
+    "payments_escrow": {
+      "file": "icons/payments_escrow.svg",
+      "geometry_sha256": "27ac4de78d4412416dc7e35cddc7382adfe94e823637158dca0fbe02a1ee529f",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/payments_escrow.svg"
+      }
+    },
+    "planning": {
+      "file": "icons/planning.svg",
+      "geometry_sha256": "75f765143df5e92958a30987c99586f90096d9907651dfba55f52dcccf1049d2",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/planning.svg"
+      }
+    },
+    "practiceManagement": {
+      "file": "icons/practiceManagement.svg",
+      "geometry_sha256": "4e30d5247b1cd6eb630d292b671982cda6394e883a984dab033801377a67aed3",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/practiceManagement.svg"
+      }
+    },
+    "practice_management": {
+      "file": "icons/practice_management.svg",
+      "geometry_sha256": "e054b1609c2b2bc7510d1887a56b7e788d50acf8fafe62cacc65de10e3dcf0b4",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/practice_management.svg"
+      }
+    },
+    "procurement": {
+      "file": "icons/procurement.svg",
+      "geometry_sha256": "df61d410fb51689503156e7b75444142d3b6dd52833317663cc63da6d4ee7615",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/procurement.svg"
+      }
+    },
+    "professionalSignOff": {
+      "file": "icons/professionalSignOff.svg",
+      "geometry_sha256": "200911131e9488f1b6c97e3a345c2e209f92ee3a5bd2b56bc95a49166a8732b5",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/professionalSignOff.svg"
+      }
+    },
+    "professional_directory": {
+      "file": "icons/professional_directory.svg",
+      "geometry_sha256": "780c1ed79cef961bdf797039203219aa57a1842004557680ec79d24f872cb49c",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/professional_directory.svg"
+      }
+    },
+    "profitability": {
+      "file": "icons/profitability.svg",
+      "geometry_sha256": "beca40e8659b5d95a7bbd18a0e06c93749e3bac70e902c8507c7846754612de6",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/profitability.svg"
+      }
+    },
+    "programme": {
+      "file": "icons/programme.svg",
+      "geometry_sha256": "33ea4a287a73ee1efead1847b37272fe77773a0a15c140abc4b88cc9ef360d7d",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/programme.svg"
+      }
+    },
+    "progress": {
+      "file": "icons/progress.svg",
+      "geometry_sha256": "5c19f5aa8d00ad6d0019137d015812ced60cea13d0b16aea62af8aa42bbb80c2",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/progress.svg"
+      }
+    },
+    "project_explorer": {
+      "file": "icons/project_explorer.svg",
+      "geometry_sha256": "4f0021abebdcbab5627664a9aecab07381718d83032f6551815e848d85220e09",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/project_explorer.svg"
+      }
+    },
+    "project_passport": {
+      "file": "icons/project_passport.svg",
+      "geometry_sha256": "267a34e1fc1d63aebd1c1ff82a4136656bb80436fbe8bb21fd90bc6852175b14",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/project_passport.svg"
+      }
+    },
+    "projects": {
+      "file": "icons/projects.svg",
+      "geometry_sha256": "925ff189dac3ee36b7e519d024c0432ed04f25adf36421c0124c18045f0b1999",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/projects.svg"
+      }
+    },
+    "refuseStorageArea": {
+      "file": "icons/refuseStorageArea.svg",
+      "geometry_sha256": "3ac9b669a98505d73327d0d1aa253e3da4b418f41a189a968440dd69e013ec64",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/refuseStorageArea.svg"
+      }
+    },
+    "refuse_calculator": {
+      "file": "icons/refuse_calculator.svg",
+      "geometry_sha256": "c6e96ad37edc4a14b796d3a14f7d07727ad7d89bc5cd7d721be1ccc5d7e9c405",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/refuse_calculator.svg"
+      }
+    },
+    "remoteDesktop": {
+      "file": "icons/remoteDesktop.svg",
+      "geometry_sha256": "bab583c9c8f8bed2bdf539af7c174696e8088bf8c6574b44d9c668fbf55e3ac0",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/remoteDesktop.svg"
+      }
+    },
+    "remote_desktop": {
+      "file": "icons/remote_desktop.svg",
+      "geometry_sha256": "a64c8ccfea2d91a74936b426badf655473e2014dd8859c8b2e21edd9b71f8e18",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/remote_desktop.svg"
+      }
+    },
+    "rfi": {
+      "file": "icons/rfi.svg",
+      "geometry_sha256": "ec4cf131f4cc96e098f1cd25a669d9e9e39c7f920a5c5e895081b5901c03b06b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/rfi.svg"
+      }
+    },
+    "rfqMarketplace": {
+      "file": "icons/rfqMarketplace.svg",
+      "geometry_sha256": "6279a7a456e43c347a44e6622396fa2284d0eec7172350b8b8fc8072d047c863",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/rfqMarketplace.svg"
+      }
+    },
+    "rfq_marketplace": {
+      "file": "icons/rfq_marketplace.svg",
+      "geometry_sha256": "254012fd3cd9f705de02fe0565bb6bf474a5dab18d4f53c0f0ec304e31866459",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/rfq_marketplace.svg"
+      }
+    },
+    "risk": {
+      "file": "icons/risk.svg",
+      "geometry_sha256": "6ff1ef1d11591b11e8c5e40b535df759af115cfc7db56ccc5ae911a904c0b116",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-002.js iconShapes.risk"
+      }
+    },
+    "safety": {
+      "file": "icons/safety.svg",
+      "geometry_sha256": "8d873d8644af4cbaf7614d48dedc45c7e28d2ccc6c4d01bb8f24fff684f59d69",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/safety.svg"
+      }
+    },
+    "search": {
+      "file": "icons/search.svg",
+      "geometry_sha256": "9061c3cf89dfa5b87d1356c1150f1fe1d6de01ee0cc50f9481e75c1e517dee4f",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/search.svg"
+      }
+    },
+    "settings": {
+      "file": "icons/settings.svg",
+      "geometry_sha256": "61f6b3fbc1379418d1811b1c424dbf3fec3bc08d06cb5f940b6337495966c639",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/settings.svg"
+      }
+    },
+    "site_diary": {
+      "file": "icons/site_diary.svg",
+      "geometry_sha256": "a2ef40739985c6943b00d499c7a95cadcaee15cc4150bcdb8b70e1e7b657251c",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-002.js iconShapes.site_diary"
+      }
+    },
+    "site_instructions": {
+      "file": "icons/site_instructions.svg",
+      "geometry_sha256": "7f5a75cff668fd26f041dce1b74740e2fbde9193e8243cc5cbcf7a99736f0168",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/site_instructions.svg"
+      }
+    },
+    "snag_manager": {
+      "file": "icons/snag_manager.svg",
+      "geometry_sha256": "c710d7404c684f6197d60e686c6c1f0fdcaac97e4ffdda8f06cc7ba7261813c3",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/snag_manager.svg"
+      }
+    },
+    "specification": {
+      "file": "icons/specification.svg",
+      "geometry_sha256": "eaf25a15af7e0d6d568fc9c60e3e4ae79a0037e53187140fb6318422a3f23c51",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/specification.svg"
+      }
+    },
+    "standalone": {
+      "file": "icons/standalone.svg",
+      "geometry_sha256": "cb93cb08936c1f209262e5c1fb070876195052ed83e1f456c45acf20b8c8bc56",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/standalone.svg"
+      }
+    },
+    "supplier_catalog": {
+      "file": "icons/supplier_catalog.svg",
+      "geometry_sha256": "cb6d8ac0bd708e6442abefa7aabf2a0cd2da7e0cef2ee08536e9b90742bc6d6b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/supplier_catalog.svg"
+      }
+    },
+    "survey_geomatics": {
+      "file": "icons/survey_geomatics.svg",
+      "geometry_sha256": "101110723cb7ccb16516480c693d815ba20cb95f08032f310b4d25b9015f4b5b",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/survey_geomatics.svg"
+      }
+    },
+    "team_workspace": {
+      "file": "icons/team_workspace.svg",
+      "geometry_sha256": "06f416b02245c43e3620ab6b6019acfd5660551399f04ef886cf8f6ee3f509a8",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/team_workspace.svg"
+      }
+    },
+    "timesheet": {
+      "file": "icons/timesheet.svg",
+      "geometry_sha256": "e43ad4cd2518cc419b4f8982d7ecc141759ae395d2e51a6dbe2ee4018cfabab0",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-002.js iconShapes.timesheet"
+      }
+    },
+    "tools": {
+      "file": "icons/tools.svg",
+      "geometry_sha256": "60837393f967f4fe04520505d8280c8bae06804e4114655be35ab73eb07030f7",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/tools.svg"
+      }
+    },
+    "trends": {
+      "file": "icons/trends.svg",
+      "geometry_sha256": "f8eecd7a4c37115ba19b229c3fe5995a26401eee1a0d536e797601d1017ad205",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/trends.svg"
+      }
+    },
+    "valuation": {
+      "file": "icons/valuation.svg",
+      "geometry_sha256": "67908e9ef470af9e8c490cd01795a27f141e1601b9944b6a28db86c391cf5c02",
+      "provenance": {
+        "intent": "Canonical explicit practice geometry; checklist uses action checklist, contract uses contracts; forecast closes chart body for white-paper silhouette.",
+        "source": "js/reference-002.js iconShapes.valuation"
+      }
+    },
+    "ventilationRequirement": {
+      "file": "icons/ventilationRequirement.svg",
+      "geometry_sha256": "eeb28009ee2cca6ea956d0c14c2fc6ab6862443cbf56bfa90c361a0b80375eff",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/ventilationRequirement.svg"
+      }
+    },
+    "wasteVolume": {
+      "file": "icons/wasteVolume.svg",
+      "geometry_sha256": "fd9b5a88a2db3ba56c6b74dbd6da2c07d153e1d611ed6f26321abadaa83c0ea1",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/wasteVolume.svg"
+      }
+    },
+    "wingman": {
+      "file": "icons/wingman.svg",
+      "geometry_sha256": "24c8466e85bc426876e40e7e2c02dde5d0148403019b7df279cd91b22427e579",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/wingman.svg"
+      }
+    },
+    "workflow": {
+      "file": "icons/workflow.svg",
+      "geometry_sha256": "db16514259a5ffb4215aa9a69b9497c1c1882bf719ee26741971d976db5ab3eb",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/workflow.svg"
+      }
+    },
+    "xa": {
+      "file": "icons/xa.svg",
+      "geometry_sha256": "05e31c1a617928e42c2fcf79f9b6e2771298b3e54e7c0894a784d2e4dd79e3f2",
+      "provenance": {
+        "intent": "Canonical original Architex origami SVG",
+        "source": "icons/xa.svg"
+      }
+    }
+  },
+  "scannedFiles": [
+    "modules/approvals.js",
+    "modules/calc-workspace.js",
+    "modules/closeout.js",
+    "modules/commercial.js",
+    "modules/compliance-tools.js",
+    "modules/compliance.js",
+    "modules/cpd.js",
+    "modules/directory.js",
+    "modules/document-tools.js",
+    "modules/documents.js",
+    "modules/explorer.js",
+    "modules/feedback.js",
+    "modules/governance.js",
+    "modules/icon-map.js",
+    "modules/iconography.js",
+    "modules/inbox-action.js",
+    "modules/m3-dialog.js",
+    "modules/meetings.js",
+    "modules/models.js",
+    "modules/municipal.js",
+    "modules/permission-controls.js",
+    "modules/practice.js",
+    "modules/procurement.js",
+    "modules/projects.js",
+    "modules/proposals.js",
+    "modules/refuse-calculator.js",
+    "modules/registers.js",
+    "modules/regulatory.js",
+    "modules/rfi.js",
+    "modules/scaffold-records.js",
+    "modules/scaffolds.js",
+    "modules/shell-data.js",
+    "modules/site-field.js",
+    "modules/site-tools.js",
+    "modules/supplier.js",
+    "modules/survey.js",
+    "modules/training.js",
+    "modules/wingman.js",
+    "modules/work-permits.js",
+    "reference-001.js",
+    "reference-002.js",
+    "reference-003.js",
+    "reference-004.js"
+  ],
+  "tabs": [
+    {
+      "explicit": "dashboard",
+      "key": "dashboard",
+      "label": "Dashboard",
+      "tool": "practice"
+    },
+    {
+      "explicit": "action_centre",
+      "key": "action_centre",
+      "label": "Action Centre",
+      "tool": "practice"
+    },
+    {
+      "explicit": "notification",
+      "key": "notification",
+      "label": "Notifications",
+      "tool": "practice"
+    },
+    {
+      "explicit": "programme",
+      "key": "programme",
+      "label": "Programme",
+      "tool": "practice"
+    },
+    {
+      "explicit": "checklist",
+      "key": "checklist",
+      "label": "Tasks Board",
+      "tool": "practice"
+    },
+    {
+      "explicit": "milestone",
+      "key": "milestone",
+      "label": "Milestones",
+      "tool": "practice"
+    },
+    {
+      "explicit": "calendar",
+      "key": "calendar",
+      "label": "Calendar",
+      "tool": "practice"
+    },
+    {
+      "explicit": "team_workspace",
+      "key": "team_workspace",
+      "label": "Team & Resources",
+      "tool": "practice"
+    },
+    {
+      "explicit": "site_diary",
+      "key": "site_diary",
+      "label": "Site Diary",
+      "tool": "practice"
+    },
+    {
+      "explicit": "rfi",
+      "key": "rfi",
+      "label": "RFIs & Instructions",
+      "tool": "practice"
+    },
+    {
+      "explicit": "risk",
+      "key": "risk",
+      "label": "Issues & Risks",
+      "tool": "practice"
+    },
+    {
+      "explicit": "itp",
+      "key": "itp",
+      "label": "Quality & Snags",
+      "tool": "practice"
+    },
+    {
+      "explicit": "fee_proposal",
+      "key": "fee_proposal",
+      "label": "Fee Planning",
+      "tool": "practice"
+    },
+    {
+      "explicit": "timesheet",
+      "key": "timesheet",
+      "label": "Timesheets & Expenses",
+      "tool": "practice"
+    },
+    {
+      "explicit": "profitability",
+      "key": "profitability",
+      "label": "Project Profitability",
+      "tool": "practice"
+    },
+    {
+      "explicit": "forecast",
+      "key": "forecast",
+      "label": "Forecasting",
+      "tool": "practice"
+    },
+    {
+      "explicit": "budget",
+      "key": "budget",
+      "label": "Budget & Cost",
+      "tool": "practice"
+    },
+    {
+      "explicit": "valuation",
+      "key": "valuation",
+      "label": "Valuations",
+      "tool": "practice"
+    },
+    {
+      "explicit": "procurement",
+      "key": "procurement",
+      "label": "Procurement",
+      "tool": "practice"
+    },
+    {
+      "explicit": "contract",
+      "key": "contract",
+      "label": "Contracts",
+      "tool": "practice"
+    },
+    {
+      "explicit": "drawing",
+      "key": "drawing",
+      "label": "Drawings",
+      "tool": "practice"
+    },
+    {
+      "explicit": "document",
+      "key": "document",
+      "label": "Documents",
+      "tool": "practice"
+    },
+    {
+      "explicit": "advisor",
+      "key": "advisor",
+      "label": "AI Agents",
+      "tool": "practice"
+    },
+    {
+      "explicit": null,
+      "key": "inbox",
+      "label": "Conversations",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "wingman",
+      "label": "Import BYOAI",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "detail",
+      "label": "Provenance Audit",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "rfi",
+      "label": "Draft RFI",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "wingman",
+      "label": "Empty State",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "advisor",
+      "label": "Wingman Identity",
+      "tool": "wingman"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Dashboard",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "planning",
+      "label": "Applications",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "programme",
+      "label": "Deadlines & Timelines",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "planning",
+      "label": "Public Participation",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "planning",
+      "label": "Conditions Register",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "planning",
+      "label": "Hearings & Appeals",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Municipality Profiles",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "trends",
+      "label": "Reports & Analytics",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "budget",
+      "label": "Payments & Fees",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "inbox",
+      "label": "Messages",
+      "tool": "planning"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Land Use",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Circulation",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Submission Pack",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Certificate",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "municipal",
+      "label": "Outcomes",
+      "tool": "municipal"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Basics",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Shading",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Fenestration",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Walls",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Roof",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Floors",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Hot Water",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Lighting",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Air Con",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "xa",
+      "label": "Results",
+      "tool": "xa"
+    },
+    {
+      "explicit": null,
+      "key": "forms",
+      "label": "Template Library",
+      "tool": "forms"
+    },
+    {
+      "explicit": null,
+      "key": "forms",
+      "label": "Form Editor",
+      "tool": "forms"
+    },
+    {
+      "explicit": null,
+      "key": "forms",
+      "label": "My Drafts",
+      "tool": "forms"
+    },
+    {
+      "explicit": null,
+      "key": "documents_drawings",
+      "label": "Export Queue",
+      "tool": "forms"
+    },
+    {
+      "explicit": null,
+      "key": "detail",
+      "label": "Audit Trail",
+      "tool": "forms"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "Pictorial Board",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "Sections",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "Products",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "documents_drawings",
+      "label": "Document Preview",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "workflow",
+      "label": "Approvals",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "budget",
+      "label": "Budget & Risk",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "BoM / BoQ",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "planning",
+      "label": "Planning",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "Procurement",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "Issue & Distribute",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "documents_drawings",
+      "label": "Drawing Intelligence",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "Closeout",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "integration",
+      "label": "Integration",
+      "tool": "specforge"
+    },
+    {
+      "explicit": null,
+      "key": "documents_drawings",
+      "label": "Drawing Takeoff",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "BoM Lines",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "Flagged",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "Procurement",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "programme",
+      "label": "Programme Link",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "specification",
+      "label": "SpecForge Link",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "QS Review",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "bom",
+      "label": "Tender Generation",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "documents_drawings",
+      "label": "Document Export",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "advisor",
+      "label": "AI Agents",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "detail",
+      "label": "Audit Trail",
+      "tool": "bom"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "Inspection Items",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "Material Testing",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "Hold Points",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "Lab Results",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "NCR Linkage",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "itp",
+      "label": "Inspector Sign-Off",
+      "tool": "itp"
+    },
+    {
+      "explicit": null,
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "Safety File",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "Permits",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "HIRA Register",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "Incidents",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "Inductions",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "H&S Plans",
+      "tool": "safety"
+    },
+    {
+      "explicit": null,
+      "key": "safety",
+      "label": "Fall Protection",
+      "tool": "safety"
+    },
+    {
+      "explicit": "dashboard",
+      "key": "dashboard",
+      "label": "Overview",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "clusters",
+      "key": "clusters",
+      "label": "Feedback Clusters",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "trends",
+      "key": "trends",
+      "label": "Trend Chart",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "detail",
+      "key": "detail",
+      "label": "Cluster Detail",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "advisor",
+      "key": "advisor",
+      "label": "AI Feature Brief",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "workflow",
+      "key": "workflow",
+      "label": "Roadmap Status",
+      "tool": "feedback"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "project_passport"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "project_passport"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "project_passport"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "project_passport"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "project_explorer"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "project_explorer"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "project_explorer"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "project_explorer"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "professional_directory"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "professional_directory"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "professional_directory"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "professional_directory"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "team_workspace"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "team_workspace"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "team_workspace"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "team_workspace"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "inbox_action"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "inbox_action"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "inbox_action"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "inbox_action"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "issues_rfis"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "issues_rfis"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "issues_rfis"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "issues_rfis"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "documents_drawings"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "documents_drawings"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "documents_drawings"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "documents_drawings"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "fee_proposal"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "fee_proposal"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "fee_proposal"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "fee_proposal"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "council_navigator"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "council_navigator"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "council_navigator"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "council_navigator"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "compliance_hub"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "compliance_hub"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "compliance_hub"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "compliance_hub"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "municipal_tracker"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "municipal_tracker"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "municipal_tracker"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "municipal_tracker"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "environmental_heritage"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "environmental_heritage"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "environmental_heritage"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "environmental_heritage"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "eia_workspace"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "eia_workspace"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "eia_workspace"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "eia_workspace"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "refuse_calculator"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "refuse_calculator"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "refuse_calculator"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "refuse_calculator"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "survey_geomatics"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "survey_geomatics"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "survey_geomatics"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "survey_geomatics"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "nhbrc_enrolment"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "nhbrc_enrolment"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "nhbrc_enrolment"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "nhbrc_enrolment"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "insurance_register"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "insurance_register"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "insurance_register"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "insurance_register"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "bim_ifc"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "bim_ifc"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "bim_ifc"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "bim_ifc"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "rfq_marketplace"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "rfq_marketplace"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "rfq_marketplace"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "rfq_marketplace"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "supplier_catalog"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "supplier_catalog"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "supplier_catalog"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "supplier_catalog"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "market_insights"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "market_insights"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "market_insights"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "market_insights"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "contract_admin"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "contract_admin"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "contract_admin"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "contract_admin"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "contractor_compliance"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "contractor_compliance"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "contractor_compliance"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "contractor_compliance"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "approvals_queue"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "approvals_queue"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "approvals_queue"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "approvals_queue"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "payments_escrow"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "payments_escrow"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "payments_escrow"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "payments_escrow"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "dispute_resolution"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "dispute_resolution"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "dispute_resolution"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "dispute_resolution"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "site_instructions"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "site_instructions"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "site_instructions"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "site_instructions"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "ncr_manager"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "ncr_manager"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "ncr_manager"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "ncr_manager"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "snag_manager"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "snag_manager"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "snag_manager"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "snag_manager"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "fm_bridge"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "fm_bridge"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "fm_bridge"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "fm_bridge"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "remote_desktop"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "remote_desktop"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "remote_desktop"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "remote_desktop"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "cpd_learning"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "cpd_learning"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "cpd_learning"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "cpd_learning"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "admin_review"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "admin_review"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "admin_review"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "admin_review"
+    },
+    {
+      "explicit": "brief",
+      "key": "brief",
+      "label": "Workspace Brief",
+      "tool": "iconography_registry"
+    },
+    {
+      "explicit": "projects",
+      "key": "projects",
+      "label": "Project Orientation",
+      "tool": "iconography_registry"
+    },
+    {
+      "explicit": "standalone",
+      "key": "standalone",
+      "label": "Standalone Orientation",
+      "tool": "iconography_registry"
+    },
+    {
+      "explicit": "integration",
+      "key": "integration",
+      "label": "Integration Contract",
+      "tool": "iconography_registry"
+    },
+    {
+      "explicit": "meeting_day",
+      "key": "meeting_day",
+      "label": "My day",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "calendar",
+      "key": "calendar",
+      "label": "Upcoming",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "meeting_invite",
+      "key": "meeting_invite",
+      "label": "Invitations",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "meeting_recording",
+      "key": "meeting_recording",
+      "label": "Recordings & Minutes",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "meeting_review",
+      "key": "meeting_review",
+      "label": "Draft reviews",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "meeting_template",
+      "key": "meeting_template",
+      "label": "Templates",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "settings",
+      "key": "settings",
+      "label": "Meeting settings",
+      "tool": "meetings"
+    },
+    {
+      "explicit": "eng_steel",
+      "key": "eng_steel",
+      "label": "Steel Design",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_concrete",
+      "key": "eng_concrete",
+      "label": "Concrete Design",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_timber",
+      "key": "eng_timber",
+      "label": "Timber Design",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_geo",
+      "key": "eng_geo",
+      "label": "Geotechnical",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_wind",
+      "key": "eng_wind",
+      "label": "Loading & Wind",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_storm",
+      "key": "eng_storm",
+      "label": "Stormwater & Drainage",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_duct",
+      "key": "eng_duct",
+      "label": "Duct & Pipe Sizing",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_heat",
+      "key": "eng_heat",
+      "label": "Heating & Cooling Loads",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_escape",
+      "key": "eng_escape",
+      "label": "Escape & Travel Distance",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_fire",
+      "key": "eng_fire",
+      "label": "Fire Resistance Rating",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_hydrant",
+      "key": "eng_hydrant",
+      "label": "Fire Water / Hydrants",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_cable",
+      "key": "eng_cable",
+      "label": "Cable Sizing & Voltage Drop",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_db",
+      "key": "eng_db",
+      "label": "Max Demand & DB Sizing",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_water",
+      "key": "eng_water",
+      "label": "Water Pipe Sizing",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_drain",
+      "key": "eng_drain",
+      "label": "Drainage & Fixture Units",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_hotwater",
+      "key": "eng_hotwater",
+      "label": "Hot Water System Sizing",
+      "tool": "engineering_calc"
+    },
+    {
+      "explicit": "eng_units",
+      "key": "eng_units",
+      "label": "Unit Converter & Reference",
+      "tool": "engineering_calc"
+    }
+  ],
+  "toolIcons": {
+    "admin_review": "admin_review",
+    "approvals_queue": "approvals_queue",
+    "bim_ifc": "bimQuantities",
+    "bom": "bom",
+    "compliance_hub": "compliance_hub",
+    "contract_admin": "contract_admin",
+    "contractor_compliance": "contractor_compliance",
+    "council_navigator": "council_navigator",
+    "cpd_learning": "cpd_learning",
+    "dispute_resolution": "dispute_resolution",
+    "documents_drawings": "documents_drawings",
+    "drawing_compliance_navigator": "council_navigator",
+    "eia_workspace": "eiaWorkspace",
+    "engineering_calc": "engineering_hub",
+    "environmental_heritage": "environmental_heritage",
+    "fee_proposal": "fee_proposal",
+    "feedback": "feedback",
+    "fm_bridge": "fm_bridge",
+    "forms": "formSystem",
+    "iconography_registry": "iconography_registry",
+    "inbox_action": "action_centre",
+    "insurance_register": "insurance_register",
+    "issues_rfis": "issues_rfis",
+    "itp": "itp",
+    "market_insights": "market_insights",
+    "meetings": "meetings",
+    "municipal": "municipal",
+    "municipal_tracker": "municipal_tracker",
+    "ncr_manager": "ncr_manager",
+    "nhbrc_enrolment": "nhbrc_enrolment",
+    "payments_escrow": "payments_escrow",
+    "planning": "planning",
+    "practice": "practiceManagement",
+    "professional_directory": "professional_directory",
+    "project_explorer": "project_explorer",
+    "project_passport": "project_passport",
+    "refuse_calculator": "municipalRefuseCalculator",
+    "remote_desktop": "remoteDesktop",
+    "rfq_marketplace": "rfqMarketplace",
+    "safety": "safety",
+    "site_instructions": "site_instructions",
+    "snag_manager": "snag_manager",
+    "specforge": "specification",
+    "supplier_catalog": "supplier_catalog",
+    "survey_geomatics": "survey_geomatics",
+    "team_workspace": "team_workspace",
+    "valuations": "valuation",
+    "wingman": "wingman",
+    "xa": "xa"
+  }
+}

@@ -144,8 +144,8 @@
         <p class="muted">${esc(status.message)}</p>
         <table class="table"><thead><tr><th>Provider boundary check</th><th>Reported state</th></tr></thead><tbody>
         ${rows.map(r=>`<tr data-com-boundary-row="${esc(r[0])}"><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join('')}</tbody></table>
-        <div class="com-actions"><button class="btn" data-com-release disabled title="${esc(adapter.releaseRefused)}">Request provider release</button></div>
-        <p class="muted" data-com-release-notice>${esc(adapter.releaseRefused)}</p></section>`;
+        <div class="com-actions"><button class="btn" data-com-release aria-describedby="com-release-boundary" disabled title="${esc(adapter.releaseRefused)}">Request provider release</button></div>
+        <p class="muted" id="com-release-boundary" data-com-release-notice>${esc(adapter.releaseRefused)}</p></section>`;
     }
     function retentionPanel(){
       const retention=model.retention;
@@ -162,7 +162,7 @@
       const intro=escrow
         ?'Track payment schedules, claims, certificate revisions and retention as internal commercial metadata for the selected project.'
         :'Administer the commercial baseline, variations, payment claims and certificates for the selected project.';
-      main.innerHTML=`<div class="com-workspace" data-com-tool="${esc(tool)}">
+      main.innerHTML=`<div class="com-workspace m3-commercial-workspace" data-com-tool="${esc(tool)}">
         <div class="com-hero"><div><h1>${esc(title)}</h1><p>${esc(intro)}</p>
           <p>Project: <strong>${esc(project)}</strong>${model?` · ${esc(model.variations.length)} variation(s) · ${esc(model.claims.length)} claim(s) · ${esc(model.certificates.length)} certificate(s)`:''}</p></div>
           <div class="com-hero-actions">${!escrow&&!model?.baseline?'<button class="btn" data-com-new-baseline>+ New baseline</button>':''}${model?.baseline&&!escrow?'<button class="btn" data-com-new-variation>+ New variation</button>':''}${model?.baseline?'<button class="btn" data-com-new-schedule>+ Payment schedule</button>':''}${model?.schedules?.some(s=>(s.milestones||[]).length)?'<button class="btn" data-com-new-claim>+ Submit claim</button>':''}<button class="btn" data-com-refresh>Refresh</button></div></div>

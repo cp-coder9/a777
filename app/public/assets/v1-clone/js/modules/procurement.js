@@ -32,7 +32,7 @@
     function esc(v){return escape(v);}
     function shell(state){
       const project=state.projects?.find(p=>p.id===state.selectedProjectId)?.name||'Selected project';
-      return '<section class="proc-workspace" data-proc-root>'+
+      return '<section class="proc-workspace m3-commercial-workspace" data-proc-root>'+
         '<div class="proc-hero"><h1>Procurement packages &amp; RFQ marketplace</h1>'+
         '<p>Project: <strong>'+esc(project)+'</strong> · <span data-proc-status role="status">Loading packages…</span></p></div>'+
         '<p class="pill" data-proc-boundary role="note">'+esc(BOUNDARY)+'</p>'+

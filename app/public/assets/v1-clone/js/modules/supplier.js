@@ -84,7 +84,7 @@
       if (!main) return;
       const summary = `${m.suppliers.length} supplier${m.suppliers.length === 1 ? '' : 's'} · ${m.catalogues.length} catalogue revision${m.catalogues.length === 1 ? '' : 's'} · ${m.baselines.length} baseline${m.baselines.length === 1 ? '' : 's'} · ${m.packages.length} package${m.packages.length === 1 ? '' : 's'}`;
       main.innerHTML = `
-        <div class="sc-workspace" data-sc-tool="${TOOL}">
+        <div class="sc-workspace m3-commercial-workspace" data-sc-tool="${TOOL}">
           <div class="rfi-hero">
             <div><h1>Supplier Catalogue</h1><p>Project: <strong>${esc(m.projectName)}</strong> · ${esc(summary)}</p></div>
             <div><button class="btn" data-sc-create>+ Add supplier</button>

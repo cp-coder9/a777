@@ -5,6 +5,20 @@
   const one = selector => document.querySelector(selector);
   const field = (value, fallback = 'Not recorded') => typeof value === 'string' && value.trim() ? value : fallback;
 
+  // Guidance mirrors WingmanRoleTutorials; workspace IDs come only from discovery.
+  const priorities = Object.freeze({"architect": {"label": "Architect", "priority": "Brief & appointment"}, "client": {"label": "Client / Property Owner", "priority": "Brief"}, "bep": {"label": "Built Environment Professional", "priority": "Appointment"}, "engineer": {"label": "Engineer", "priority": "Brief & appointment"}, "quantity_surveyor": {"label": "Quantity Surveyor", "priority": "Cost planning"}, "town_planner": {"label": "Town Planner", "priority": "Property & zoning enquiry"}, "land_surveyor": {"label": "Land Surveyor", "priority": "Appointment"}, "energy_professional": {"label": "Energy Professional", "priority": "Appointment"}, "fire_engineer": {"label": "Fire Engineer", "priority": "Appointment & scope"}, "cpm": {"label": "Construction Project Manager", "priority": "Establish appointments & responsibilities"}, "contractor": {"label": "Principal Contractor", "priority": "Award & mobilisation"}, "subcontractor": {"label": "Trade Subcontractor", "priority": "Package award"}, "supplier": {"label": "Material Supplier", "priority": "Catalogue & product data"}, "site_manager": {"label": "Site Manager / Clerk of Works", "priority": "Site establishment"}, "health_safety": {"label": "Health & Safety Officer", "priority": "Safety file & appointment"}, "developer": {"label": "Property Developer", "priority": "Site & property"}, "freelancer": {"label": "Specialist Freelancer", "priority": "Task/package assignment"}, "firm_admin": {"label": "Practice Administrator", "priority": "Organisation setup"}, "organisation_admin": {"label": "Organisation Administrator", "priority": "Access & roles"}, "admin": {"label": "Practice Operations Admin", "priority": "Operations setup"}, "platform_admin": {"label": "Platform Administrator", "priority": "Platform health"}});
+  function dashboardModel(current, discovery) {
+    const member = current.session?.memberships?.find(m => m.organisationId === current.organisationId);
+    const valid = current.ready && ['owner','admin','member','viewer'].includes(member?.role);
+    const privileged = ['owner','admin'].includes(member?.role);
+    const profile = Object.hasOwn(priorities, member?.profileRole) ? priorities[member.profileRole] : null;
+    const safeProfile = valid && profile && (privileged || !/admin/.test(member?.profileRole));
+    const tools = valid && discovery ? discovery.getCatalogue().filter(t => t.recommended === true && discovery.allowed(t.id)) : [];
+    return { label: safeProfile ? profile.label : valid ? 'Project workspace' : 'Membership unavailable',
+      priority: safeProfile ? profile.priority : 'Review the authorised project scope', tools,
+      available: Boolean(valid && discovery), membership: valid ? member.role : 'Unavailable' };
+  }
+
   function install({ context }) {
     if (!context?.getState || !context?.subscribe) throw Error('Shell data requires an authorised context.');
     let disposed = false, selectionGeneration = 0;
@@ -12,11 +26,12 @@
     const view = () => typeof state === 'object' ? state : {};
     const snapshot = () => {
       const current = context.getState();
-      const projects = current.ready && current.session && current.organisationId
+           const membership = current.session?.memberships?.find(m => m.organisationId === current.organisationId);
+           const projects = current.ready && current.session && current.organisationId && ['owner','admin','member','viewer'].includes(membership?.role)
         ? (current.projects || []).filter(p => p.id && (!p.organisationId || p.organisationId === current.organisationId)) : [];
       return { ...current, projects, selected: projects.find(p => p.id === current.selectedProjectId) };
     };
-    const scopeKey = current => JSON.stringify([current.session?.userId, current.organisationId]);
+    const scopeKey = current => JSON.stringify([current.session?.userId, current.organisationId, current.session?.memberships, current.ready, current.mode, current.selectedProjectId]);
     function bindSelect(select, current) {
       const entries = current.projects.length ? current.projects.map(p => [p.id, p.name]) : [['', current.ready ? 'No authorised projects' : 'Projects not loaded']];
       if (JSON.stringify([...select.options].map(o => [o.value, o.textContent])) !== JSON.stringify(entries)) {
@@ -40,6 +55,41 @@
       };
       select.onchange = handler;
       handlers.set(select, { previous, handler });
+    }
+    let dashboardSignature = '';
+    function renderDashboard(current) {
+      const main = one('#main'); if (!main) return;
+      const discovery = global.V1CloneRuntime?.controllers?.discovery;
+      const model = dashboardModel(current, discovery);
+      const capturedScope = scopeKey(current);
+      const signature = JSON.stringify([capturedScope,current.projects,model]);
+      if (main.querySelector('[data-role-dashboard]') && signature === dashboardSignature) return;
+      dashboardSignature = signature;
+      const section = document.createElement('section'); section.className = 'role-dashboard'; section.dataset.roleDashboard = '';
+      const add = (tag, value, parent = section) => { const node = document.createElement(tag); node.textContent = value; parent.append(node); return node; };
+      add('h1', 'Command Centre'); add('h2', model.label);
+      add('p', 'Guidance priority: ' + model.priority + '. Saved profile guidance does not grant authority.');
+      add('p', 'Membership: ' + model.membership);
+      const project = current.selected;
+      add('h2', 'Authorised project');
+      add('p', project ? field(project.name) : current.ready ? 'No authorised project selected' : 'Projects not loaded');
+      if (project) add('p', 'Phase: ' + field(project.phase) + ' · Municipality: ' + field(project.municipality));
+
+      const button = (label, action, parent = section) => {
+        const node = add('button', label, parent); node.type = 'button'; node.className = 'btn';
+        node.onclick = () => { const now = snapshot(); if (disposed || !now.ready || !dashboardModel(now, discovery).available || !node.isConnected || capturedScope !== scopeKey(now)) return false; return action(now); }; return node;
+      };
+      const primary = model.tools.find(t => discovery?.allowed(t.id));
+      add('h2', 'Primary available workspace');
+      if (primary) button('Open ' + field(primary.name, primary.id), now => discovery.allowed(primary.id) ? global.openTool?.(primary.id, now.mode) : false);
+      else add('p', 'No recommended workspace is available in this scope. Discovery may be unavailable or no recommendation is authorised.');
+      const groups = new Map(); for (const tool of model.tools) { const stage = field(tool.stage, 'Other workspaces'); if (!groups.has(stage)) groups.set(stage, []); groups.get(stage).push(tool); }
+      add('h2', 'Recommended tool groups');
+      for (const [stage, tools] of groups) { const group = add('div', ''); group.className = 'role-dashboard-group'; add('h3', stage, group); for (const tool of tools) button(field(tool.name, tool.id), now => discovery.allowed(tool.id) ? global.openTool?.(tool.id, now.mode) : false, group); }
+      if (!groups.size) add('p', 'No authorised recommendations loaded.');
+      add('h2', 'Attention'); add('p', 'Unavailable. Attention records are not loaded. No task, notification, payment or completion totals are inferred.');
+      button('Open native inbox', () => global.openGlobal?.('inbox'));
+      main.replaceChildren(section);
     }
     function reconcile() {
       if (disposed) return;
@@ -101,8 +151,7 @@
           });
         }
         if (route.global === 'command') {
-          const card = one('#main .scaffold-card[onclick="openProjectSpace()"]');
-          if (card) { card.dataset.projectId = record?.id || ''; text(card.querySelector('p'), record ? `Enter ${name} and work through the project’s single line of truth.` : 'Select an authorised project to open its datum.'); }
+          renderDashboard(current);
         }
         if (route.global === 'inbox') all('#main .collab-card .mtg-badge').forEach(n => text(n, 'Not loaded'));
         if (['documents', 'finance'].includes(route.global)) text(one('#main .notice'), `${route.global === 'documents' ? 'Document records' : 'Finance and payment records'} are not loaded for this global scope.`);
@@ -134,5 +183,5 @@
       handlers.clear();
     } };
   }
-  global.V1CloneShellData = { install };
+  global.V1CloneShellData = { install, dashboardModel, priorities };
 })(window);

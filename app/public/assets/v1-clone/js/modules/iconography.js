@@ -91,7 +91,7 @@
       const tags = [
         `<span class="icon-tag tone">${esc(meta.tone || 'core')}</span>`,
         meta.priority ? `<span class="icon-tag ${meta.priority === 'P0' ? 'p0' : ''}">${esc(meta.priority)}</span>` : '',
-        `<span class="icon-tag" title="${src === 'shell' ? 'The v1.html icon registry already owned this key, so it stays the design reference for it' : 'Geometry supplied by architex_svg_icon_pack-2'}">${src === 'shell' ? 'shell' : 'pack'}</span>`
+        `<span class="icon-tag" title="${src === 'shell' ? 'The v1.html icon registry already owned this key, and it is not approved for replacement' : 'Geometry supplied by architex_svg_icon_pack-2'}">${src === 'shell' ? 'shell' : 'pack'}</span>`
       ].join('');
       return `<figure class="icon-tile ${toneClass(meta.tone)}" data-icon-key="${esc(key)}" data-icon-source="${src}">
         <div class="icon-frame">${svg}</div>
@@ -101,8 +101,8 @@
           <span class="icon-tags">${tags}</span>
         </figcaption>
         <div class="icon-actions">
-          <button type="button" data-copy="${esc(key)}" title="Copy the inline SVG markup">Copy SVG</button>
-          <button type="button" data-download="${esc(key)}" title="Download a standalone themed SVG">Download</button>
+          <button type="button" data-copy="${esc(key)}" aria-label="Copy ${esc(meta.label || key)} SVG" title="Copy the inline SVG markup">Copy SVG</button>
+          <button type="button" data-download="${esc(key)}" aria-label="Download ${esc(meta.label || key)} SVG" title="Download a standalone themed SVG">Download</button>
         </div>
       </figure>`;
     }
@@ -277,7 +277,7 @@
           ${sizeRamp(p)}
           ${doDont(p)}
           ${qaPanel(p)}
-          <div class="notice"><b>How these icons reach the app.</b> The pack is compiled into the v1.html role model by <code>tools/v1-clone/build_architex_icons.py</code> and emitted as <code>js/architex-icon-pack.js</code>, which merges into the shell's own <code>iconShapes</code> registry without overwriting any key the shell already owned. Every tile above is therefore the same inline markup the navigation, the tool registry and the datum cards render &mdash; there is no separate image copy to fall out of sync. Icons are decoration for a label that is always present in text.</div>
+          <div class="notice"><b>How these icons reach the app.</b> The pack is compiled into the v1.html role model by <code>tools/v1-clone/build_architex_icons.py</code> and emitted as <code>js/architex-icon-pack.js</code>, which merges into the shell's own <code>iconShapes</code> registry replacing only approved canonical registry keys while preserving the original logo and unregistered extensions. Every tile above is therefore the same inline markup the navigation, the tool registry and the datum cards render &mdash; there is no separate image copy to fall out of sync. Icons are decoration for a label that is always present in text.</div>
         </div>`;
       wire(p);
       const status = doc.querySelector('[data-icon-status]');
