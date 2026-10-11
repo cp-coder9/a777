@@ -47,8 +47,14 @@ class InspectionClient(CpanelClient):
              'operation_not_read_only')
         payload = super()._request_json(method, path, params, body, headers)
         result = payload.get('result', payload)
-        need(isinstance(result, dict) and type(result.get('status')) is int and
-             result['status'] == 1 and result.get('errors') in (None, []), 'provider_envelope_unknown')
+        accepted = (isinstance(result, dict) and type(result.get('status')) is int and
+                    result['status'] == 1 and result.get('errors') in (None, []))
+        if not accepted:
+            diagnostic = provider_diagnostic(payload, path,
+                getattr(self, '_inspection_phase', None),
+                getattr(self, '_inspection_relative', None),
+                getattr(self, '_inspection_diagnostic_paths', frozenset()))
+            raise Refusal('provider_envelope_unknown', diagnostic=diagnostic)
         return payload
 
     def list_files(self, path):
@@ -60,10 +66,32 @@ class InspectionClient(CpanelClient):
         return cache[path]
 
 
+def provider_diagnostic(payload, operation, phase, relative, approved=frozenset()):
+    """Closed enums only; never serialize provider strings or request params."""
+    def shape(value):
+        return {dict: 'dict', list: 'list', str: 'str', int: 'int',
+                bool: 'bool', float: 'float', type(None): 'null'}.get(type(value), 'other')
+    result = payload.get('result', payload) if type(payload) is dict else None
+    status = result.get('status') if type(result) is dict else None
+    errors = result.get('errors') if type(result) is dict else None
+    out = {'method': 'GET', 'operation': operation if operation in InspectionClient._READ_PATHS else 'unknown',
+           'phase': phase if phase in {'shim', 'configmeta', 'manifest', 'runtimefile', 'publicstatic', 'configrepeat'} else 'unknown',
+           'envelopeType': shape(payload), 'resultPresent': type(payload) is dict and 'result' in payload,
+           'resultType': shape(result), 'statusPresent': type(result) is dict and 'status' in result,
+           'statusType': shape(status), 'errorsPresent': type(result) is dict and 'errors' in result,
+           'errorsType': shape(errors), 'errorsNonempty': errors not in (None, [])}
+    if type(status) is int:
+        out['status'] = status
+    if phase in {'runtimefile', 'publicstatic'} and type(relative) is str and relative in approved:
+        out['relativeFile'] = relative
+    return out
+
+
 class Refusal(Exception):
-    def __init__(self, code, *, predicate=None):
+    def __init__(self, code, *, predicate=None, diagnostic=None):
         self.code = code
         self.predicate = predicate
+        self.diagnostic = diagnostic
 
 
 def need(value, code, *, predicate=None):
@@ -605,6 +633,9 @@ def inspect(client, candidate):
     client._inspection_bound_runtime = None
     client._inspection_listings = {}
     client._inspection_active = True
+    client._inspection_phase = None
+    client._inspection_relative = None
+    client._inspection_diagnostic_paths = frozenset()
     report = {'mode': 'inspect', 'deployed': False, 'writesPerformed': False,
               'nativeCanonicalVerified': False, 'nativeOwnershipVerified': False,
               'backupVerified': False, 'migrationLedgerVerified': False,
@@ -613,7 +644,8 @@ def inspect(client, candidate):
               'deploymentAuthorized': False,
               'baselineSourceProfile': candidate.get('baselineSourceProfile', 'git'),
               'baselineSourceCommit': candidate.get('baselineSourceCommit', BASELINE),
-              'sourceCopyProfileOnly': True}
+              'sourceCopyProfileOnly': True,
+              'verifiedRuntimeFiles': 0, 'verifiedStaticFiles': 0}
     try:
         need(client.account_home() == HOME, 'account_identity_unknown')
         domain_metadata = {}
@@ -626,6 +658,7 @@ def inspect(client, candidate):
         client._inspection_bound_runtime = None
         runtime_roots = []
         for name in ('index.php', 'app.php', 'legal.php'):
+            client._inspection_phase = 'shim'
             report['shimEntry'] = name
             report['shimStage'] = 'fileman_read'
             client._inspection_shim_encoding = None
@@ -648,11 +681,13 @@ def inspect(client, candidate):
         report['shimStage'] = 'all_entries_bound'
         report.update(runtimeRootBindingVerified=True, runtimeRootPolicy='bounded_literal_read_only_discovery_v3',
                       boundShimCount=3, activeRuntimeSha256=digest(runtime.encode('ascii')))
+        client._inspection_phase = 'configmeta'
         report['configSha256'] = digest(read_bytes(client, runtime + '/config/runtime.php'))
         metadata = json.loads(read_bytes(client, runtime + '/release.json'))
         need(isinstance(metadata, dict) and metadata.get('format') == 'architex-release-v1' and
              metadata.get('sourceCommit') == BASELINE and metadata.get('sourceDirty') is False and
              metadata.get('environment') == 'production', 'live_baseline_unknown')
+        client._inspection_phase = 'manifest'
         raw_manifest = json.loads(read_bytes(client, runtime + '/release-manifest.json'))
         files = manifest(raw_manifest)
         need(metadata.get('version') == raw_manifest['version'], 'live_version_unknown')
@@ -677,13 +712,22 @@ def inspect(client, candidate):
                     files[relative]['bytes'] != source.get('baselineBytes', files[relative]['bytes'])):
                 report['firstBaselineDifference'] = baseline_difference(relative, source, files[relative])
                 need(False, 'live_manifest_baseline_mismatch')
+            client._inspection_phase = 'runtimefile'
+            client._inspection_relative = relative if (relative in files and
+                relative.startswith(('src/', 'public/', 'views/', 'database/', 'bin/')) and
+                posixpath.normpath(relative) == relative and '\\' not in relative and
+                not any(token in relative.lower() for token in ('config', 'credential', 'secret', 'private', '.env'))) else None
+            client._inspection_diagnostic_paths = frozenset({client._inspection_relative}) if client._inspection_relative else frozenset()
             actual = read_bytes(client, runtime + '/' + relative)
             if digest(actual) != expected or len(actual) != files[relative]['bytes']:
                 report['firstBaselineDifference'] = baseline_difference(relative, source, files[relative], actual)
                 need(False, 'live_bytes_baseline_mismatch')
             hashes[relative] = digest(actual)
+            report['verifiedRuntimeFiles'] += 1
             if relative.startswith('public/') and not relative.endswith('.php') and relative != 'public/.htaccess':
+                client._inspection_phase = 'publicstatic'
                 need(digest(read_bytes(client, DOCROOT + '/' + relative[7:])) == expected, 'published_static_baseline_mismatch')
+                report['verifiedStaticFiles'] += 1
         report.update(candidateCommit=candidate['commit'], candidateInventorySha256=candidate['inventorySha256'],
             candidateUiHashes={name: candidate['files'].get(name, {}).get('sha256') for name in candidate['changes']},
             canonicalMigrationSourceCount=sum(name.startswith('app/database/migrations/') and name.endswith('.sql') for name in candidate['files']),
@@ -692,10 +736,14 @@ def inspect(client, candidate):
             changedViewCount=sum(n.startswith('app/views/') for n in candidate['changes']),
             observedFileHashes=hashes, immutableSourceDiffVerified=True,
             inspectionComplete=True, composerArtifactEquivalenceVerified=False)
+        client._inspection_phase = 'configrepeat'
+        client._inspection_relative = None
         need(digest(read_bytes(client, runtime + '/config/runtime.php')) == report['configSha256'], 'config_changed_during_inspection')
     except Exception as error:
         report['inspectionComplete'] = False
         report['errorCode'] = error.code if type(error) is Refusal else 'provider_or_contract_failed'
+        if type(error) is Refusal and error.code == 'provider_envelope_unknown' and error.diagnostic is not None:
+            report['providerDiagnostic'] = error.diagnostic
         if type(error) is Refusal and error.predicate in {
                 'domain_inventory_keys', 'domain_inventory_main', 'domain_inventory_group',
                 'domain_inventory_total', 'domain_inventory_row'}:
@@ -704,6 +752,9 @@ def inspect(client, candidate):
         client._inspection_bound_runtime = None
         client._inspection_active = False
         client._inspection_listings = {}
+        client._inspection_phase = None
+        client._inspection_relative = None
+        client._inspection_diagnostic_paths = frozenset()
     return report
 
 
