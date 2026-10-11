@@ -204,6 +204,75 @@ class Contracts(unittest.TestCase):
             self.assertEqual(report['errorCode'], 'domain_account_unknown')
             reader.assert_not_called()
 
+    def test_domain_shape_is_literal_schema_not_provider_values(self):
+        import json
+        secret = 'TOKEN-PASSWORD-domain.private-config-provider-error'
+        data = {'main_domain': {key: secret for key in
+                    ('servername', 'domain', 'documentroot', 'user', 'homedir')},
+                'sub_domains': {secret: {secret: [secret]}},
+                'addon_domains': None, secret: {'domains': [secret]}}
+        shape = ui.domain_shape(data)
+        self.assertEqual(set(shape), {'topLevelType', 'groups', 'mainFieldPresence',
+                                     'maxDepth', 'typeCounts', 'traversalBounded'})
+        self.assertEqual(set(shape['groups']),
+                         {'main_domain', 'sub_domains', 'addon_domains', 'parked_domains'})
+        self.assertEqual(set(shape['mainFieldPresence']),
+                         {'servername', 'domain', 'documentroot', 'user', 'homedir'})
+        self.assertEqual(shape['groups']['addon_domains'],
+                         {'present': True, 'type': 'other', 'count': 0, 'countBounded': False})
+        self.assertFalse(shape['groups']['parked_domains']['present'])
+        self.assertEqual(shape['maxDepth'], 4)
+        self.assertNotIn(secret, json.dumps(shape))
+        def check(value):
+            if type(value) is dict:
+                for child in value.values(): check(child)
+            else:
+                self.assertTrue(type(value) in (int, bool) or
+                                type(value) is str and value in ('dict', 'list', 'other'))
+        check(shape)
+        for value, expected in (([], 'list'), (None, 'other'), (secret, 'other'), (7, 'other')):
+            self.assertEqual(ui.domain_shape(value)['topLevelType'], expected)
+
+    def test_domain_shape_bounded_depth_counts_and_cycles(self):
+        shape = ui.domain_shape({'sub_domains': [None] * 20001})
+        self.assertEqual(shape['groups']['sub_domains']['count'], 20000)
+        self.assertTrue(shape['groups']['sub_domains']['countBounded'])
+        self.assertEqual(sum(shape['typeCounts'].values()), 20000)
+        self.assertTrue(shape['traversalBounded'])
+        cycle = {}; cycle['secret-key'] = cycle
+        shape = ui.domain_shape(cycle)
+        self.assertEqual(shape['maxDepth'], 8)
+        self.assertTrue(shape['traversalBounded'])
+        self.assertEqual(shape['typeCounts']['dict'], 9)
+
+    def test_failed_inventory_keeps_shape_and_old_refusal_before_files(self):
+        import json
+        from unittest.mock import patch
+        calls = []
+        secret = 'PRIVATE-TOKEN-domain-config-error'
+        data = {'domains': {secret: {'main_domain': {'servername': secret}}}}
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args):
+                calls.append(args)
+                return data
+        with patch.object(ui, 'read_bytes') as reader:
+            report = ui.inspect(Client(), {})
+            reader.assert_not_called()
+        self.assertEqual(calls, [('DomainInfo', 'domains_data',
+                                 {'format': 'hash', 'hide_temporary_domains': '0'})])
+        self.assertEqual(report['domainShape'], ui.domain_shape(data))
+        self.assertEqual(report['errorCode'], 'domain_inventory_unknown')
+        self.assertFalse(report['inspectionComplete'])
+        self.assertFalse(report['writesPerformed'])
+        self.assertNotIn(secret, json.dumps(report))
+        class Failed(Client):
+            def _uapi(self, *args): raise RuntimeError(secret)
+        report = ui.inspect(Failed(), {})
+        self.assertEqual(report['errorCode'], 'provider_or_contract_failed')
+        self.assertNotIn('domainShape', report)
+        self.assertNotIn(secret, json.dumps(report))
+
     def test_manifest_rejects_secret_and_arbitrary_paths(self):
         good = {'format': 'architex-release-manifest-v1', 'version': 'v1', 'files':
                 {'src/a.php': {'sha256': 'a'*64, 'bytes': 5}}}
