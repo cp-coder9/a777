@@ -218,6 +218,18 @@ def domain_roots(data, *, authenticated_home=None, metadata=None):
     and map key, a non-parked producer group and exactly DOCROOT. Every row's
     root/account is validated, including unrelated addons; no alias binds a
     target and no provider field is interpreted as native ownership proof.
+
+    Official sources: api.docs.cpanel.net/openapi/cpanel/operation/domains_data
+    and its /page-data/shared/oas-specifications/cpanel.openapi.yaml.json
+    (HashOutput references Contents/MainDomainContents). HashOutput describes
+    parked objects, but the operation example supplies parked hostname strings
+    present in main_domain.serveralias. The separate official Domains contract
+    docs.cpanel.net/cpanel/domains/domains/create-a-new-domain/132 defines parked
+    aliases as pointing to Main Domain and sharing its document root. Accept
+    only bounded literal string-list aliases with exact DNS-case-normalized
+    main serveralias membership and a validated explicit main servername,
+    root/account. Count these as main-vhost metadata, not independent vhosts;
+    retain object-row validation for schema-compatible parked objects.
     """
     groups = ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')
     need(type(data) is dict and set(data) == set(groups), 'domain_inventory_unknown',
@@ -238,7 +250,28 @@ def domain_roots(data, *, authenticated_home=None, metadata=None):
     roots, targets, identities = [], [], set()
     missing_user = missing_home = 0
     name_owners, wildcard_aliases = {}, []
+    parked_aliases, main_alias_names = set(), set()
     for row_index, (category, key, row) in enumerate(rows):
+        if category == 'parked_domains' and key is None and type(row) is str:
+            # Official domains_data example supplies parked hostname strings
+            # also present in main_domain.serveralias. cPanel's Domains docs
+            # define parked aliases as sharing the Main Domain document root.
+            # Main row (index 0) has already passed root/account validation;
+            # this is metadata owned by that vhost, never an independent row.
+            alias = row.lower()
+            need(len(alias) <= 253 and '.' in alias and
+                 re.fullmatch(r'[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?', alias) and
+                 all(label and len(label) <= 63 and not label.startswith('-') and
+                     not label.endswith('-') for label in alias.split('.')),
+                 'domain_identity_unknown')
+            main: Any = data['main_domain']
+            need(main.get('servername') is not None and
+                 alias in main_alias_names and
+                 name_owners.get(alias) == 0 and alias not in identities and
+                 alias not in parked_aliases and alias != DOMAIN,
+                 'domain_identity_unknown')
+            parked_aliases.add(alias)
+            continue
         need(type(row) is dict, 'domain_inventory_unknown', predicate='domain_inventory_row')
         domain = row.get('servername', row.get('domain'))
         identifier = row.get('domain', domain)
@@ -258,6 +291,8 @@ def domain_roots(data, *, authenticated_home=None, metadata=None):
         # belonging to any other inventory row must never collide.
         aliases = row.get('serveralias', '')
         need(isinstance(aliases, str), 'domain_identity_unknown')
+        if category == 'main_domain':
+            main_alias_names = {alias.lower() for alias in aliases.split()}
         for name in row_identities | {alias.lower() for alias in aliases.split()}:
             if any(char in name for char in '*?['):
                 wildcard_aliases.append((row_index, name))
@@ -284,11 +319,16 @@ def domain_roots(data, *, authenticated_home=None, metadata=None):
                  category in ('main_domain', 'sub_domains', 'addon_domains'), 'domain_identity_unknown')
             targets.append(root)
     for owner, pattern in wildcard_aliases:
+        need(not any(fnmatchcase(alias, pattern) for alias in parked_aliases),
+             'domain_identity_unknown')
         need(not any(other != owner and fnmatchcase(name, pattern)
                      for name, other in name_owners.items()), 'domain_identity_unknown')
     need(targets == [DOCROOT], 'serving_root_unknown')
     if metadata is not None:
-        metadata.update(rowCount=len(rows), missingUserCount=missing_user, missingHomeCount=missing_home)
+        metadata.update(rowCount=len(roots), missingUserCount=missing_user, missingHomeCount=missing_home)
+        if parked_aliases:
+            metadata.update(parkedAliasCount=len(parked_aliases),
+                            mainBoundParkedAliasCount=len(parked_aliases))
     return sorted(set(roots))
 
 
