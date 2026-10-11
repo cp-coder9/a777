@@ -130,8 +130,15 @@
     const scope=()=>{const s=context.getState();return JSON.stringify([s.organisationId,s.session?.userId,s.session?.memberships]);};
     const membership=()=>{const s=context.getState();return s.session?.memberships?.find(m=>m.organisationId===s.organisationId)?.role;};
     const allowed=id=>!disposed&&loadedScope===scope()&&['owner','admin','member','viewer'].includes(membership())&&catalogue.get(id==='command'?'practice':id)?.access?.read===true;
+    const local=id=>{const registry=typeof TOOLS==='object'?TOOLS:global.TOOLS||{};return Object.hasOwn(registry,id);};
+    const unknown=()=>Boolean(viewState?.tool&&!local(viewState.tool));
+    // Reference chrome requires a local tool. Never synthesize a registry entry.
+    for(const name of ['renderTopbar','renderNavigator','renderInspector','feedbackContextText','setToolTab','reloadTool']){
+      const original=global[name];if(typeof original!=='function')continue;
+      global[name]=function(...args){if(!unknown())return original.apply(this,args);if(name==='setToolTab'||name==='reloadTool')return false;const id=viewState.tool;viewState.tool=null;try{return original.apply(this,args);}finally{viewState.tool=id;}};
+    }
     const open=global.openTool;
-    if(typeof open==='function')global.openTool=function(id,...args){if(!allowed(id)){notify('This tool is not available with your current membership.');return false;}return open.call(this,id,...args);};
+    if(typeof open==='function')global.openTool=function(id,...args){if(!allowed(id)){notify('This tool is not available with your current membership.');if(!local(id)){viewState.tool=id;viewState.toolTab=0;global.renderAll?.();}return false;}return open.call(this,id,...args);};
     function decorateSources(){
       if(viewState?.tool!=='approvals_queue'||!allowed('approvals_queue'))return;
       const project=context.getState().selectedProjectId,key=scope();
@@ -205,6 +212,18 @@
     const unsubscribe=context.subscribe?.(()=>{if(loadedScope!==scope())void load();else reconcile();});
     const originalMain=global.renderMain;
     if(typeof originalMain==='function')global.renderMain=function(...args){
+      if(unknown()){
+        const main=document.querySelector('#main');if(!main)return;
+        const id=viewState.tool,panel=document.createElement('section');panel.className='panel panel-pad';panel.dataset.v1UnsupportedWorkspace=id;
+        const title=document.createElement('h1');title.textContent='Workspace not supported in this clone';
+        const message=document.createElement('p');message.setAttribute('role','status');message.textContent=allowed(id)&&membership()!=='viewer'?'This workspace has no local renderer. No records have been loaded.':'This workspace is unavailable with your current membership. No records have been loaded.';
+        const identifier=document.createElement('p');identifier.textContent=id;panel.append(title,message,identifier);
+        if(allowed(id)&&membership()!=='viewer'){
+          const routes={drawing_compliance_navigator:'/toolbox/standalone/sa-council-drawing-compliance-navigator',valuations:'/app'};
+          if(Object.hasOwn(routes,id)){const link=document.createElement('a');link.href=routes[id];link.textContent=id==='valuations'?'Open application navigation':'Open existing drawing compliance workspace';panel.append(link);}
+        }
+        main.replaceChildren(panel);return;
+      }
       if(viewState?.tool&&viewState.tool!=='command'&&!allowed(viewState.tool)){
         const main=document.querySelector('#main');if(main){const panel=document.createElement('section');panel.className='panel panel-pad';const message=document.createElement('p');message.textContent='This workspace is unavailable with your current membership. No records have been loaded.';message.setAttribute('role','status');panel.append(message);main.replaceChildren(panel);}return;
       }
@@ -213,11 +232,11 @@
     const main=document.querySelector('#main');
     const observer=main&&global.MutationObserver?new global.MutationObserver(decorateSources):null;
     observer?.observe(main,{childList:true,subtree:true});
-    return {ready:load(),allowed,reconcile(){reconcile();decorateSources();},getCatalogue:()=>[...catalogue.values()],dispose(){disposed=true;++generation;observer?.disconnect();unsubscribe?.();catalogue.clear();}};
+    return {ready:load(),allowed,showUnsupported(id){if(local(id))return false;viewState.tool=id;viewState.toolTab=0;global.renderAll?.();return false;},reconcile(){reconcile();decorateSources();},getCatalogue:()=>[...catalogue.values()],dispose(){disposed=true;++generation;observer?.disconnect();unsubscribe?.();catalogue.clear();}};
   }
   async function openRequestedWorkspace({context,discovery,parameters,notify=()=>{}}){
     const id=parameters?.get('workspace');if(!id)return false;
-    if(!discovery.allowed(id)){notify('The requested native workspace is not permitted.');return false;}
+    if(!discovery.allowed(id)){notify('The requested native workspace is not permitted.');discovery.showUnsupported?.(id);return false;}
     const project=parameters.get('project'),orientation=parameters.get('orientation')||'project';
     if(!['project','standalone'].includes(orientation)){notify('Unknown workspace orientation.');return false;}
     if(project&&(!/^[a-f0-9]{32}$/i.test(project)||!context.getState().projects.some(p=>p.id===project))){notify('The requested project is not authorised.');return false;}
