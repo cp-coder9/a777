@@ -95,6 +95,22 @@ def shim_shape(content, name):
     native = legacy.replace(RUNTIME.encode('ascii'), old_root.encode('ascii'))
     forms = {expected: 'private_relocation_exact', legacy: 'private_legacy_exact',
              native: 'native_active_exact'}
+    # Diagnostic grammar only: never returned as a root or used for binding.
+    # Match the entire producer envelope within the existing parser byte bound.
+    private_parent = (HOME + '/.a777-runtime-private/').encode('ascii')
+    literal = None
+    if len(content) <= SHIM_PARSE_LIMIT:
+        literal = re.fullmatch(
+            rb"<\?php\ndeclare\(strict_types=1\);\numask\(0077\);\nrequire '" +
+            re.escape(private_parent) + rb"([A-Za-z0-9_-]{1,128})/public/" +
+            re.escape(name.encode('ascii')) + rb"';\n", content)
+    component = literal[1] if literal else None
+    component_type = 'unmatched'
+    if component is not None:
+        component_type = ('lowercasehex32' if re.fullmatch(rb'[0-9a-f]{32}', component)
+            else 'uuid36' if re.fullmatch(
+                rb'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', component)
+            else 'other')
     crlf = content.count(b'\r\n')
     lf = content.count(b'\n')
     bare_cr = content.count(b'\r') - crlf
@@ -115,6 +131,16 @@ def shim_shape(content, name):
             'declareCount': content.count(b'declare(strict_types=1);'),
             'umaskCount': content.count(b'umask(0077);'),
             'literalRequireCount': len(re.findall(rb"require '[^'\r\n]*';", content)),
+            'fixedPrivateParentPresent': private_parent in content,
+            'repositoryParentPresent': (HOME + '/repositories/a777/').encode('ascii') in content,
+            'literalComponentType': component_type,
+            'literalComponentLength': len(component) if component is not None else None,
+            'expectedEntryMatched': literal is not None,
+            # Lexical account scope only; account identity is checked by inspect.
+            # This is NOT native canonical-path or ownership evidence.
+            'rootInsideVerifiedAccount': literal is not None,
+            'producerWhitespaceEnvelopeMatched': literal is not None,
+            'outputRootProvenance': 'unverified',
             'knownPrivateRootPresent': RUNTIME.encode('ascii') in content,
             'oldActiveRootPresent': old_root.encode('ascii') in content,
             'format': forms.get(content, 'unknown'),

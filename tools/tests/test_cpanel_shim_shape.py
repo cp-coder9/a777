@@ -64,6 +64,35 @@ class ShimShape(unittest.TestCase):
                 with self.assertRaises(ui.Refusal):
                     ui.parse_shim(content, name)
 
+    def test_literal_path_shape_is_diagnostic_only(self):
+        component = b'12345678-1234-1234-1234-123456789abc'
+        source = ui.shim('index.php').replace(ui.RUNTIME.encode(),
+            (ui.HOME + '/.a777-runtime-private/').encode() + component)
+        self.assertEqual(len(source), 146)
+        shape = ui.shim_shape(source, 'index.php')
+        self.assertEqual(shape['literalComponentType'], 'uuid36')
+        self.assertEqual(shape['literalComponentLength'], 36)
+        for flag in ('fixedPrivateParentPresent', 'expectedEntryMatched',
+                     'rootInsideVerifiedAccount', 'producerWhitespaceEnvelopeMatched'):
+            self.assertTrue(shape[flag])
+        self.assertEqual(shape['format'], 'unknown')
+        self.assertFalse(shape['accountScopedStructureMatched'])
+        self.assertNotIn(component.decode(), json.dumps(shape))
+        self.assertNotIn(ui.HOME, json.dumps(shape))
+        with self.assertRaises(ui.Refusal): ui.parse_shim(source, 'index.php')
+        for bad in (source + b'noise', source.replace(b'\n', b'\r\n'),
+                    source.replace(b'/public/index.php', b'/public/app.php'),
+                    source.replace(component, b'..'),
+                    source.replace(component, b'x/y'),
+                    source.replace(component, b'x' * 129)):
+            observation = ui.shim_shape(bad, 'index.php')
+            self.assertEqual(observation['literalComponentType'], 'unmatched')
+            with self.assertRaises(ui.Refusal): ui.parse_shim(bad, 'index.php')
+        other = source.replace(component, b'PRIVATE_SENTINEL')
+        self.assertEqual(ui.shim_shape(other, 'index.php')['literalComponentType'], 'other')
+        self.assertNotIn('PRIVATE_SENTINEL', json.dumps(ui.shim_shape(other, 'index.php')))
+        self.assertEqual(ui.shim_shape(ui.shim('index.php'), 'index.php')['literalComponentType'], 'lowercasehex32')
+
     def test_current_runtime_discovery_and_three_entry_binding(self):
         root = ui.HOME + '/.a777-runtime-private/' + '1234567890abcdef' * 2
         sources = [ui.shim(name).replace(ui.RUNTIME.encode(), root.encode())
