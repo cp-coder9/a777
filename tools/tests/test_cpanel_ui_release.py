@@ -36,6 +36,118 @@ class Contracts(unittest.TestCase):
                 'addon_domains': {'other.example': {'servername': 'other.example',
                     'documentroot': ui.HOME + '/other'}}, 'parked_domains': {}}
 
+    @classmethod
+    def parked_string_inventory(cls):
+        # Synthetic literal values, NOT provider payload. Reproduces observed
+        # main DICT1 / addon DICT1 / sub DICT4 / parked other1, top keys4.
+        data = cls.hash_inventory()
+        data['main_domain']['serveralias'] = 'parked.example www.parked.example'
+        data['parked_domains'] = ['parked.example']
+        for index in range(3):
+            name = f'sub{index}.example'
+            data['sub_domains'][name] = {'servername': name,
+                'documentroot': ui.HOME + f'/public_html/sub{index}'}
+        return data
+
+    def test_documented_parked_string_main_binding(self):
+        import json
+        data = self.parked_string_inventory()
+        metadata = {}
+        roots = ui.domain_roots(data, authenticated_home=ui.HOME, metadata=metadata)
+        self.assertEqual(roots, sorted([ui.HOME + '/public_html', ui.DOCROOT,
+            ui.HOME + '/other'] + [ui.HOME + f'/public_html/sub{i}' for i in range(3)]))
+        self.assertEqual(metadata, {'rowCount': 6, 'missingUserCount': 5,
+            'missingHomeCount': 6, 'parkedAliasCount': 1, 'mainBoundParkedAliasCount': 1})
+        self.assertNotIn('parked.example', json.dumps(metadata))
+        self.assertEqual(ui.domain_shape(data)['groupRowTypeCounts']['parked_domains'],
+                         {'dict': 0, 'list': 0, 'other': 1})
+
+    def test_parked_binding_rejects_wildcard_main_claim(self):
+        data = self.parked_string_inventory()
+        data['main_domain']['serveralias'] += ' parked.*'
+        with self.assertRaises(ui.Refusal):
+            ui.domain_roots(data, authenticated_home=ui.HOME)
+
+    def test_parked_strings_fail_closed_before_file_reads(self):
+        from unittest.mock import patch
+        cases = []
+        for value in ('unmatched.example', '', 'bad..example', '*.example',
+                      'parked.example ', 'https://parked.example', '-bad.example',
+                      'bad_.example', 'x' * 64 + '.example', ui.DOMAIN,
+                      'architex.co.za', 'other.example', 'sub0.example'):
+            bad = self.parked_string_inventory()
+            bad['parked_domains'] = [value]
+            cases.append(bad)
+        bad = self.parked_string_inventory()
+        bad['parked_domains'] = ['parked.example'] * 20001
+        cases.append(bad)
+        bad = self.parked_string_inventory()
+        bad['parked_domains'] *= 2
+        cases.append(bad)
+        bad = self.parked_string_inventory()
+        bad['parked_domains'] = ['parked.example', 'PARKED.EXAMPLE']
+        cases.append(bad)
+        for field, value in (('documentroot', None), ('documentroot', '/home/foreign/site'),
+                ('documentroot', ui.RUNTIME), ('homedir', '/home/foreign'), ('user', 'foreign'),
+                ('serveralias', '*.example'), ('serveralias', ''), ('servername', None)):
+            bad = self.parked_string_inventory()
+            bad['main_domain'][field] = value
+            cases.append(bad)
+        bad = self.parked_string_inventory()
+        bad['main_domain']['domain'] = bad['main_domain'].pop('servername')
+        cases.append(bad)
+        for group in ('sub_domains', 'addon_domains'):
+            bad = self.parked_string_inventory()
+            next(iter(bad[group].values()))['serveralias'] = 'parked.example'
+            cases.append(bad)
+            bad = self.parked_string_inventory()
+            next(iter(bad[group].values()))['documentroot'] = ui.RUNTIME
+            cases.append(bad)
+        bad = self.parked_string_inventory()
+        bad['parked_domains'] = {'parked.example': 'parked.example'}
+        cases.append(bad)  # Only the documented string array is authorized.
+        for index, data in enumerate(cases):
+            class Client:
+                def account_home(self): return ui.HOME
+                def _uapi(self, *args): return data
+            with self.subTest(index=index), patch.object(ui, 'read_bytes') as reader:
+                report = ui.inspect(Client(), {})
+                self.assertIsNotNone(report['errorCode'])
+                self.assertFalse(report['inspectionComplete'])
+                self.assertFalse(report['nativeCanonicalVerified'])
+                self.assertFalse(report['nativeOwnershipVerified'])
+                reader.assert_not_called()
+
+    def test_parked_binding_normalizes_dns_case_without_double_claim(self):
+        data = self.parked_string_inventory()
+        data['parked_domains'] = ['PARKED.EXAMPLE']
+        data['main_domain']['serveralias'] = 'PARKED.EXAMPLE www.parked.example'
+        self.assertEqual(len(ui.domain_roots(data, authenticated_home=ui.HOME)), 6)
+
+    def test_parked_dict_rows_keep_independent_root_validation(self):
+        data = self.hash_inventory()
+        data['parked_domains'] = {'parked.example': {'servername': 'parked.example',
+            'documentroot': ui.HOME + '/public_html/parked'}}
+        self.assertIn(ui.HOME + '/public_html/parked',
+                      ui.domain_roots(data, authenticated_home=ui.HOME))
+        data['parked_domains']['parked.example']['documentroot'] = ui.RUNTIME
+        with self.assertRaises(ui.Refusal):
+            ui.domain_roots(data, authenticated_home=ui.HOME)
+
+    def test_parked_binding_reaches_first_shim_read_only(self):
+        from unittest.mock import ANY, patch
+        data = self.parked_string_inventory()
+        class Client:
+            def account_home(self): return ui.HOME
+            def _uapi(self, *args): return data
+        with patch.object(ui, 'read_bytes', side_effect=ui.Refusal('stop_at_first_shim')) as reader:
+            report = ui.inspect(Client(), {})
+        self.assertEqual(report['errorCode'], 'stop_at_first_shim')
+        reader.assert_called_once_with(ANY, ui.DOCROOT + '/index.php')
+        self.assertEqual(report['domainAccountMetadata']['mainBoundParkedAliasCount'], 1)
+        self.assertFalse(report['nativeCanonicalVerified'])
+        self.assertFalse(report['nativeOwnershipVerified'])
+
     def test_documented_hash_retains_every_root_and_unknown_metadata(self):
         data = self.hash_inventory()
         metadata = {}
@@ -274,7 +386,7 @@ class Contracts(unittest.TestCase):
                  (dict(base, opaque_metadata=[]), 'domain_inventory_keys'),
                  (dict(base, main_domain=[]), 'domain_inventory_main'),
                  (dict(base, sub_domains=None), 'domain_inventory_group'),
-                 (dict(base, parked_domains=['private-alias']), 'domain_inventory_row'),
+                 (dict(base, parked_domains=[7]), 'domain_inventory_row'),
                  (dict(base, sub_domains=[{}] * 20000, addon_domains=[{}]), 'domain_inventory_total')]
         for data, predicate in cases:
             class Client:
