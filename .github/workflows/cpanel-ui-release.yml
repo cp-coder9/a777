@@ -10,6 +10,14 @@ on:
         options:
           - inspect
         default: inspect
+      baseline_line_endings:
+        description: Explicit source checkout profile; remote bytes are never normalized
+        required: true
+        type: choice
+        options:
+          - git
+          - windows
+        default: git
 
 permissions:
   contents: read
@@ -32,7 +40,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Synthetic read-only and refusal contracts (no hosting credentials)
-        run: python -m unittest discover -s tools/tests -p 'test_cpanel_ui_release.py'
+        run: python -m unittest discover -s tools/tests -p 'test_cpanel*.py'
       - name: Inspect exact published shims and immutable live baseline
         env:
           A777_CPANEL_HOST: cp73.domains.co.za
@@ -41,10 +49,12 @@ jobs:
           A777_CPANEL_ACCOUNT_HOME: /home/archite4
           A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
           INSPECTION_MODE: ${{ inputs.mode }}
+          BASELINE_LINE_ENDINGS: ${{ inputs.baseline_line_endings }}
         run: |
           [[ "$GITHUB_REF" == refs/heads/master && "$INSPECTION_MODE" == inspect ]] || exit 1
+          [[ "$BASELINE_LINE_ENDINGS" == git || "$BASELINE_LINE_ENDINGS" == windows ]] || exit 1
           umask 077
-          python tools/cpanel_ui_release.py inspect --report "$RUNNER_TEMP/cpanel-ui-inspection.json"
+          python tools/cpanel_ui_release.py inspect --baseline-line-endings "$BASELINE_LINE_ENDINGS" --report "$RUNNER_TEMP/cpanel-ui-inspection.json"
       - name: Retain allowlisted inspection only (never config or provider content)
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
