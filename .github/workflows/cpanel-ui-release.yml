@@ -1,0 +1,55 @@
+name: cPanel UI release inspection
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only inspection only; no deployment capability
+        required: true
+        type: choice
+        options:
+          - inspect
+        default: inspect
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a777-cpanel-git
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synthetic read-only and refusal contracts (no hosting credentials)
+        run: python -m unittest discover -s tools/tests -p 'test_cpanel_ui_release.py'
+      - name: Inspect exact published shims and immutable live baseline
+        env:
+          A777_CPANEL_HOST: cp73.domains.co.za
+          A777_CPANEL_PORT: '2083'
+          A777_CPANEL_USER: archite4
+          A777_CPANEL_ACCOUNT_HOME: /home/archite4
+          A777_CPANEL_API_TOKEN: ${{ secrets.A777_CPANEL_API_TOKEN }}
+          INSPECTION_MODE: ${{ inputs.mode }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/master && "$INSPECTION_MODE" == inspect ]] || exit 1
+          umask 077
+          python tools/cpanel_ui_release.py inspect --report "$RUNNER_TEMP/cpanel-ui-inspection.json"
+      - name: Retain allowlisted inspection only (never config or provider content)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpanel-ui-inspection
+          path: ${{ runner.temp }}/cpanel-ui-inspection.json
+          if-no-files-found: warn
+          retention-days: 7
