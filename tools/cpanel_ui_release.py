@@ -117,6 +117,61 @@ def read_bytes(client, path):
         raise Refusal('file_encoding_unknown') from None
 
 
+def domain_shape(data):
+    """Value-free observation of the existing getter, never a parser fallback.
+
+    All keys are literals below; provider map keys and scalar values are never
+    copied. Counts saturate at 20000; traversal stops at depth 8 / 20000 nodes.
+    Depth is relative to the getter result (root=0), including opaque wrappers.
+    """
+    limit = 20000
+
+    def kind(value):
+        return 'dict' if type(value) is dict else 'list' if type(value) is list else 'other'
+
+    def group(name):
+        present = type(data) is dict and name in data
+        value: Any = data[name] if present else None
+        container = type(value) in (dict, list)
+        return {'present': present, 'type': kind(value),
+                'count': min(len(value), limit) if container else 0,
+                'countBounded': container and len(value) > limit}
+
+    main = data.get('main_domain') if type(data) is dict else None
+    counts = {'dict': 0, 'list': 0, 'other': 0}
+    max_depth = 0
+    bounded = False
+    remaining = limit
+
+    def visit(value, depth):
+        nonlocal remaining, max_depth, bounded
+        if remaining == 0:
+            bounded = True
+            return
+        remaining -= 1
+        counts[kind(value)] += 1
+        max_depth = max(max_depth, depth)
+        if type(value) not in (dict, list):
+            return
+        if depth == 8:
+            bounded = bounded or bool(value)
+            return
+        children = value.values() if type(value) is dict else value
+        for child in children:
+            if remaining == 0:
+                bounded = True
+                break
+            visit(child, depth + 1)
+
+    visit(data, 0)
+    return {'topLevelType': kind(data),
+            'groups': {name: group(name) for name in
+                       ('main_domain', 'sub_domains', 'addon_domains', 'parked_domains')},
+            'mainFieldPresence': {name: type(main) is dict and name in main for name in
+                                  ('servername', 'domain', 'documentroot', 'user', 'homedir')},
+            'maxDepth': max_depth, 'typeCounts': counts, 'traversalBounded': bounded}
+
+
 def domain_roots(data, *, authenticated_home=None, metadata=None):
     """Complete account inventory, not native-stage's target-only filter.
 
@@ -264,8 +319,10 @@ def inspect(client, candidate):
     try:
         need(client.account_home() == HOME, 'account_identity_unknown')
         domain_metadata = {}
-        report['documentRoots'] = domain_roots(client._uapi('DomainInfo', 'domains_data',
-            {'format': 'hash', 'hide_temporary_domains': '0'}),
+        domain_data = client._uapi('DomainInfo', 'domains_data',
+            {'format': 'hash', 'hide_temporary_domains': '0'})
+        report['domainShape'] = domain_shape(domain_data)
+        report['documentRoots'] = domain_roots(domain_data,
             authenticated_home=HOME, metadata=domain_metadata)
         report['domainAccountMetadata'] = domain_metadata
         for name in ('index.php', 'app.php', 'legal.php'):
