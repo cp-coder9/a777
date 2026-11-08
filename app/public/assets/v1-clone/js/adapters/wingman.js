@@ -44,8 +44,9 @@
       if (busy) throw Error('A Wingman request is pending.');
       if (scope.data.availability?.configured === false) throw Error('configuration_required: Wingman AI is not configured on this server. Your draft has been kept.');
       prompt = String(prompt || '').trim();
-      const prepared = capability ? capability + ':\n' + prompt : prompt;
-      if (!prompt || [...prepared].length > 4000) throw Error('Enter between 1 and 4,000 characters including the capability.');
+      if (capability) throw Error('Structured capabilities are not yet available. Your draft has been kept.');
+      const prepared = prompt;
+      if ([...prepared].length < 3 || [...prepared].length > 4000) throw Error('Enter between 3 and 4,000 characters.');
       busy = true;
       try {
         if (scope.data.pending) {
@@ -71,13 +72,14 @@
         return await verify(saved,scope);
       } finally { busy = false; }
     }
-    async function load(id) {
+    async function load(id, before = null) {
       const scope = current();
       if (busy) throw Error('A Wingman request is pending.');
       if (owners.get(id) !== scope.key) throw Error('Conversation project scope cannot be verified in this session.');
       busy=true;
       try {
-        const record = await context.read(conversationPath(id));check(scope.key);
+        if (before !== null && !identifier(before)) throw Error('Invalid conversation cursor.');
+        const record = await context.read(conversationPath(id) + (before ? '?before=' + encodeURIComponent(before) : ''));check(scope.key);
         if (!Object.hasOwn(record || {},'projectId') || record.projectId !== scope.projectId) throw Error('Conversation project scope did not match the selected project.');
         if (record?.id !== id || !Array.isArray(record.messages)) throw Error('Conversation readback did not match.');
         scope.data.conversationId = id;return record;

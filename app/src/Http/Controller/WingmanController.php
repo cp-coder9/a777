@@ -41,7 +41,7 @@ final readonly class WingmanController
 
     public function conversation(Request $request): Response
     {
-        return $this->read($request, fn (array $scope): array => $this->service->conversation($scope[0], $scope[1], $this->id($request, 'conversationId', 'wingman_conversation_not_found')));
+        return $this->read($request, fn (array $scope): array => $this->service->conversation($scope[0], $scope[1], $this->id($request, 'conversationId', 'wingman_conversation_not_found'), $this->optionalId($request->query('before'), 'invalid_message_cursor')));
     }
 
     public function feedback(Request $request): Response
@@ -100,14 +100,23 @@ final readonly class WingmanController
     private function error(WingmanException $exception): Response
     {
         $status = match (true) {
-            in_array($exception->reason, ['invalid_prompt','invalid_route','invalid_project','invalid_record','invalid_conversation','invalid_feedback','invalid_tool_arguments'], true) => 400,
-            $exception->reason === 'context_denied' => 403,
+            in_array($exception->reason, ['invalid_prompt','invalid_route','invalid_project','invalid_record','invalid_conversation','invalid_message_cursor','capability_unrecognized','capability_project_required','invalid_feedback','invalid_tool_arguments'], true) => 400,
+            in_array($exception->reason, ['context_denied','professional_role_required','capability_forbidden'], true) => 403,
             str_ends_with($exception->reason, '_not_found') => 404,
             str_ends_with($exception->reason, '_conflict') => 409,
             $exception->reason === 'rate_limited' => 429,
-            in_array($exception->reason, ['configuration_required','provider_unavailable','provider_timeout','provider_response_invalid'], true) => 503,
+            in_array($exception->reason, ['configuration_required','provider_unavailable','provider_timeout','provider_response_invalid','capability_unavailable'], true) => 503,
             default => 422,
         };
-        return Response::error($status, $exception->reason, 'The guided Wingman request could not be completed.');
+        $message = match ($exception->reason) {
+            'invalid_prompt' => 'Prompt must be between 3 and 4000 characters.',
+            'capability_unrecognized' => 'The requested capability is unrecognized.',
+            'professional_role_required' => 'Copilot capabilities require a professional role.',
+            'capability_forbidden' => 'This capability is not available for your role.',
+            'capability_project_required' => 'Select a project to use this capability.',
+            'capability_unavailable' => 'This capability is not yet available.',
+            default => 'The guided Wingman request could not be completed.',
+        };
+        return Response::error($status, $exception->reason, $message);
     }
 }

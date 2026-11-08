@@ -36,7 +36,7 @@ final class WingmanServiceTest extends MariaDbTestCase
         $answer = $service->message($organisation, $owner, 'owner', [
             'prompt' => 'What evidence should I review?', 'route' => 'municipal', 'projectId' => $project,
         ]);
-        self::assertSame('Review the cited submission evidence before opening Comply.', $answer['message']['content']);
+        self::assertSame("Review the cited submission evidence before opening Comply.\n\nAI-generated content. Review before professional use.", $answer['message']['content']);
         self::assertSame('Municipal submission pack', $answer['citations'][0]['title']);
         self::assertCount(2, $model->requests, 'Only one bounded tool follow-up is permitted.');
 
@@ -44,6 +44,7 @@ final class WingmanServiceTest extends MariaDbTestCase
         self::assertCount(2, $conversation['messages']);
         self::assertSame('user', $conversation['messages'][0]['role']);
         self::assertSame('assistant', $conversation['messages'][1]['role']);
+        self::assertSame($answer['message']['content'], $conversation['messages'][1]['content']);
         self::assertSame(1, (int) $this->pdo->query("SELECT COUNT(*) FROM wingman_citations WHERE organisation_id=UNHEX('$organisation')")->fetchColumn());
         self::assertGreaterThanOrEqual(2, (int) $this->pdo->query("SELECT COUNT(*) FROM wingman_audit_records WHERE organisation_id=UNHEX('$organisation')")->fetchColumn());
 
@@ -53,6 +54,57 @@ final class WingmanServiceTest extends MariaDbTestCase
             self::fail('Conversations are private to the authenticated user.');
         } catch (WingmanException $exception) {
             self::assertSame('wingman_conversation_not_found', $exception->reason);
+        }
+    }
+
+    public function testStructuredCapabilitiesUseStoredProfessionalRoleAndFailClosed(): void
+    {
+        [$organisation, $owner, $project] = $this->tenant('wingman-capability-policy');
+        $this->pdo->prepare("INSERT INTO registration_profiles(id,user_id,organisation_id,full_name,role_key,profile) VALUES(UNHEX(:id),UNHEX(:user),UNHEX(:org),'Example','supplier',JSON_OBJECT())")
+            ->execute(['id' => Identifier::generate(), 'user' => $owner, 'org' => $organisation]);
+        $service = new WingmanService($this->pdo, new QueueWingmanModel([]), dirname(__DIR__, 3) . '/public/assets/route-placement.json');
+        foreach (['draft_rfi' => 'capability_forbidden', 'summarise_status' => 'capability_unavailable', 'unknown' => 'capability_unrecognized'] as $capability => $reason) {
+            try {
+                $service->message($organisation, $owner, 'owner', ['prompt' => 'Please help', 'route' => 'projects', 'projectId' => $project, 'capability' => $capability, 'professionalRole' => 'architect']);
+                self::fail('Structured capabilities must not execute before their guarded workflows are available.');
+            } catch (WingmanException $exception) {
+                self::assertSame($reason, $exception->reason);
+            }
+        }
+        $count = $this->pdo->prepare('SELECT COUNT(*) FROM wingman_conversations WHERE organisation_id=UNHEX(:org) AND user_id=UNHEX(:user)');
+        $count->execute(['org' => $organisation, 'user' => $owner]);
+        self::assertSame(0, (int) $count->fetchColumn());
+    }
+
+    public function testConversationPaginationIsScopedAndHasNoGaps(): void
+    {
+        [$organisation, $owner, $project] = $this->tenant('wingman-pagination');
+        $conversation = Identifier::generate();
+        $this->pdo->prepare("INSERT INTO wingman_conversations(id,organisation_id,user_id,project_id,title,provider,model) VALUES(UNHEX(:id),UNHEX(:org),UNHEX(:user),UNHEX(:project),'History','nvidia','model')")
+            ->execute(['id' => $conversation, 'org' => $organisation, 'user' => $owner, 'project' => $project]);
+        $insert = $this->pdo->prepare("INSERT INTO wingman_messages(id,organisation_id,conversation_id,role,status,content,created_at) VALUES(UNHEX(:id),UNHEX(:org),UNHEX(:conversation),'user','complete',:content,'2026-01-01 00:00:00.000000')");
+        $ids = [];
+        for ($i = 0; $i < 103; $i++) {
+            $id = Identifier::generate();
+            $ids[] = $id;
+            $insert->execute(['id' => $id, 'org' => $organisation, 'conversation' => $conversation, 'content' => 'message']);
+        }
+        $service = new WingmanService($this->pdo, new QueueWingmanModel([]), dirname(__DIR__, 3) . '/public/assets/route-placement.json');
+        $first = $service->conversation($organisation, $owner, $conversation);
+        $second = $service->conversation($organisation, $owner, $conversation, $first['nextBefore']);
+        $third = $service->conversation($organisation, $owner, $conversation, $second['nextBefore']);
+        self::assertCount(50, $first['messages']);
+        self::assertCount(50, $second['messages']);
+        self::assertCount(3, $third['messages']);
+        self::assertNull($third['nextBefore']);
+        $actual = array_column([...$third['messages'], ...$second['messages'], ...$first['messages']], 'id');
+        sort($ids);
+        self::assertSame($ids, $actual);
+        try {
+            $service->conversation($organisation, $owner, $conversation, Identifier::generate());
+            self::fail('A cursor outside the conversation must be rejected.');
+        } catch (WingmanException $exception) {
+            self::assertSame('invalid_message_cursor', $exception->reason);
         }
     }
 
