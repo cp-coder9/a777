@@ -44,7 +44,7 @@ final readonly class WingmanService
     public function bootstrap(string $organisationId, string $userId, string $role, string $route, ?string $projectId): array
     {
         $context = $this->authoriseContext($organisationId, $userId, $role, $route, $projectId);
-        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) projectId,title,route_context routeContext,updated_at updatedAt FROM wingman_conversations WHERE organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user) AND project_id <=> UNHEX(:project) AND status='active' AND retention_expires_at>UTC_TIMESTAMP(6) ORDER BY updated_at DESC LIMIT 8");
+        $statement = $this->pdo->prepare("SELECT LOWER(HEX(id)) id,LOWER(HEX(project_id)) projectId,title,route_context routeContext,updated_at updatedAt,(SELECT COUNT(*) FROM wingman_messages m WHERE m.organisation_id=wingman_conversations.organisation_id AND m.conversation_id=wingman_conversations.id) messageCount FROM wingman_conversations WHERE organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user) AND project_id <=> UNHEX(:project) AND status='active' AND retention_expires_at>UTC_TIMESTAMP(6) ORDER BY updated_at DESC,id DESC LIMIT 50");
         $statement->execute(['organisation' => $organisationId, 'user' => $userId, 'project'=>$projectId]);
         return [
             'provider' => 'nvidia',
@@ -63,10 +63,19 @@ final readonly class WingmanService
     /** @param array<string,mixed> $input @return array<string,mixed> */
     public function message(string $organisationId, string $userId, string $role, array $input): array
     {
-        $prompt = $this->text($input['prompt'] ?? null, 4_000, 'invalid_prompt');
+        $prompt = WingmanContentPolicy::prompt($input['prompt'] ?? null);
         $route = $this->key($input['route'] ?? null, 'invalid_route');
         $projectId = $this->optionalId($input['projectId'] ?? null, 'invalid_project');
         $context = $this->authoriseContext($organisationId, $userId, $role, $route, $projectId);
+        if (array_key_exists('capability', $input) && $input['capability'] !== null) {
+            // Never trust a role supplied by the browser. Structured capability handlers
+            // remain disabled until provenance and confirmation-gated writes exist.
+            $profile = $this->pdo->prepare('SELECT role_key FROM registration_profiles WHERE organisation_id=UNHEX(:organisation) AND user_id=UNHEX(:user)');
+            $profile->execute(['organisation' => $organisationId, 'user' => $userId]);
+            $professionalRole = $profile->fetchColumn();
+            WingmanCapabilityPolicy::assertAllowed($input['capability'], is_string($professionalRole) ? $professionalRole : null, $projectId !== null);
+            throw new WingmanException('capability_unavailable');
+        }
         $selectedRecordId = $this->optionalId($input['selectedRecordId'] ?? null, 'invalid_record');
         $conversationId = $this->optionalId($input['conversationId'] ?? null, 'invalid_conversation');
         if ($this->availability()['configured'] === false) throw new WingmanException('configuration_required');
@@ -98,7 +107,7 @@ final readonly class WingmanService
             $this->audit($organisationId, $userId, $conversationId, null, 'wingman.model.failed', 'failed', $route, ['reason' => $exception->reason]);
             throw new WingmanException($exception->reason);
         }
-        $content = $this->text($response['content'] ?? null, 40_000, 'provider_response_invalid');
+        $content = WingmanContentPolicy::response($response['content'] ?? null);
         $assistantId = $this->insertMessage($organisationId, $conversationId, null, 'assistant', 'complete', $content, null, $response);
         $citations = $toolResult['citations'] ?? [];
         $suggestions = $toolResult['suggestions'] ?? [];
@@ -118,18 +127,33 @@ final readonly class WingmanService
     }
 
     /** @return array<string,mixed> */
-    public function conversation(string $organisationId, string $userId, string $conversationId): array
+    public function conversation(string $organisationId, string $userId, string $conversationId, ?string $before = null): array
     {
-        $scope = $this->assertConversation($organisationId, $userId, $this->id($conversationId, 'wingman_conversation_not_found'));
-        $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,role,status,content,provider,model,created_at createdAt FROM wingman_messages WHERE organisation_id=UNHEX(:organisation) AND conversation_id=UNHEX(:conversation) ORDER BY created_at,id');
-        $statement->execute(['organisation' => $organisationId, 'conversation' => $conversationId]);
-        $messages = [];
-        foreach ($statement->fetchAll() as $message) {
+        $conversationId = $this->id($conversationId, 'wingman_conversation_not_found');
+        $scope = $this->assertConversation($organisationId, $userId, $conversationId);
+        $params = ['organisation' => $organisationId, 'conversation' => $conversationId];
+        $where = '';
+        if ($before !== null) {
+            $before = $this->id($before, 'invalid_message_cursor');
+            $cursor = $this->pdo->prepare('SELECT created_at FROM wingman_messages WHERE organisation_id=UNHEX(:organisation) AND conversation_id=UNHEX(:conversation) AND id=UNHEX(:id)');
+            $cursor->execute([...$params, 'id' => $before]);
+            $createdAt = $cursor->fetchColumn();
+            if (!is_string($createdAt)) throw new WingmanException('invalid_message_cursor');
+            $where = ' AND (created_at < :beforeTime OR (created_at = :sameTime AND id < UNHEX(:beforeId)))';
+            $params += ['beforeTime' => $createdAt, 'sameTime' => $createdAt, 'beforeId' => $before];
+        }
+        $statement = $this->pdo->prepare('SELECT LOWER(HEX(id)) id,role,status,content,provider,model,created_at createdAt FROM wingman_messages WHERE organisation_id=UNHEX(:organisation) AND conversation_id=UNHEX(:conversation)' . $where . ' ORDER BY created_at DESC,id DESC LIMIT 51');
+        $statement->execute($params);
+        $rows = $statement->fetchAll();
+        $hasMore = count($rows) > 50;
+        if ($hasMore) array_pop($rows);
+        $messages = array_reverse($rows);
+        foreach ($messages as &$message) {
             $message['citations'] = $this->citations($organisationId, $message['id']);
             $message['suggestions'] = $this->suggestions($organisationId, $message['id']);
-            $messages[] = $message;
         }
-        return ['id' => $conversationId, 'projectId'=>$scope['projectId'], 'messages' => $messages];
+        unset($message);
+        return ['id' => $conversationId, 'projectId' => $scope['projectId'], 'messages' => $messages, 'nextBefore' => $hasMore ? $messages[0]['id'] : null];
     }
 
     /** @param array<string,mixed> $input @return array<string,mixed> */
@@ -231,7 +255,7 @@ final readonly class WingmanService
     /** @param array<string,mixed> $context @return list<array{role:string,content:string}> */
     private function modelMessages(string $organisationId, string $userId, string $conversationId, array $context): array
     {
-        $system = 'You are the Architex Wingman, a guided built-environment copilot. Use only authorised context. Cite evidence, state uncertainty, and propose navigation only. Never claim to mutate records, dispatch messages, approve work, or replace professional judgement. Current structured context: ' . $this->json($context);
+        $system = 'You are the Architex Wingman, a guided built-environment copilot. Use only authorised context. Cite evidence, state uncertainty, and propose navigation only. Never generate legally binding statements, reproduce copyrighted material verbatim, provide certifications or sign-offs, or claim official regulatory compliance. Never claim to mutate records, dispatch messages, approve work, or replace professional judgement. Current structured context: ' . $this->json($context);
         $statement = $this->pdo->prepare('SELECT role,content FROM (SELECT role,content,created_at,id FROM wingman_messages WHERE organisation_id=UNHEX(:organisation) AND conversation_id=UNHEX(:conversation) ORDER BY created_at DESC,id DESC LIMIT 12) recent ORDER BY created_at,id');
         $statement->execute(['organisation' => $organisationId, 'conversation' => $conversationId]);
         return array_merge([['role' => 'system', 'content' => $system]], array_map(static fn (array $row): array => ['role' => $row['role'], 'content' => $row['content']], $statement->fetchAll()));

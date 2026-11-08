@@ -26,6 +26,8 @@
     projectItems.forEach(e=>e.textContent='Not supplied by authenticated context');
     q('.empty-state p').textContent=limitation;
     const input=q('.input-field'), capability=q('.capability-selector'), send=q('.input-area button');
+    capability.replaceChildren(new Option('General guidance (structured capabilities unavailable)', ''));
+    capability.disabled=true;
     const invoke=(action,payload)=>action==='send'&&send.disabled ? notice('Wingman is not available for sending. Your draft has been kept.') : window.__v1WingmanCommand ? window.__v1WingmanCommand(action,payload) : notice('Authenticated Wingman adapter is not mounted. Your draft has been kept.');
     let dirty=false, providerConfigured=false, requestPending=false;
     send.disabled=true;
@@ -39,6 +41,7 @@
       if(el===send)return invoke('send',{prompt:input.value,capability:capability.value});
       if(el.dataset.routeSuggestion)return invoke('navigate',{id:el.dataset.routeSuggestion,route:el.dataset.routeTarget});
       if(el.dataset.conversationId)return invoke('load',{id:el.dataset.conversationId});
+      if(el.dataset.loadOlder)return invoke('older');
       if(label==='+ New'||label==='Start New Conversation')return invoke('new');
       if(label.includes('Finalise'))return notice('RFI Register finalisation is not exposed by Wingman. Keep this as an unapproved draft and use the governed RFI workflow.');
       if(label.includes('Discard')){if(window.confirm('Discard this unapproved preview?')){qa('.editable-field .value').forEach(e=>e.textContent='');dirty=false;}return;}
@@ -50,16 +53,17 @@
       if(label.includes('Conversations'))return q('.copilot-layout').scrollIntoView({block:'start'});
       const choices={'Draft RFI':'Draft RFI','Status Summary':'Summarise Status','Flag Compliance':'Flag Compliance','Narratives':'Generate Narrative','Explain Clause':'Explain Clause'};
       const choice=Object.keys(choices).find(key=>label.includes(key));
-      if(choice){capability.value=choices[choice];input.focus();return;}
+      if(choice)return notice('This structured capability is not yet available. General guidance remains available without creating project records.');
       notice('This original navigation control has no authenticated Wingman route binding. Use the parent workspace navigation.');
     },true);
     d.addEventListener('keydown',event=>{if(event.target===input&&event.key==='Enter'&&!event.isComposing){event.preventDefault();event.stopImmediatePropagation();invoke('send',{prompt:input.value,capability:capability.value});}},true);
     d.addEventListener('input',event=>{if(event.target.closest('.editable-preview'))dirty=true;});
     function draft(){return {prompt:input.value,capability:capability.value,preview:qa('.editable-field .value').map(e=>e.textContent),dirty,imports:qa('.import-form input,.import-form textarea,.import-form select').map(e=>e.value)};}
     function restore(value){if(!value)return;input.value=value.prompt;capability.value=value.capability;qa('.editable-field .value').forEach((e,i)=>e.textContent=value.preview[i]||'');dirty=value.dirty;qa('.import-form input,.import-form textarea,.import-form select').forEach((e,i)=>e.value=value.imports[i]||'');}
-    function clear(){input.value='';dirty=false;qa('.editable-field .value').forEach(e=>e.textContent='');qa('.import-form input,.import-form textarea').forEach(e=>e.value='');qa('.import-form select').forEach(e=>e.selectedIndex=0);messages.querySelectorAll('[data-persisted-message]').forEach(e=>e.remove());heading.textContent='New conversation';meta.textContent='No verified conversation loaded';qa('.thread-item').forEach(e=>e.remove());}
+    function clear(){input.value='';dirty=false;qa('.editable-field .value').forEach(e=>e.textContent='');qa('.import-form input,.import-form textarea').forEach(e=>e.value='');qa('.import-form select').forEach(e=>e.selectedIndex=0);messages.querySelectorAll('[data-persisted-message], [data-load-older]').forEach(e=>e.remove());heading.textContent='New conversation';meta.textContent='No verified conversation loaded';qa('.thread-item').forEach(e=>e.remove());}
     function render(record){
-      messages.querySelectorAll('[data-persisted-message]').forEach(e=>e.remove());
+      messages.querySelectorAll('[data-persisted-message], [data-load-older]').forEach(e=>e.remove());
+      if(record.nextBefore){const older=d.createElement('button');older.type='button';older.dataset.loadOlder='true';older.textContent='Load older messages';messages.insertBefore(older,previewRow);}
       for(const item of record.messages){
         const row=d.createElement('div');row.className='message '+(item.role==='user'?'user':'assistant');row.dataset.persistedMessage=item.id;
         const avatar=d.createElement('div');avatar.className='message-avatar';avatar.textContent=item.role==='user'?'You':'◈';
@@ -86,7 +90,7 @@
       },
       hasDraft:()=>!!(input.value.trim()||dirty||qa('.import-form input,.import-form textarea').some(e=>e.value.trim())),
       availability(value){providerConfigured=value?.configured??null;send.disabled=requestPending||providerConfigured===false;},
-      busy(value){requestPending=value;send.disabled=value||providerConfigured===false;input.readOnly=value;capability.disabled=value;},
+      busy(value){requestPending=value;send.disabled=value||providerConfigured===false;input.readOnly=value;capability.disabled=true;},
       clearSent(prompt){if(input.value===prompt)input.value='';},
       scope(state){const project=state.projects?.find(p=>p.id===state.selectedProjectId);const name=project?.name||'Standalone context';pills[0].textContent=state.ready?'Authenticated context':'Context unavailable';pills[2].textContent=name;projectItems[0].textContent=name;projectItems[1].textContent='Phase: '+(project?.phase||project?.currentPhase||project?.stage||'Not supplied');projectItems[2].textContent='Role: '+(state.session?.memberships?.find(m=>m.organisationId===state.organisationId)?.role||'Not supplied');},
       threads(items){qa('.thread-item').forEach(e=>e.remove());for(const item of items){const el=d.createElement('div');el.className='thread-item';el.dataset.conversationId=item.id;el.tabIndex=0;el.setAttribute('role','button');el.textContent=item.title;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();invoke('load',{id:item.id});}};q('.thread-panel-header').after(el);}},
@@ -105,11 +109,11 @@
       if(disposed||frame.isConnected===false||frame.contentDocument!==document)return false;
       const win=frame.contentWindow;
       if(!win?.__v1Wingman)throw Error('Wingman frame was not prepared before srcdoc.');
-      const view=win.__v1Wingman;let scope=adapter.scopeKey(),live=true,revision=0,commandPending=false,suggestions=[];
+      const view=win.__v1Wingman;let scope=adapter.scopeKey(),live=true,revision=0,commandPending=false,suggestions=[],currentRecord=null;
       view.scope(context.getState());view.restore(drafts.get(scope));
       const valid=ticket=>live&&!disposed&&ticket===revision&&scope===adapter.scopeKey();
       async function refresh(){const ticket=revision;try{const data=await adapter.bootstrap();if(!valid(ticket))return;view.threads(data.conversations);view.availability(data.availability);view.notice(data.availability?.configured===false?'Wingman AI is unavailable: provider configuration required. Review saved conversations or keep a draft; no AI request has been sent.':'Authenticated Wingman ready. '+(data.availability?.configured===true?'Provider configured; a successful response is verified only after a request. ':'Provider configuration was not reported. ')+(data.withheldConversations?'Unverified conversation history is withheld. ':'')+'Only cited sources are evidence; all outputs require human review.');}catch(e){if(valid(ticket)){view.availability({configured:false});view.notice(e.message);}}}
-      function show(record){suggestions=record.messages.flatMap(message=>message.suggestions||[]);view.render(record);}
+      function show(record){currentRecord=record;suggestions=record.messages.flatMap(message=>message.suggestions||[]);view.render(record);}
       win.__v1WingmanCommand=async(action,payload={})=>{
         if(!live||disposed)return;
         if(commandPending||adapter.isBusy()){view.notice('A Wingman request is pending.');return;}
@@ -123,6 +127,11 @@
             if(view.hasDraft()&&!win.confirm('Discard the current unsaved draft and open this conversation?'))return;
             const before=JSON.stringify(view.draft());view.busy(true);
             const result=await adapter.load(payload.id);if(valid(ticket)){if(JSON.stringify(view.draft())===before)view.clear();show(result);await refresh();}
+          }else if(action==='older'){
+            if(!currentRecord?.nextBefore) return;
+            view.busy(true);
+            const older=await adapter.load(currentRecord.id,currentRecord.nextBefore);
+            if(valid(ticket)){const seen=new Set(older.messages.map(m=>m.id));show({...older,messages:[...older.messages,...currentRecord.messages.filter(m=>!seen.has(m.id))]});}
           }else if(action==='navigate'){
             const suggestion=suggestions.find(item=>item.id===payload.id&&item.routeTarget===payload.route&&item.type==='navigate'&&item.status==='proposed');
             if(!suggestion)throw Error('This navigation proposal is not part of the verified conversation.');
@@ -133,7 +142,7 @@
             if(accepted===false)throw Error('Navigation was cancelled. Your draft has been kept.');
           }else if(action==='new'){
             if(!win.confirm('Start a new conversation? Unsaved drafts will be discarded. A previous failed request may already be stored.'))return;
-            adapter.newConversation();suggestions=[];view.clear();drafts.delete(scope);await refresh();
+            adapter.newConversation();suggestions=[];currentRecord=null;view.clear();drafts.delete(scope);await refresh();
           }
         }catch(e){if(valid(ticket))view.notice(e.message);}finally{commandPending=false;if(valid(ticket))view.busy(false);}
       };
@@ -144,7 +153,7 @@
       });
       const unsubscribe=context.subscribe?.(()=>{
         const next=adapter.scopeKey();if(next===scope)return;
-        drafts.set(scope,view.draft());scope=next;++revision;suggestions=[];view.clear();view.busy(false);view.scope(context.getState());view.restore(drafts.get(scope));void refresh();
+        drafts.set(scope,view.draft());scope=next;++revision;suggestions=[];currentRecord=null;view.clear();view.busy(false);view.scope(context.getState());view.restore(drafts.get(scope));void refresh();
       });
       const mount={dispose(){if(!live)return;drafts.set(scope,view.draft());live=false;++revision;unregister?.();unsubscribe?.();win.__v1WingmanCommand=()=>view.notice('Wingman frame is no longer active. Reopen it.');mounts.delete(mount);}};
       mounts.add(mount);void refresh();return mount;
